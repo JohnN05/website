@@ -1,0 +1,56 @@
+.footer{
+    align-content: flex-start;
+    background-color: #bc6c25;
+    box-sizing: border-box;
+    display: flex;
+    gap: 10vw;
+    padding: 70px 20px 70px 20px; 
+    width: 100%;
+
+}
+
+.footer ul{
+    display: flex;
+    flex-direction: column;
+}
+
+.footer *{
+    color: white;
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.5;
+
+    font-weight:400;
+    font-size: 16px;
+}
+
+.footer h1{
+    font-weight:600;
+    font-size: 24px;
+}
+
+.footer li, .footer a{
+    transition: 0.3s;
+}
+
+.footer li:hover{
+    transform: scale(1.1);
+}
+
+.footer a:hover{
+    color: lightgray;
+}
+
+.footer .note{
+    font-size: 14px;
+    font-weight: 300;
+
+    max-width: 40%;
+    justify-self: flex-end;
+    margin-left: auto;
+}
+
+.signature{
+    font-size: 16px;
+
+    text-align: end;
+}

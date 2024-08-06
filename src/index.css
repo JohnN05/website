@@ -1,7 +1,10 @@
 *{
+  font-style: normal;
+  text-decoration: none;
   margin: 0;
   padding: 0;
   color: black;
+  list-style-type: none;
 }
 
 body {
