@@ -6,6 +6,7 @@ import {faEnvelope} from "@fortawesome/free-regular-svg-icons";
 function Header(){
     return(
         <nav className="header">
+            <p>John Ng</p>
             <ul className="headerLinks">
                 <li><a href="https://linkedin.com/in/johnn05" target="_blank">
                     <FontAwesomeIcon className="icon" icon={faLinkedin} size="2x" style={{color: "#283618",}} />
@@ -20,6 +21,7 @@ function Header(){
                     <FontAwesomeIcon className="icon" icon={faEnvelope} size="2x" style={{color: "#283618",}} />
                 </a></li>
             </ul>
+            
         </nav>
     );
 }

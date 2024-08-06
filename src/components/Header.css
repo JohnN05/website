@@ -3,11 +3,19 @@
     box-sizing: border-box;
     padding: 10px 20px 10px 20px; 
     width: 100%;
+
+    display:flex;
+    align-items: center;
+}
+
+.header>*{
+    flex: 1;
 }
 
 .headerLinks{
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 25px;
 
     height: 40px;
@@ -23,3 +31,10 @@
     transform: scale(1.1);
 }
 
+.header>p{
+    font-family: 'Work Sans', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: white;
+
+}
