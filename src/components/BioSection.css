@@ -1,0 +1,70 @@
+.bio{
+    background-color: #fefae0;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-items: center;
+    gap: 50px;
+    flex-wrap: wrap;
+
+    padding: 15vh 10vw 15vh 10vw;
+    width: 100%;
+}
+
+.bio>*{
+    flex: 1;
+    min-width: 300px;
+}
+
+.bio *{
+    font-family: 'Work Sans', sans-serif;
+}
+
+.bio h1{
+    font-size: 64px;
+    color: #606c38;
+}
+
+.bio h2{
+    font-size: 40px;
+    font-weight:600;
+    color: #283618;
+}
+
+.bio p{
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.bio img{
+    border-radius: 50%;
+    height: auto;
+    width: 100%;
+    max-width: 500px;
+}
+
+@media only screen and (max-width: 768px){
+    .bio article{
+        text-align: center;
+    }
+
+    .bio h1{
+        font-size: 48px;
+    }
+
+    .bio h2{
+        font-size: 30px;
+    }
+    .bio p{
+        font-size: 18px;
+    }
+
+    .bio img{
+        flex: 0;
+        margin: auto;
+        height: 300px;
+        width: 300px;
+    }
+
+}
