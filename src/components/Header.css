@@ -1,6 +1,8 @@
 .header{
     background-color: #606C38;
+    box-sizing: border-box;
     padding: 10px 20px 10px 20px; 
+    width: 100%;
 }
 
 .headerLinks{
@@ -10,10 +12,6 @@
 
     height: 40px;
     width: 100%;
-}
-
-li{
-    list-style-type:none;
 }
 
 .icon{
