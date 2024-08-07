@@ -1,0 +1,30 @@
+.wipSection{
+    padding: 10vh 10vw 10vh 10vw;
+    box-sizing: border-box;
+    width: 100%;
+
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-items: center;
+}
+
+.wipSection *{
+    font-family: 'Work Sans', sans-serif;
+}
+
+.wipSection h1{
+    font-size: 48px;
+}
+.wipSection p{
+    font-size: 28px;
+    font-weight: 300;
+}
+
+@media only screen and (max-width: 768px){
+    .wipSection{
+        padding: 10vh 5vw 10vh 5vw;
+
+        flex-direction: column;
+    }
+}

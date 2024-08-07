@@ -1,5 +1,6 @@
 import BioSection from "./BioSection";
 import RepoSection from "./RepoSection";
+import WIPSection from "./WIPSection";
 
 
 function Main(){
@@ -7,6 +8,7 @@ function Main(){
         <>
             <BioSection />
             <RepoSection />
+            <WIPSection />
         </>
     );
 }

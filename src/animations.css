@@ -7,7 +7,7 @@
 }
 
 .verticalShake{
-    animation: verticalShake 0.4s ease-out 0.4s infinite;
+    animation: verticalShake 0.4s ease-out 0.42s infinite;
 }
 
 @keyframes slideFromLeft{
