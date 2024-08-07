@@ -1,0 +1,43 @@
+.repoSection{
+    background-color: #a7c957;
+    box-sizing: border-box;
+    padding: 15vh 10vw 15vh 10vw;
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    align-items: center;
+}
+
+.repoSection>h1{
+    font-family: 'Work Sans', sans-serif;
+    font-size:48px;
+    color:black;
+}
+
+.repos{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px;
+}
+
+@keyframes blurFadeIn{
+    0%{
+        filter: blur(2px);
+        opacity: 0;
+    }
+    100%{
+        filter: blur(0);
+        opacity: 1;
+    }
+}
+
+@media only screen and (max-width: 768px){
+    .repoSection{
+        padding: 10vh 5vw 10vh 5vw;
+    }
+    .repos{
+        flex-direction: column;
+    }
+}
