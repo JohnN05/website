@@ -1,8 +1,12 @@
 import './Footer.css'
+import icon from '../assets/site_logo-no-background.png'
 
 function Footer(){
     return(
         <section className="footer">
+            <div>
+            <img src={icon} />
+            </div>
             <div>
                 <h1>Contact Info</h1>
                 <address>

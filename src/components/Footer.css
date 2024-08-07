@@ -1,17 +1,18 @@
 .footer{
-    align-content: flex-start;
+    align-items: center;
+    justify-items: flex-start;
     background-color: #bc6c25;
     box-sizing: border-box;
     display: flex;
 
-    gap: 10vw;
+    gap: 3vw;
     padding: 10vh 10vw 10vh 10vw;
     width: 100%;
 
 }
 
 .footer>*{
-    min-width: 200px;
+    min-width: 150px;
 }
 
 .footer ul{
@@ -26,6 +27,10 @@
 
     font-weight:400;
     font-size: 16px;
+}
+
+.footer img{
+    width: 120px;
 }
 
 .footer h1{
