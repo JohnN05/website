@@ -9,7 +9,7 @@ function WIPSection(){
         <section className="wipSection blurFadeIn">
             
             <div>
-                <h1>Work in progress.</h1>
+                <h1>Work in progress</h1>
                 <p>
                     Whether its creating new projects or learning new skills,  
                     I'm constantly trying to gain new experiences and perspectives that I can apply to CS.
