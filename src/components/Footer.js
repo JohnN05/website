@@ -5,7 +5,7 @@ function Footer(){
     return(
         <section className="footer">
             <div>
-            <img src={icon} />
+            <img alt="logo" src={icon} />
             </div>
             <div>
                 <h1>Contact Info</h1>

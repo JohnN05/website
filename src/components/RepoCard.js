@@ -7,7 +7,7 @@ function RepoCard(props){
 
     return(
         
-        <a href={props.url} target='_blank'>
+        <a href={props.url} rel="noreferrer" target='_blank'>
             <div className="repoCard">
                 <h1>{props.name}</h1>
                 <p>{props.description}</p>

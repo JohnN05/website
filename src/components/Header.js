@@ -8,13 +8,13 @@ function Header(){
         <nav className="header">
             <p>John Ng</p>
             <ul className="headerLinks">
-                <li><a href="https://linkedin.com/in/johnn05" target="_blank">
+                <li><a href="https://linkedin.com/in/johnn05" rel="noreferrer" target="_blank">
                     <FontAwesomeIcon className="icon" icon={faLinkedin} size="2x" style={{color: "#283618",}} />
                 </a></li>
-                <li><a href="https://github.com/JohnN05" target="_blank">
+                <li><a href="https://github.com/JohnN05" rel="noreferrer" target="_blank">
                     <FontAwesomeIcon className="icon" icon={faGithub} size="2x" style={{color: "#283618",}} />
                 </a></li>
-                <li><a href = "https://www.instagram.com/its_john_n/" target="_blank">
+                <li><a href = "https://www.instagram.com/its_john_n/" rel="noreferrer" target="_blank">
                     <FontAwesomeIcon className="icon" icon={faInstagram} size="2x" style={{color: "#283618",}} />
                 </a></li>
                 <li><a href = "mailto:jng0511@umd.edu">
