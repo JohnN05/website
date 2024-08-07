@@ -20,9 +20,9 @@ function Footer(){
             <div>
                 <h1>Find Me Online</h1>
                 <ul>
-                    <li><a href="https://linkedin.com/in/johnn05" target="_blank">Linkedin</a></li>
-                    <li><a href="https://github.com/JohnN05" target="_blank">Github</a></li>
-                    <li><a href="https://www.instagram.com/its_john_n/" target="_blank">Instagram</a></li>
+                    <li><a href="https://linkedin.com/in/johnn05" rel="noreferrer" target="_blank">Linkedin</a></li>
+                    <li><a href="https://github.com/JohnN05" rel="noreferrer" target="_blank">Github</a></li>
+                    <li><a href="https://www.instagram.com/its_john_n/" rel="noreferrer" target="_blank">Instagram</a></li>
                 </ul>
             </div>
             <p className="note">
