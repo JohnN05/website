@@ -1,0 +1,30 @@
+.blurFadeIn{
+    animation: blurFadeIn 1s ease-out 0.1s both;
+}
+
+.slideLeft{
+    animation: slideFromLeft 1s ease-out 0.1s both;
+}
+
+@keyframes slideFromLeft{
+    0%{
+        transform: translateX(100%);
+        opacity: 0;
+        filter: blur(3px);
+    }
+    100%{
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes blurFadeIn{
+    0%{
+        filter: blur(2px);
+        opacity: 0;
+    }
+    100%{
+        filter: blur(0);
+        opacity: 1;
+    }
+}
