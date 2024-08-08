@@ -1,11 +1,17 @@
 .header{
     background-color: #606C38;
     box-sizing: border-box;
-    padding: 10px 20px 10px 20px; 
+    padding: 0 20px 0 20px; 
     width: 100%;
+    height: 65px;
 
-    display:flex;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
     align-items: center;
+}
+
+.header *{
+    font-family: 'Work Sans', sans-serif;
 }
 
 .header>*{
@@ -22,19 +28,47 @@
     width: 100%;
 }
 
-.icon{
+.icon, .resume{
     transition: 0.3s;
 }
 
 .icon:hover{
-    filter: invert(100%) sepia(1%) saturate(6595%) hue-rotate(68deg) brightness(111%) contrast(100%);
     transform: scale(1.1);
+    filter: invert();
+}
+
+.resume:hover{
+    transform: scale(1.05);
+    
 }
 
 .header>p{
-    font-family: 'Work Sans', sans-serif;
+    
     font-size: 24px;
     font-weight: 600;
     color: white;
 
+}
+
+.header .resume{
+
+    justify-self: center;
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.header .resume>p{
+    color:white;
+    font-size: 18px;
+    font-weight: 400;
+}
+
+@media only screen and (max-width: 768px){
+    .mobileHide{
+        display: none;
+    }
 }

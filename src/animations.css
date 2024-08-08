@@ -10,6 +10,10 @@
     animation: verticalShake 0.4s ease-out 0.42s infinite;
 }
 
+.shake{
+    animation: shake linear 5s infinite normal both;
+}
+
 @keyframes slideFromLeft{
     0%{
         transform: translateX(100%);
@@ -48,5 +52,43 @@
         transform: translateY(0);
     }
     100%{
+    }
+}
+
+@keyframes shake{
+    0% { transform: rotate(0deg); }
+    1% { transform: rotate(8deg); }
+    2% { transform: rotate(0eg); }
+    3% { transform: rotate(-8deg); }
+    4% { transform: rotate(0deg); }
+    5% { transform: rotate(6deg); }
+    6% { transform: rotate(0eg); }
+    7% { transform: rotate(-6deg); }
+    8% { transform: rotate(0deg); }
+    9% { transform: rotate(4deg); }
+    10% { transform: rotate(0eg); }
+    11% { transform: rotate(-4deg); }
+    12% { transform: rotate(0deg); }
+    13% { transform: rotate(2deg); }
+    14% { transform: rotate(0eg); }
+    15% { transform: rotate(-2deg); }
+    16% { transform: rotate(0deg); }
+    100%{
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes pulse{
+    0%{
+        transform: scale(1);
+    }
+    1%{
+        transform: scale(1.2);
+    }
+    16%{
+        transform: scale(1);
+    }
+    100%{
+        transform: scale(1);
     }
 }
