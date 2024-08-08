@@ -28,7 +28,7 @@ function RepoSection(){
             }))
         })
 
-    })
+    }, [])
 
     return(
         <section className='repoSection'>
