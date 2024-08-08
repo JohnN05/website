@@ -75,5 +75,6 @@
 
     .footer div, .footer .note{
         margin: auto;
+        max-width: 90%;
     }
 }
