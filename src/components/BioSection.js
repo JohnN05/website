@@ -1,5 +1,5 @@
 import './BioSection.css';
-import bio from '../assets/bio.jpeg';
+import bio from '../assets/bio2.jpg';
 function BioSection(){
     return(
         <section className="bio">
