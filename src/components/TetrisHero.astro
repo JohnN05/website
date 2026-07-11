@@ -17,7 +17,14 @@
   </div>
 </div>
 <style>
-  .tetris-hero { position: relative; width: 120px; }
+  .tetris-hero {
+    position: relative;
+    width: 120px;
+    --tetris-i: #6B9AA8;
+    --tetris-o: #C9A75C;
+    --tetris-t: #8B6B9E;
+    --tetris-j: #5C7FA6;
+  }
   @media (max-width: 768px) { .tetris-hero { display: none; } }
   .tetris-ambient, .tetris-board {
     display: grid;
@@ -25,14 +32,20 @@
     gap: 1px;
     background: var(--color-text-secondary);
   }
-  .tetris-ambient { width: 120px; aspect-ratio: 10 / 20; }
+  .tetris-ambient { width: 120px; aspect-ratio: 10 / 20; filter: blur(1px); opacity: 0.82; }
   .tetris-board { width: 200px; aspect-ratio: 10 / 20; }
   /* :global() is required here because the grid cells are created at
-     runtime via document.createElement (see the script below), so they
+     runtime via document.createElement (see the script above), so they
      never receive Astro's scoped data-astro-cid attribute and would
      otherwise not match these rules at all. */
   .tetris-ambient :global(div), .tetris-board :global(div) { background: var(--color-bg); }
-  .tetris-ambient :global(div.filled), .tetris-board :global(div.filled) { background: var(--color-accent); }
+  .tetris-ambient :global(div[data-piece='I']), .tetris-board :global(div[data-piece='I']) { background: var(--tetris-i); }
+  .tetris-ambient :global(div[data-piece='O']), .tetris-board :global(div[data-piece='O']) { background: var(--tetris-o); }
+  .tetris-ambient :global(div[data-piece='T']), .tetris-board :global(div[data-piece='T']) { background: var(--tetris-t); }
+  .tetris-ambient :global(div[data-piece='J']), .tetris-board :global(div[data-piece='J']) { background: var(--tetris-j); }
+  .tetris-ambient :global(div[data-piece='S']), .tetris-board :global(div[data-piece='S']) { background: var(--color-accent-moss); }
+  .tetris-ambient :global(div[data-piece='Z']), .tetris-board :global(div[data-piece='Z']) { background: var(--color-accent-maroon); }
+  .tetris-ambient :global(div[data-piece='L']), .tetris-board :global(div[data-piece='L']) { background: var(--color-accent-clay); }
   .tetris-open-btn { position: absolute; inset: 0; background: transparent; border: none; cursor: pointer; }
   .tetris-overlay {
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
@@ -67,14 +80,11 @@
 
   function renderBoard(el: HTMLElement, state: GameState) {
     el.innerHTML = '';
-    const filled = new Set<string>();
-    state.board.forEach((row, y) => row.forEach((cell, x) => {
-      if (cell) filled.add(`${x},${y}`);
-    }));
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         const cell = document.createElement('div');
-        if (filled.has(`${x},${y}`)) cell.classList.add('filled');
+        const piece = state.board[y][x];
+        if (piece) cell.dataset.piece = piece;
         el.appendChild(cell);
       }
     }
