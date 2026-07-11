@@ -26,3 +26,24 @@ a { color: inherit; }
     transition-duration: 0.001ms !important;
   }
 }
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+}
+.tag {
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  color: var(--color-text-secondary);
+}
+.tag-cobalt { border-color: var(--color-accent); }
+.tag-maroon { border-color: var(--color-accent-maroon); }
+.tag-clay { border-color: var(--color-accent-clay); }
+.tag-moss { border-color: var(--color-accent-moss); }
