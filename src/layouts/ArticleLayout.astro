@@ -1,18 +1,25 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import CapybaraProgress from '../components/CapybaraProgress.astro';
+import { accentForTag } from '../lib/tags';
 
 interface Props {
   title: string;
   date: Date;
+  tags: string[];
 }
-const { title, date } = Astro.props;
+const { title, date, tags } = Astro.props;
 const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date);
 ---
 <BaseLayout title={`${title} — John Ng`}>
   <CapybaraProgress />
   <article class="prose">
-    <p class="meta">{formattedDate}</p>
+    <div class="meta">
+      <span class="meta-date">{formattedDate}</span>
+      <ul class="tags">
+        {tags.map((tag) => <li class={`tag tag-${accentForTag(tag)}`}>{tag}</li>)}
+      </ul>
+    </div>
     <h1>{title}</h1>
     <slot />
   </article>
@@ -22,9 +29,15 @@ const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).fo
     font-family: 'Source Serif 4', serif;
     max-width: 70ch;
     margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
+    padding: var(--space-6) var(--space-5) var(--space-8);
   }
   .prose h1 {
     font-family: 'Syne', sans-serif;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
   }
 </style>
