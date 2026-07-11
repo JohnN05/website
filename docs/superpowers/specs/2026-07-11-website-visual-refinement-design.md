@@ -125,6 +125,11 @@ Scope above).
   Z  #B06B5F   J  #5C7FA6   L  #C08552
   ```
 
+- **This is the site's signature detail, not a bug fix framed as one:** a
+  quiet, self-playing tetris bot in the hero corner is a personality signal
+  specifically suited to a software engineer's site — implementation should
+  treat its polish (placement scoring, drop pacing/easing) with the same
+  priority as the capybara mascot, not as a minor cleanup task.
 - **Real piece-type variety in the ambient loop:** the current ambient demo
   (`src/lib/tetris/ambientDemo.ts`) is a fixed, always-identical 5-step
   script that only ever spawns the O-piece (chosen because an earlier
@@ -173,9 +178,14 @@ primary accent.
 
 - Project tag chips (on `ProjectCard` and the article meta line) rotate
   through the four accent colors (cobalt + maroon + clay + moss), outlined
-  pill style (`border: 1px solid currentColor`, no fill) — deterministic by
-  tag name/category, not random, so a given tag always renders the same
-  color.
+  pill style (`border: 1px solid`, accent hex) — deterministic by tag
+  name/category, not random, so a given tag always renders the same color.
+  **Label text stays `var(--color-text)`/`var(--color-text-secondary)`,
+  never the accent hex** — three of the four accents (maroon ~3.8:1, clay
+  ~2.9:1, moss ~2.9:1 against the ivory background) fall short of WCAG AA's
+  4.5:1 for text at this size. The accent drives the border stroke only;
+  borders aren't text and carry no such contrast requirement, so the
+  categorization signal survives without the accessibility risk.
 - The featured-project badge stays cobalt-filled with white text — the one
   spot color is meant to draw the eye, and mixing badge colors would dilute
   that.
