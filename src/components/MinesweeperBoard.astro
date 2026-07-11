@@ -1,0 +1,146 @@
+<div class="minesweeper" id="minesweeper">
+  <div class="ms-header">
+    <span id="ms-status">Mines: 10</span>
+    <button id="ms-reset" type="button">Reset</button>
+  </div>
+  <div class="ms-grid" id="ms-grid" role="grid" aria-label="Minesweeper board"></div>
+</div>
+<style>
+  .ms-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 2rem);
+    gap: 2px;
+  }
+  /* :global() is required here because the grid cells are created at
+     runtime via document.createElement (see the script below), so they
+     never receive Astro's scoped data-astro-cid attribute and would
+     otherwise not match these rules at all. */
+  .ms-grid :global(button) {
+    width: 2rem;
+    height: 2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-text-secondary);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+  .ms-grid :global(button[aria-pressed='true']) {
+    background: var(--color-text-secondary);
+  }
+  .ms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+</style>
+<script>
+  import {
+    createBoard, reveal, toggleFlag, checkWin, MS_ROWS, MS_COLS, MS_MINES,
+    type MinesweeperBoard, type MinesweeperCell,
+  } from '../lib/minesweeper/engine';
+
+  const grid = document.getElementById('ms-grid')!;
+  const status = document.getElementById('ms-status')!;
+  const resetBtn = document.getElementById('ms-reset')!;
+
+  let board: MinesweeperBoard = createBoard();
+  let gameOver = false;
+  let focusIndex = 0;
+  let longPressTimer: number | undefined;
+
+  function cellLabel(cell: MinesweeperCell): string {
+    if (cell.flagged) return '\u{1F6A9}';
+    if (!cell.revealed) return '';
+    if (cell.mine) return '\u{1F4A3}';
+    return cell.adjacent > 0 ? String(cell.adjacent) : '';
+  }
+
+  function describeCell(cell: MinesweeperCell): string {
+    if (cell.flagged) return 'Flagged cell';
+    if (!cell.revealed) return 'Hidden cell';
+    if (cell.mine) return 'Mine';
+    return cell.adjacent > 0 ? `${cell.adjacent} adjacent mines` : 'Empty cell';
+  }
+
+  function render() {
+    grid.innerHTML = '';
+    board.forEach((row, r) => row.forEach((cell, c) => {
+      const btn = document.createElement('button');
+      const index = r * MS_COLS + c;
+      btn.type = 'button';
+      btn.tabIndex = index === focusIndex ? 0 : -1;
+      btn.setAttribute('aria-pressed', String(cell.revealed));
+      btn.setAttribute('aria-label', describeCell(cell));
+      btn.textContent = cellLabel(cell);
+      btn.addEventListener('click', () => onReveal(r, c));
+      btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
+      btn.addEventListener('touchstart', () => {
+        longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
+      });
+      btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
+      btn.addEventListener('keydown', (e) => onKey(e, r, c));
+      grid.appendChild(btn);
+    }));
+  }
+
+  function onReveal(r: number, c: number) {
+    if (gameOver) return;
+    const result = reveal(board, r, c);
+    board = result.board;
+    if (result.exploded) {
+      gameOver = true;
+      status.textContent = 'You hit a mine. Press Reset to try again.';
+    } else if (checkWin(board)) {
+      gameOver = true;
+      status.textContent = 'You cleared the board!';
+    }
+    render();
+  }
+
+  function onFlag(r: number, c: number) {
+    if (gameOver) return;
+    board = toggleFlag(board, r, c);
+    render();
+  }
+
+  function onKey(e: KeyboardEvent, r: number, c: number) {
+    const deltas: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+    };
+    if (e.key in deltas) {
+      e.preventDefault();
+      const [dr, dc] = deltas[e.key];
+      const nr = Math.min(Math.max(r + dr, 0), MS_ROWS - 1);
+      const nc = Math.min(Math.max(c + dc, 0), MS_COLS - 1);
+      focusIndex = nr * MS_COLS + nc;
+      render();
+      (grid.children[focusIndex] as HTMLElement).focus();
+    } else if (e.key === 'Enter') {
+      // preventDefault stops the browser's own Enter-on-button default
+      // action (a synthetic click) from firing after onReveal already
+      // ran, which would otherwise call onReveal a second time.
+      e.preventDefault();
+      onReveal(r, c);
+      // render() inside onReveal tears down and recreates every button,
+      // so the element that had focus is gone; refocus the same logical
+      // cell (by index) or keyboard navigation dead-ends at this cell.
+      (grid.children[focusIndex] as HTMLElement)?.focus();
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      onFlag(r, c);
+      (grid.children[focusIndex] as HTMLElement)?.focus();
+    }
+  }
+
+  resetBtn.addEventListener('click', () => {
+    board = createBoard();
+    gameOver = false;
+    focusIndex = 0;
+    status.textContent = `Mines: ${MS_MINES}`;
+    render();
+  });
+
+  render();
+</script>
