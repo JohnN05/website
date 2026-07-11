@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { getCollection } from 'astro:content';
+
+const published = await getCollection('projects', ({ data }) => !data.draft);
+const sorted = published
+  .map((p) => ({ slug: p.slug, ...p.data }))
+  .sort((a, b) => b.date.getTime() - a.date.getTime());
+---
+<BaseLayout title="Projects — John Ng">
+  <h1>Projects</h1>
+  <div class="project-grid">
+    {sorted.map((p) => <ProjectCard project={p} />)}
+  </div>
+</BaseLayout>
+<style>
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    padding: 0 1.5rem 4rem;
+  }
+</style>
