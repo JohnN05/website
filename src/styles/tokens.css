@@ -2,14 +2,32 @@
   --color-bg: #FAF7F0;
   --color-text: #0F1E3D;
   --color-accent: #3454D1;
+  --color-accent-maroon: #B06B5F;
+  --color-accent-clay: #C08552;
+  --color-accent-moss: #7A9B76;
   --color-text-secondary: #4A5468;
   --color-error: #B3261E;
+  --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
 }
 
 :root[data-theme='dark'] {
   --color-bg: #0F1E3D;
   --color-text: #FAF7F0;
   --color-accent: #3454D1;
+  --color-accent-maroon: #B06B5F;
+  --color-accent-clay: #C08552;
+  --color-accent-moss: #7A9B76;
   --color-text-secondary: #9AA7B8;
   --color-error: #E5847C;
+  --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
 }
