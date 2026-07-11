@@ -17,8 +17,8 @@ test('desktop: rail is collapsed by default, expands on toggle, and pins across 
 test('desktop: rail links have accessible names even while collapsed', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Projects' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Contact' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Contact', exact: true })).toBeVisible();
 });
 
 test('desktop: wordmark links home', async ({ page }) => {
@@ -39,5 +39,5 @@ test('mobile: rail is hidden, top bar + drawer are used instead', async ({ page 
 
   await page.click('#mobile-nav-toggle');
   await expect(drawer).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Projects' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
 });

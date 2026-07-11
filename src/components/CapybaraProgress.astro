@@ -13,18 +13,22 @@
     left: 0;
     width: 2rem;
     height: 2rem;
-    background-size: contain;
-    background-repeat: no-repeat;
-    color: var(--color-accent-moss);
+    background-color: var(--color-accent-moss);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
     transition: left 0.1s linear;
   }
   .capybara.running {
-    background-image: url('/capybara-run.svg');
+    mask-image: url('/capybara-run.svg');
+    -webkit-mask-image: url('/capybara-run.svg');
     animation: capybara-run linear infinite;
     animation-duration: var(--run-speed, 1.2s);
   }
   .capybara.resting {
-    background-image: url('/capybara-rest.svg');
+    mask-image: url('/capybara-rest.svg');
+    -webkit-mask-image: url('/capybara-rest.svg');
     animation: none;
   }
   @media (prefers-reduced-motion: reduce) {
