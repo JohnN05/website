@@ -9,16 +9,19 @@ const sorted = published
   .sort((a, b) => b.date.getTime() - a.date.getTime());
 ---
 <BaseLayout title="Projects — John Ng">
-  <h1>Projects</h1>
+  <h1 class="page-title">Projects</h1>
   <div class="project-grid">
     {sorted.map((p) => <ProjectCard project={p} />)}
   </div>
 </BaseLayout>
 <style>
+  .page-title {
+    padding: var(--space-7) var(--space-5) 0;
+  }
   .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-    padding: 0 1.5rem 4rem;
+    gap: var(--space-6);
+    padding: 0 var(--space-5) var(--space-8);
   }
 </style>
