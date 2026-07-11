@@ -1,0 +1,61 @@
+<form name="contact" method="POST" data-netlify="true" id="contact-form" class="contact-form">
+  <input type="hidden" name="form-name" value="contact" />
+  <p hidden>
+    <label>Don't fill this out if you're human: <input name="bot-field" /></label>
+  </p>
+  <label for="name">Name</label>
+  <input id="name" name="name" type="text" required />
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" required />
+  <label for="message">Message</label>
+  <textarea id="message" name="message" required rows="6"></textarea>
+  <button type="submit">Send</button>
+</form>
+<p id="contact-success" hidden role="status">Thanks — I'll get back to you soon.</p>
+<style>
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 32rem;
+  }
+  .contact-form[hidden] {
+    display: none;
+  }
+  .contact-form input,
+  .contact-form textarea {
+    padding: 0.5rem;
+    border: 1px solid var(--color-text-secondary);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Inter', sans-serif;
+  }
+  .contact-form button {
+    align-self: flex-start;
+    padding: 0.6rem 1.5rem;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
+</style>
+<script>
+  import { submitContactForm } from '../lib/contactForm';
+
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const success = document.getElementById('contact-success')!;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const ok = await submitContactForm({
+      name: String(data.get('name')),
+      email: String(data.get('email')),
+      message: String(data.get('message')),
+    });
+    if (ok) {
+      form.hidden = true;
+      success.hidden = false;
+    }
+  });
+</script>
