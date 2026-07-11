@@ -30,7 +30,7 @@ test('keyboard: arrow keys move focus, Enter reveals, Space flags', async ({ pag
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Space');
-  await expect(page.locator('.ms-grid button[aria-pressed="true"]')).toHaveCount(1);
+  await expect(page.locator('.ms-grid button[data-revealed="true"]')).toHaveCount(1);
 });
 
 test('reset button reinitializes the board', async ({ page }) => {

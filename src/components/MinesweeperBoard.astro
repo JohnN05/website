@@ -15,6 +15,15 @@
      runtime via document.createElement (see the script below), so they
      never receive Astro's scoped data-astro-cid attribute and would
      otherwise not match these rules at all. */
+  /* role="row" wrapper divs are required for valid ARIA grid semantics
+     (a role="grid" element's children must be role="row", which in turn
+     must contain role="gridcell" children) but must not affect the
+     visual layout, which relies on the buttons being direct children of
+     the CSS grid container; display: contents removes the wrapper from
+     the box-layout tree while keeping it in the accessibility tree. */
+  .ms-grid :global([role='row']) {
+    display: contents;
+  }
   .ms-grid :global(button) {
     width: 2rem;
     height: 2rem;
@@ -25,7 +34,12 @@
     color: var(--color-text);
     cursor: pointer;
   }
-  .ms-grid :global(button[aria-pressed='true']) {
+  /* data-revealed (not aria-pressed) drives the "revealed" visual state:
+     role="gridcell" doesn't permit aria-pressed (that state belongs to
+     toggle buttons), and the cell's aria-label already conveys revealed/
+     flagged/mine/adjacent-count state to assistive tech, so this is a
+     plain styling hook rather than an accessibility attribute. */
+  .ms-grid :global(button[data-revealed='true']) {
     background: var(--color-text-secondary);
   }
   .ms-header {
@@ -64,25 +78,38 @@
     return cell.adjacent > 0 ? `${cell.adjacent} adjacent mines` : 'Empty cell';
   }
 
+  // Cells now live one level deeper than grid.children (grid > row > cell,
+  // per valid ARIA grid/row/gridcell structure), so index into the
+  // flattened cell list rather than grid.children directly.
+  function getCell(index: number): HTMLElement | undefined {
+    return grid.querySelectorAll('[role="gridcell"]')[index] as HTMLElement | undefined;
+  }
+
   function render() {
     grid.innerHTML = '';
-    board.forEach((row, r) => row.forEach((cell, c) => {
-      const btn = document.createElement('button');
-      const index = r * MS_COLS + c;
-      btn.type = 'button';
-      btn.tabIndex = index === focusIndex ? 0 : -1;
-      btn.setAttribute('aria-pressed', String(cell.revealed));
-      btn.setAttribute('aria-label', describeCell(cell));
-      btn.textContent = cellLabel(cell);
-      btn.addEventListener('click', () => onReveal(r, c));
-      btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
-      btn.addEventListener('touchstart', () => {
-        longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
+    board.forEach((row, r) => {
+      const rowEl = document.createElement('div');
+      rowEl.setAttribute('role', 'row');
+      row.forEach((cell, c) => {
+        const btn = document.createElement('button');
+        const index = r * MS_COLS + c;
+        btn.type = 'button';
+        btn.tabIndex = index === focusIndex ? 0 : -1;
+        btn.setAttribute('role', 'gridcell');
+        btn.dataset.revealed = String(cell.revealed);
+        btn.setAttribute('aria-label', describeCell(cell));
+        btn.textContent = cellLabel(cell);
+        btn.addEventListener('click', () => onReveal(r, c));
+        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
+        btn.addEventListener('touchstart', () => {
+          longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
+        });
+        btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
+        btn.addEventListener('keydown', (e) => onKey(e, r, c));
+        rowEl.appendChild(btn);
       });
-      btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
-      btn.addEventListener('keydown', (e) => onKey(e, r, c));
-      grid.appendChild(btn);
-    }));
+      grid.appendChild(rowEl);
+    });
   }
 
   function onReveal(r: number, c: number) {
@@ -116,7 +143,7 @@
       const nc = Math.min(Math.max(c + dc, 0), MS_COLS - 1);
       focusIndex = nr * MS_COLS + nc;
       render();
-      (grid.children[focusIndex] as HTMLElement).focus();
+      getCell(focusIndex)?.focus();
     } else if (e.key === 'Enter') {
       // preventDefault stops the browser's own Enter-on-button default
       // action (a synthetic click) from firing after onReveal already
@@ -126,11 +153,11 @@
       // render() inside onReveal tears down and recreates every button,
       // so the element that had focus is gone; refocus the same logical
       // cell (by index) or keyboard navigation dead-ends at this cell.
-      (grid.children[focusIndex] as HTMLElement)?.focus();
+      getCell(focusIndex)?.focus();
     } else if (e.key === ' ') {
       e.preventDefault();
       onFlag(r, c);
-      (grid.children[focusIndex] as HTMLElement)?.focus();
+      getCell(focusIndex)?.focus();
     }
   }
 
