@@ -28,9 +28,13 @@ existing simple static hairlines since they're persistent structural chrome,
 not content containers, and don't need a hover-reveal treatment.
 
 Out of scope for this pass: Minesweeper, the butterfly-knife light/dark
-toggle, and the capybara mascot's core mechanic (reading-progress tracking)
-are unchanged. The capybara's fill color is touched only incidentally (see
-Accent System below); its animation/behavior is untouched.
+toggle itself (see §5 for where it now lives), and the capybara mascot's
+core mechanic (reading-progress tracking) are unchanged. The capybara's
+fill color is touched only incidentally (see Accent System below); its
+animation/behavior is untouched.
+
+Nav is a structural rework, not just a token pass (see §5) — it supersedes
+the original spec's "Nav bar (all pages)" line under Site Map.
 
 ## 1. Spacing Scale
 
@@ -198,6 +202,65 @@ primary accent.
 - Capybara mascot fill color: minor call, likely `--color-accent-moss` or
   `--color-accent-clay` — left to the implementation plan, not decided here.
 
+## 5. Navigation — Collapsible Sidebar
+
+**Motivation:** a horizontal top nav is the default every site reaches for.
+Moving nav to a collapsible vertical rail is a structural, distinctive
+choice — and it directly serves the minimalism goal, since collapsed it
+gives page content more width than a fixed top bar ever reclaims. Supersedes
+the original spec's "Nav bar (all pages)" line (wordmark left, links right,
+toggle) under Site Map — the wordmark, links, and light/dark toggle all move
+into the rail; nothing about their destinations changes, only their
+container.
+
+**Desktop (≥769px, matching the existing tetris/mobile breakpoint):**
+
+- Icon-only rail, collapsed by default on first visit. Roughly `--space-8`
+  (4rem) wide collapsed — exact width is implementation's call, driven by
+  icon size + padding, not decided here.
+- A toggle button (chevron or hamburger) sits at the top of the rail.
+  Clicking expands the rail to show full text labels alongside the icons
+  (~14rem wide) and **pins it open** — it stays expanded across navigation
+  and clicks elsewhere, only the toggle collapses it again. State persists
+  via `localStorage` so it doesn't reset on every page load.
+- Content: wordmark/mark at top (icon-sized mark when collapsed, full
+  "JOHN NG" IBM Plex Mono wordmark when expanded) → nav links (Home,
+  Projects, Contact), each icon + label, label hidden when collapsed → the
+  butterfly-knife light/dark toggle near the bottom of the rail.
+- **Push layout, not overlay:** expanding the rail grows the main content
+  area's left margin to match (transition eased, consistent with the
+  site's existing smooth-easing motion language — no overlay, nothing gets
+  covered). Because the pinned-expanded state persists, verify during
+  implementation that the article's 70ch reading column and the tetris
+  hero corner (§3) still sit comfortably at common desktop widths (e.g.
+  1280px) with the rail expanded — flagged as an open item below, not a
+  blocker here.
+
+**Mobile (<769px):** the sidebar pattern doesn't apply — a vertical rail
+costs too much width on a narrow screen even collapsed. Reverts to a slim
+horizontal top bar (wordmark left, hamburger right) opening a full nav
+drawer with the same links. This is a distinct component/breakpoint, not a
+responsive reflow of the desktop rail.
+
+**Accessibility:**
+
+- Rail is a `<nav>` landmark with an `aria-label`. Toggle button carries
+  `aria-expanded`/`aria-controls`, operable via Enter/Space, and is a real
+  `<button>`, not a hover-only affordance (consistent with visible-focus
+  and keyboard-operability requirements already in the original spec).
+- Icon-only (collapsed) nav links keep a persistent `aria-label` — the
+  accessible name never depends on the label text being visually present.
+  A hover/focus tooltip can supplement it visually but isn't the only way
+  the name is exposed.
+- The rail's expand/collapse width transition respects
+  `prefers-reduced-motion` — instant state change instead of an animated
+  width transition, consistent with how the original spec already treats
+  the other three motion details.
+- Skip-to-content link (from the original spec's Accessibility section) is
+  unchanged in behavior — still the first tab stop, still jumps straight to
+  `<main>` — just now jumps past a vertical rail instead of a horizontal
+  bar.
+
 ## Open Items for the Implementation Plan
 
 - Exact heuristic weights for the ambient auto-player (holes vs. bumpiness
@@ -216,3 +279,11 @@ primary accent.
   cell, not just a boolean — an engine-level change, not a new design
   decision, but flagged here since it touches shared game state rather than
   being purely a rendering change.
+- Exact collapsed/expanded rail widths, icon set, and wordmark/mark treatment
+  at each state — implementation's call within the ranges given in §5.
+- Verify the 70ch article column and the tetris hero corner still have
+  comfortable room at common desktop widths with the sidebar pinned open
+  (§5) — a layout-math check, not a new design decision.
+- Nav drawer's exact open/close interaction on mobile (slide-in vs. full
+  overlay, dismiss gesture) — implementation's call, consistent with how
+  Minesweeper's touch controls were already left open in the original spec.
