@@ -1,0 +1,26 @@
+---
+title: "Rebuilding johnjng.com on Astro"
+date: 2026-07-11
+summary: "Replacing a single-page CRA app with a multi-page Astro + MDX site — and the case for shipping zero JS by default."
+tags: ["astro", "design"]
+draft: false
+featured: true
+---
+
+## Overview
+
+The previous version of this site was a single-page Create React App that pulled
+every GitHub repo live via the API. It worked, but it read as a demo of "I can
+call an API" rather than a considered introduction to my work.
+
+## How it works
+
+This rewrite moves to Astro's island architecture: pages ship no JavaScript
+unless a specific component needs it. Project write-ups are plain MDX files —
+adding a new one is a matter of dropping a file into `src/content/projects/`,
+no code changes required.
+
+## Result
+
+A lighter, faster site with room to actually write about projects instead of
+just listing them.
