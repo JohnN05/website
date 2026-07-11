@@ -29,11 +29,11 @@ const featured = selectFeatured(
 </BaseLayout>
 <style>
   .hero {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 2rem;
-    padding: 4rem 1.5rem;
+    position: relative;
+    padding: var(--space-9) var(--space-5);
+  }
+  .hero-copy {
+    max-width: 60ch;
   }
   .eyebrow {
     text-transform: uppercase;
@@ -43,7 +43,6 @@ const featured = selectFeatured(
   }
   .hero-copy h1 {
     font-size: clamp(2rem, 5vw, 3.5rem);
-    max-width: 20ch;
   }
   .project-grid {
     display: grid;
