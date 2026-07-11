@@ -1,0 +1,30 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import CapybaraProgress from '../components/CapybaraProgress.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+}
+const { title, date } = Astro.props;
+const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date);
+---
+<BaseLayout title={`${title} — John Ng`}>
+  <CapybaraProgress />
+  <article class="prose">
+    <p class="meta">{formattedDate}</p>
+    <h1>{title}</h1>
+    <slot />
+  </article>
+</BaseLayout>
+<style>
+  .prose {
+    font-family: 'Source Serif 4', serif;
+    max-width: 70ch;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+  .prose h1 {
+    font-family: 'Syne', sans-serif;
+  }
+</style>
