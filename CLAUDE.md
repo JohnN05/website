@@ -7,8 +7,18 @@ CRA SPA into a professional/minimal, multi-page site with dedicated space for
 project write-ups and a couple of subtle hobby-inspired interactive details
 (tetris, minesweeper, butterfly-knife-flip toggle, capybara mascot).
 
+**Status:** rewrite implemented (all 16 plan tasks complete, reviewed, and
+merged into `worktree-website-revamp` / PR #1). This file describes the site
+as actually built, not just as planned.
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`.
-Read that file for the "why" behind anything below.
+Implementation plan (task-by-task, with exact deviations disclosed):
+`docs/superpowers/plans/2026-07-11-website-revamp.md`. Read the spec for the
+"why" behind anything below; read the plan for the "how" and for a handful of
+example-code bugs that were found and fixed during implementation (dependency
+version pin, an unwinnable Tetris ambient-demo script, Astro CSS-scoping
+gaps, flaky/infinite-looping test fixtures, a CSS-cascade bug, and two ARIA
+violations caught by the axe-core suite).
 
 ## Stack
 
@@ -23,6 +33,28 @@ Read that file for the "why" behind anything below.
   this stack.
 - Previous stack was Create React App (deprecated upstream) — fully replaced,
   not incrementally patched. Old repo history kept for content reference only.
+- **TypeScript strict**, **Vitest** (+ happy-dom for DOM-touching unit tests)
+  for pure `src/lib/` logic, **`@playwright/test`** + **`@axe-core/playwright`**
+  for e2e/accessibility. `npm test` (unit), `npm run build`, `npm run test:e2e`,
+  or `npm run test:all` (all three in sequence — the real CI gate).
+
+## Architecture pattern
+
+Every interactive widget splits into two layers:
+- **Pure logic** in `src/lib/` (`theme.ts`, `projects.ts`, `contactForm.ts`,
+  `capybara.ts`, `tetris/engine.ts` + `tetris/bag.ts` + `tetris/ambientDemo.ts`,
+  `minesweeper/engine.ts`) — no DOM, no I/O, fully unit-tested with Vitest.
+- **DOM wiring** in the matching `.astro` component's `<script>` block —
+  imports the pure module, renders/re-renders the DOM, handles events.
+  Covered by Playwright e2e, not unit tests.
+
+Astro scopes `<style>` blocks by rewriting selectors with a
+`data-astro-cid-*` attribute added to elements at build/render time. Any
+element created at runtime via `document.createElement` (all four widgets'
+grids) never receives that attribute, so scoped rules targeting those
+elements must be wrapped in `:global()` (see `TetrisHero.astro` and
+`MinesweeperBoard.astro`) — forgetting this silently renders an unstyled
+grid, not an error.
 
 ## Site map
 
@@ -71,7 +103,12 @@ Mono** (small labels: nav wordmark, eyebrows, article meta line).
 **Primary (most polish):** Tetris (ambient hero-corner animation, hidden
 click-to-play overlay, hidden below mobile breakpoint) and the capybara
 mascot (article reading-progress indicator, speed scales with scroll,
-collapses to resting pose at 100%).
+collapses to resting pose at 100%). The ambient loop's scripted sequence
+(`src/lib/tetris/ambientDemo.ts`) uses five O-pieces rather than a mixed
+piece set — the original mixed-piece script could never actually clear a
+line (3 of 10 columns were mathematically unreachable by its move set), so
+it was replaced with a script that reaches every column; this trades a bit
+of visual variety for the loop actually working.
 
 **Lower priority (simpler first pass is fine):** Minesweeper (the `/404`
 page, needs its context line — see spec) and the butterfly-knife-flip
@@ -91,7 +128,11 @@ language was tried and explicitly rejected as janky.
   raised and ruled out during design (IP risk). Capybara is original.
 - Contact form must show an inline success message via JS `fetch` submit —
   do not let it fall through to Netlify's default unstyled success-page
-  redirect.
+  redirect. It must also show inline feedback on failure (non-2xx response
+  or a thrown/rejected `fetch`) rather than failing silently — `#contact-error`
+  (`role="alert"`) in `ContactForm.astro`, form stays visible so the visitor
+  can retry. Error copy stays within the "no email/phone as text" constraint
+  (points to LinkedIn/GitHub, not a static address).
 
 ## Accessibility (see spec for full list)
 
@@ -100,6 +141,23 @@ operability for both games, visible focus states sitewide, skip-to-content
 link, and `aria-hidden` on the two purely-decorative details (Tetris ambient
 animation, capybara mascot — the capybara is a supplement to reading
 progress, never the only way it's conveyed).
+
+Both game boards use proper ARIA containment (`role="grid"` →
+`role="row"` → `role="gridcell"`, with `display: contents` on the row
+wrapper so the wrapper doesn't disturb the CSS Grid visual layout) rather
+than flat `role="grid"` → `<button>` children, which axe-core flags as
+`aria-required-children`. Minesweeper cells convey state via `aria-label`
+only (not `aria-pressed`, which isn't a permitted attribute on `gridcell`).
+The Tetris play overlay (`role="dialog" aria-modal="true"`) moves focus to
+its close button on open and traps Tab/Shift+Tab within the panel while
+open; closing restores focus to the trigger button.
+
+Verified sitewide by `tests/e2e/accessibility.spec.ts`: an
+`@axe-core/playwright` sweep (no serious/critical violations) and a
+skip-link-is-first-tab-stop check on all 5 routes, plus two targeted
+reduced-motion checks (Tetris ambient loop freezes on a static frame;
+capybara has no run-cycle animation) — this is the suite that actually
+caught the ARIA containment bugs above during implementation.
 
 ## Repo history
 
