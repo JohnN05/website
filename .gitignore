@@ -8,9 +8,13 @@ node_modules
 
 # testing
 /coverage
+/test-results
+/playwright-report
 
 # production
 /build
+/dist
+.astro
 
 # misc
 .DS_Store
