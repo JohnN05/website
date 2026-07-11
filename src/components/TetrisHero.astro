@@ -113,6 +113,14 @@
     if (gravityTimer !== undefined) window.clearInterval(gravityTimer);
   }
 
+  function getFocusableInPanel(): HTMLElement[] {
+    return Array.from(
+      overlay.querySelectorAll<HTMLElement>(
+        '.tetris-overlay-panel button:not([hidden])'
+      )
+    ).filter((el) => el.offsetParent !== null);
+  }
+
   function openOverlay() {
     bag = createBag();
     game = createGame(bag());
@@ -120,6 +128,7 @@
     overlay.hidden = false;
     renderGame();
     startGravity();
+    closeBtn.focus();
   }
 
   function closeOverlay() {
@@ -135,6 +144,26 @@
   document.addEventListener('keydown', (e) => {
     if (!playing) return;
     if (e.key === 'Escape') return closeOverlay();
+    if (e.key === 'Tab') {
+      // Trap focus inside the modal panel so Tab/Shift+Tab cycle only
+      // among its focusable elements instead of escaping to the page
+      // behind the overlay.
+      const focusable = getFocusableInPanel();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !focusable.includes(active as HTMLElement)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !focusable.includes(active as HTMLElement)) {
+        e.preventDefault();
+        first.focus();
+      }
+      return;
+    }
     let handled = true;
     if (e.key === 'ArrowLeft') game = moveLeft(game);
     else if (e.key === 'ArrowRight') game = moveRight(game);

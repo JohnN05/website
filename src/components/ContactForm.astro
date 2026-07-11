@@ -12,6 +12,7 @@
   <button type="submit">Send</button>
 </form>
 <p id="contact-success" hidden role="status">Thanks — I'll get back to you soon.</p>
+<p id="contact-error" hidden role="alert">Something went wrong — please try again or reach out on LinkedIn/GitHub.</p>
 <style>
   .contact-form {
     display: flex;
@@ -38,24 +39,35 @@
     border: none;
     cursor: pointer;
   }
+  #contact-error {
+    color: var(--color-error);
+  }
 </style>
 <script>
   import { submitContactForm } from '../lib/contactForm';
 
   const form = document.getElementById('contact-form') as HTMLFormElement;
   const success = document.getElementById('contact-success')!;
+  const error = document.getElementById('contact-error')!;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    error.hidden = true;
     const data = new FormData(form);
-    const ok = await submitContactForm({
-      name: String(data.get('name')),
-      email: String(data.get('email')),
-      message: String(data.get('message')),
-    });
-    if (ok) {
-      form.hidden = true;
-      success.hidden = false;
+    try {
+      const ok = await submitContactForm({
+        name: String(data.get('name')),
+        email: String(data.get('email')),
+        message: String(data.get('message')),
+      });
+      if (ok) {
+        form.hidden = true;
+        success.hidden = false;
+      } else {
+        error.hidden = false;
+      }
+    } catch {
+      error.hidden = false;
     }
   });
 </script>

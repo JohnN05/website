@@ -3,6 +3,7 @@
   --color-text: #0F1E3D;
   --color-accent: #3454D1;
   --color-text-secondary: #4A5468;
+  --color-error: #B3261E;
 }
 
 :root[data-theme='dark'] {
@@ -10,4 +11,5 @@
   --color-text: #FAF7F0;
   --color-accent: #3454D1;
   --color-text-secondary: #9AA7B8;
+  --color-error: #E5847C;
 }
