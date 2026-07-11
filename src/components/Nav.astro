@@ -1,0 +1,31 @@
+---
+---
+<nav class="site-nav">
+  <a href="/" class="wordmark">JOHN NG</a>
+  <div class="nav-links">
+    <a href="/projects">Projects</a>
+    <a href="/contact">Contact</a>
+    <slot name="theme-toggle" />
+  </div>
+</nav>
+<style>
+  .site-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+  }
+  .wordmark {
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.05em;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .nav-links a {
+    text-decoration: none;
+  }
+</style>
