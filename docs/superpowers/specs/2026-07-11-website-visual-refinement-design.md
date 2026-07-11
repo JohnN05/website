@@ -218,15 +218,20 @@ container.
 - Icon-only rail, collapsed by default on first visit. Roughly `--space-8`
   (4rem) wide collapsed — exact width is implementation's call, driven by
   icon size + padding, not decided here.
-- A toggle button (chevron or hamburger) sits at the top of the rail.
+- A toggle button sits at the top of the rail — a small 2×2 block glyph (a
+  tiny tetromino, not a generic hamburger/chevron) that rotates/shifts open,
+  tying the one purely-structural piece of chrome back to the site's own
+  visual material instead of importing generic app-shell iconography.
   Clicking expands the rail to show full text labels alongside the icons
   (~14rem wide) and **pins it open** — it stays expanded across navigation
   and clicks elsewhere, only the toggle collapses it again. State persists
   via `localStorage` so it doesn't reset on every page load.
 - Content: wordmark/mark at top (icon-sized mark when collapsed, full
-  "JOHN NG" IBM Plex Mono wordmark when expanded) → nav links (Home,
-  Projects, Contact), each icon + label, label hidden when collapsed → the
-  butterfly-knife light/dark toggle near the bottom of the rail.
+  "JOHN NG" IBM Plex Mono wordmark when expanded) — **the wordmark is
+  itself the home link**, so it isn't duplicated as a separate nav item →
+  nav links (Projects, Contact only), each icon + label, label hidden when
+  collapsed → the butterfly-knife light/dark toggle near the bottom of the
+  rail.
 - **Push layout, not overlay:** expanding the rail grows the main content
   area's left margin to match (transition eased, consistent with the
   site's existing smooth-easing motion language — no overlay, nothing gets
