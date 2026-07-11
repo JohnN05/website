@@ -1,0 +1,35 @@
+---
+interface Props {
+  project: { slug: string; title: string; summary: string; date: Date; tags: string[] };
+}
+const { project } = Astro.props;
+const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(project.date);
+---
+<a class="project-card" href={`/projects/${project.slug}`}>
+  <p class="meta">{formattedDate}</p>
+  <h3>{project.title}</h3>
+  <p class="summary">{project.summary}</p>
+  <ul class="tags">
+    {project.tags.map((tag) => <li>{tag}</li>)}
+  </ul>
+</a>
+<style>
+  .project-card {
+    display: block;
+    padding: 1.25rem;
+    border: 1px solid var(--color-text-secondary);
+    text-decoration: none;
+    color: var(--color-text);
+  }
+  .project-card .summary {
+    color: var(--color-text-secondary);
+  }
+  .tags {
+    display: flex;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+  }
+</style>

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test('home page responds', async ({ page }) => {
-  const response = await page.goto('/');
-  expect(response?.status()).toBe(200);
-  await expect(page.locator('h1')).toHaveText('John Ng');
+test('home page renders hero and featured projects', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('h1')).toContainText('Coding practical solutions');
+  await expect(page.locator('.project-card')).toHaveCount(1); // one seed article so far
 });

@@ -1,6 +1,54 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import TetrisHero from '../components/TetrisHero.astro';
+import { getCollection } from 'astro:content';
+import { selectFeatured } from '../lib/projects';
+
+const allProjects = await getCollection('projects');
+const featured = selectFeatured(
+  allProjects.map((p) => ({ slug: p.slug, ...p.data })),
+  3
+);
 ---
 <BaseLayout title="John Ng">
-  <h1>John Ng</h1>
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Software Engineer</p>
+      <h1>Coding practical solutions for people. That's always been the point.</h1>
+    </div>
+    <TetrisHero />
+  </section>
+
+  <section class="featured">
+    <h2>Featured projects</h2>
+    <div class="project-grid">
+      {featured.map((p) => <ProjectCard project={p} />)}
+    </div>
+  </section>
 </BaseLayout>
+<style>
+  .hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    padding: 4rem 1.5rem;
+  }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+  }
+  .hero-copy h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    max-width: 20ch;
+  }
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    padding: 0 1.5rem 4rem;
+  }
+</style>
