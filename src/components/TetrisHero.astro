@@ -182,8 +182,33 @@
   const TURN_MS = 300;
   const FALL_MS = 220;
   const PAUSE_MS = 200;
+  const FLASH_CYCLES = 3;
+  const FLASH_INTERVAL_MS = 90;
   let pieceCellsSoft: HTMLElement[] = [];
   let pieceCellsCrisp: HTMLElement[] = [];
+
+  function flashRows(rows: number[]): Promise<void> {
+    if (rows.length === 0) return Promise.resolve();
+    const cellsInRows = (el: HTMLElement): HTMLElement[] =>
+      rows.flatMap((r) =>
+        Array.from(el.children).slice(r * ambientCols, r * ambientCols + ambientCols) as HTMLElement[]
+      );
+    const targets = [...cellsInRows(ambientSoftEl), ...cellsInRows(ambientCrispEl)];
+    let tick = 0;
+    return new Promise((resolve) => {
+      const step = () => {
+        targets.forEach((el) => el.classList.toggle('flashing'));
+        tick++;
+        if (tick >= FLASH_CYCLES * 2) {
+          targets.forEach((el) => el.classList.remove('flashing'));
+          resolve();
+          return;
+        }
+        window.setTimeout(step, FLASH_INTERVAL_MS);
+      };
+      step();
+    });
+  }
 
   function initPieceCells(el: HTMLElement, type: string): HTMLElement[] {
     el.innerHTML = '';
@@ -236,7 +261,7 @@
       positionPieceCells(pieceCellsCrisp, cellsFor(landed));
     }, TURN_MS);
 
-    window.setTimeout(() => {
+    window.setTimeout(async () => {
       // stepAmbientDemo recomputes chooseBestPlacement itself and commits
       // via hardDrop — a pure function of the same state, so it locks the
       // piece in exactly the spot just animated to. If that commit would
@@ -246,7 +271,13 @@
       // predicted landing spot is replaced by an empty board right as it
       // lands, accepted as-is since this is a decorative background loop,
       // not gameplay.
-      ambientState = stepAmbientDemo(ambientState, ambientStep++).state;
+      const stepResult = stepAmbientDemo(ambientState, ambientStep++);
+      if (stepResult.clearedRows.length > 0) {
+        renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
+        renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
+        await flashRows(stepResult.clearedRows);
+      }
+      ambientState = stepResult.state;
       renderBoard(ambientSoftEl, ambientState);
       renderBoard(ambientCrispEl, ambientState);
       pieceSoftEl.innerHTML = '';
