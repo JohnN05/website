@@ -44,10 +44,13 @@ const featured = selectFeatured(
   .hero-copy h1 {
     font-size: clamp(2rem, 5vw, 3.5rem);
   }
+  .featured {
+    padding: 0 var(--space-5);
+  }
   .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
-    padding: 0 1.5rem 4rem;
+    padding: 0 var(--space-5) 4rem;
   }
 </style>
