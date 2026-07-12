@@ -33,6 +33,29 @@
     --tetris-o: #C9A75C;
     --tetris-t: #8B6B9E;
     --tetris-j: #5C7FA6;
+    /* Cubic ease-in (alpha = t^3) sampled as static gradient stops — mask-image
+       can only interpolate linearly between stops, so a true curve has to be
+       baked in as enough intermediate stops to read as smooth. Both masks
+       share a 40% dead zone (hero copy never sees the board) and reach full
+       opacity by 90%; soft finishes its ramp earlier (65%) than crisp (90%)
+       so the blurred layer resolves first and the sharp layer overtakes it,
+       preserving the original two-layer depth-of-field order. */
+    --tetris-mask-soft: linear-gradient(
+      90deg, transparent 0%, transparent 40%,
+      rgba(0, 0, 0, 0.001) 42.5%, rgba(0, 0, 0, 0.008) 45%,
+      rgba(0, 0, 0, 0.027) 47.5%, rgba(0, 0, 0, 0.064) 50%,
+      rgba(0, 0, 0, 0.125) 52.5%, rgba(0, 0, 0, 0.216) 55%,
+      rgba(0, 0, 0, 0.343) 57.5%, rgba(0, 0, 0, 0.512) 60%,
+      rgba(0, 0, 0, 0.729) 62.5%, black 65%
+    );
+    --tetris-mask-crisp: linear-gradient(
+      90deg, transparent 0%, transparent 40%,
+      rgba(0, 0, 0, 0.001) 45%, rgba(0, 0, 0, 0.008) 50%,
+      rgba(0, 0, 0, 0.027) 55%, rgba(0, 0, 0, 0.064) 60%,
+      rgba(0, 0, 0, 0.125) 65%, rgba(0, 0, 0, 0.216) 70%,
+      rgba(0, 0, 0, 0.343) 75%, rgba(0, 0, 0, 0.512) 80%,
+      rgba(0, 0, 0, 0.729) 85%, black 90%
+    );
   }
   @media (max-width: 768px) { .tetris-hero { display: none; } }
   .tetris-board {
@@ -53,13 +76,13 @@
   .tetris-ambient-soft {
     filter: blur(4px);
     opacity: 0.85;
-    mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
+    mask-image: var(--tetris-mask-soft);
+    -webkit-mask-image: var(--tetris-mask-soft);
   }
   .tetris-ambient-crisp {
     opacity: 0.9;
-    mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
+    mask-image: var(--tetris-mask-crisp);
+    -webkit-mask-image: var(--tetris-mask-crisp);
   }
   /* :global() is required here because the grid cells are created at
      runtime via document.createElement (see the script above), so they
@@ -88,13 +111,13 @@
   .piece-layer-soft {
     filter: blur(4px);
     opacity: 0.85;
-    mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
+    mask-image: var(--tetris-mask-soft);
+    -webkit-mask-image: var(--tetris-mask-soft);
   }
   .piece-layer-crisp {
     opacity: 0.9;
-    mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
+    mask-image: var(--tetris-mask-crisp);
+    -webkit-mask-image: var(--tetris-mask-crisp);
   }
   .piece-layer-soft :global(.cell), .piece-layer-crisp :global(.cell) {
     position: absolute;
