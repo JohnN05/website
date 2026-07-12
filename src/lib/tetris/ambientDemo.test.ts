@@ -39,4 +39,21 @@ describe('ambient demo', () => {
       }
     }
   });
+
+  it('preserves custom board dimensions across a game-over reset', () => {
+    // A short board (6 rows) tops out easily under the autoplay heuristic,
+    // forcing stepAmbientDemo's internal gameOver-reset path (ambientDemo.ts)
+    // to run within this loop. That reset must recreate the board at the
+    // *original* custom dimensions, not silently fall back to the engine's
+    // 10x20 default.
+    let state = createAmbientDemo(24, 6);
+    let sawNonDefaultDimensions = false;
+    for (let i = 0; i < 200; i++) {
+      state = stepAmbientDemo(state, i);
+      expect(state.board).toHaveLength(6);
+      expect(state.board[0]).toHaveLength(24);
+      sawNonDefaultDimensions = true;
+    }
+    expect(sawNonDefaultDimensions).toBe(true);
+  });
 });

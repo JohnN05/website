@@ -77,29 +77,22 @@ grid, not an error.
 
 ## Navigation
 
-Desktop (`min-width: 769px`): `Nav.astro` renders a fixed-left icon rail
-(`#nav-rail`), collapsed by default (`width: var(--space-8)`, icons only),
-expandable via `#rail-toggle` to `14rem` with labels. State persists to
-`localStorage['nav-rail']` (`src/lib/nav.ts`: `getInitialRailState` /
-`toggleRailState` / `persistRailState`) and is mirrored onto
-`document.documentElement.dataset.rail`, read by `global.css` to push
-`#main-content`'s `margin-left` over when expanded. `BaseLayout.astro`'s
-inline `<script is:inline>` FOUC-prevention script sets the initial
-`data-rail` synchronously (duplicating `nav.ts`'s default logic, since
-`is:inline` can't use ES module imports) so there's no flash of the wrong
-layout width before hydration; `Nav.astro`'s own script re-derives and
-re-applies the same value on hydration, which is intentional and idempotent.
+Desktop (`min-width: 769px`): `Nav.astro` renders a fixed-left icon+label
+rail (`#nav-rail`), permanently expanded at `14rem` width — there is no
+collapse/expand toggle, no `localStorage` persistence, and no `data-rail`
+attribute. `#main-content`'s `margin-left` in `global.css` is a fixed offset
+matching the rail width, not something toggled at runtime.
 
 Mobile (`max-width: 768px`): `Nav.astro`'s rail is `display: none`;
 `MobileNav.astro` (a separate, always-mounted component) renders a top bar
 with a hamburger toggle (`#mobile-nav-toggle`) opening a link drawer
 (`#mobile-drawer`), including its own `ThemeToggle` instance since the
-desktop rail's toggle is unreachable at this width.
+desktop rail is off-screen at this width.
 
-Both icon-only toggle buttons (rail collapse/expand, mobile hamburger) get
-their accessible name from a `.sr-only` span (clip/absolute-positioned, not
-`display:none`, so it stays in the accessibility tree) rather than
-`aria-label` — a deliberate, repeated pattern, not an oversight.
+The mobile hamburger toggle gets its accessible name from a `.sr-only` span
+(clip/absolute-positioned, not `display:none`, so it stays in the
+accessibility tree) rather than `aria-label` — a deliberate pattern, not an
+oversight.
 
 ## Content collection schema
 
@@ -150,29 +143,41 @@ a maintained tag→color lookup table. Rendered via global `.tag`/`.tag-*`
 classes in `global.css` (not component-scoped, so both `ProjectCard.astro`
 and `ArticleLayout.astro` share the same rules).
 
-Typography: **Syne** (headlines) · **Source Serif 4** (article prose body
-text only) · **Inter** (UI/interface copy — nav, buttons, forms) · **IBM Plex
+Typography: **Bricolage Grotesque** (headlines, weight 600, using the
+`opsz` optical-size axis) · **Source Serif 4** (article prose body text
+only) · **Inter** (UI/interface copy — nav, buttons, forms) · **IBM Plex
 Mono** (small labels: nav wordmark, eyebrows, article meta line).
 
 ## Hobby details — priority order
 
-**Primary (most polish):** Tetris (ambient hero-corner animation, hidden
-click-to-play overlay, hidden below mobile breakpoint) and the capybara
-mascot (article reading-progress indicator, speed scales with scroll,
-collapses to resting pose at 100%). The ambient loop
+**Primary (most polish):** Tetris (ambient hero-background animation,
+hidden click-to-play overlay, hidden below mobile breakpoint) and the
+capybara mascot (article reading-progress indicator, speed scales with
+scroll, collapses to resting pose at 100%). The ambient loop
 (`src/lib/tetris/ambientDemo.ts`) no longer runs a fixed O-piece-only
 script — it draws real pieces from the 7-bag randomizer
 (`src/lib/tetris/bag.ts`) and picks each placement via a genuine (if
 simple) heuristic AI (`src/lib/tetris/autoplay.ts`: `chooseBestPlacement`,
 scoring candidate placements by holes/bumpiness/aggregate-height/lines-
-cleared), so the corner animation shows real piece variety instead of a
-repeating script. Piece type is preserved through to rendering
-(`TetrisHero.astro`'s `renderBoard` sets `data-piece` per cell) and each of
-the 7 types gets its own muted color — I/O/T/J via dedicated hex values,
-S/Z/L reusing the site's moss/maroon/clay accent tokens directly. The
-ambient board is positioned absolutely in the hero's top-right corner
-(not flex-adjacent to the H1) and rendered with a slight blur+dim; the
-real click-to-play board stays crisp.
+cleared), so the animation shows real piece variety instead of a repeating
+script. Piece type is preserved through to rendering (`TetrisHero.astro`'s
+`renderBoard` sets `data-piece` per cell) and each of the 7 types gets its
+own muted color — I/O/T/J via dedicated hex values, S/Z/L reusing the
+site's moss/maroon/clay accent tokens directly.
+
+`TetrisHero.astro` renders the board as a ~70%-width absolutely-positioned
+background layer behind the hero copy (not a small corner widget), masked
+with a horizontal gradient so it fades out under the H1/copy column rather
+than competing with it. Board cols/rows are computed from the container's
+`clientWidth`/`clientHeight` at init (`ambientCols`/`ambientRows` in the
+component script) rather than hardcoded to the engine's 10x20 default, so
+`createAmbientDemo`/`stepAmbientDemo`/`createGame` all take explicit
+cols/rows through every code path, including the demo's internal
+game-over-reset branch. Each piece plays a real spawn → rotate → fall
+animation cycle (`#tetris-piece`, `.phase-turn`/`.phase-fall` CSS
+transitions driven by `runAmbientCycle()`) instead of snapping directly
+into its landing position; the real click-to-play board stays crisp and
+un-animated in comparison, distinguishing decoration from gameplay.
 
 **Lower priority (simpler first pass is fine):** Minesweeper (the `/404`
 page, needs its context line — see spec) and the butterfly-knife-flip
@@ -223,11 +228,11 @@ reduced-motion checks (Tetris ambient loop freezes on a static frame;
 capybara has no run-cycle animation) — this is the suite that actually
 caught the ARIA containment bugs above during implementation.
 
-`tests/e2e/nav.spec.ts` covers the collapsible sidebar rail (collapsed by
-default, `aria-expanded` toggles and persists across reload, links keep
-accessible names while collapsed) and the mobile drawer (rail hidden below
-769px, hamburger opens the drawer, links reachable) — passing, along with
-the rest of the 28-test Playwright suite, in a real browser environment.
+`tests/e2e/nav.spec.ts` covers the permanently-expanded desktop rail
+(renders at the full `14rem` width, both links reachable and labeled, the
+wordmark links home) and the mobile drawer (rail hidden below 769px,
+hamburger opens the drawer, links reachable) — passing, along with the
+rest of the Playwright suite, in a real browser environment.
 
 ## Repo history
 

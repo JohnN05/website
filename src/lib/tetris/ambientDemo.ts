@@ -50,5 +50,13 @@ export function stepAmbientDemo(state: GameState, stepIndex: number): GameState 
   // (The original scripted version of this file had the opposite bug in
   // spirit: a script that could reach an unwinnable state. Same invariant,
   // enforced here instead of avoided by construction.)
-  return result.gameOver ? createGame(pieceForStep(stepIndex + 1)) : result;
+  //
+  // Reset must reuse the *current* board's dimensions, not the engine's
+  // 10x20 default — createAmbientDemo() may have been called with custom
+  // cols/rows (see TetrisHero.astro, which sizes the board from the hero
+  // container), and createGame() silently falls back to 10x20 when cols/
+  // rows aren't passed.
+  const cols = state.board[0].length;
+  const rows = state.board.length;
+  return result.gameOver ? createGame(pieceForStep(stepIndex + 1), cols, rows) : result;
 }
