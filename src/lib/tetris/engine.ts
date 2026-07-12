@@ -64,8 +64,8 @@ export interface GameState {
   gameOver: boolean;
 }
 
-function emptyBoard(): Cell[][] {
-  return Array.from({ length: ROWS }, () => Array<Cell>(COLS).fill(null));
+function emptyBoard(cols: number, rows: number): Cell[][] {
+  return Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
 }
 
 function cellsFor(piece: Piece): number[][] {
@@ -73,17 +73,19 @@ function cellsFor(piece: Piece): number[][] {
 }
 
 function collides(board: Cell[][], piece: Piece): boolean {
+  const cols = board[0].length;
+  const rows = board.length;
   return cellsFor(piece).some(([x, y]) => {
-    if (x < 0 || x >= COLS || y >= ROWS) return true;
+    if (x < 0 || x >= cols || y >= rows) return true;
     if (y < 0) return false;
     return board[y][x] !== null;
   });
 }
 
-export function createGame(firstPiece: PieceType): GameState {
+export function createGame(firstPiece: PieceType, cols: number = COLS, rows: number = ROWS): GameState {
   return {
-    board: emptyBoard(),
-    current: { type: firstPiece, rotation: 0, x: 3, y: -2 },
+    board: emptyBoard(cols, rows),
+    current: { type: firstPiece, rotation: 0, x: Math.floor(cols / 2) - 2, y: -2 },
     score: 0,
     linesCleared: 0,
     gameOver: false,
@@ -108,11 +110,24 @@ export function rotate(state: GameState): GameState {
   return withPiece(state, { ...state.current, rotation });
 }
 
+// Walks a candidate piece straight down until it would collide, without
+// locking it — used by hardDrop (below) to find where the *current* piece
+// actually lands, and reused directly by TetrisHero.astro's ambient
+// animation (Task 7) to preview where a piece *will* land before it's
+// actually dropped, so the fall animation has a real target row to ease
+// toward instead of guessing.
+export function landingRow(board: Cell[][], piece: Piece): number {
+  let y = piece.y;
+  while (!collides(board, { ...piece, y: y + 1 })) y++;
+  return y;
+}
+
 function clearLines(board: Cell[][]): { board: Cell[][]; cleared: number } {
+  const cols = board[0].length;
   const remaining = board.filter((row) => row.some((cell) => cell === null));
-  const cleared = ROWS - remaining.length;
+  const cleared = board.length - remaining.length;
   const board2 = [
-    ...Array.from({ length: cleared }, () => Array<Cell>(COLS).fill(null)),
+    ...Array.from({ length: cleared }, () => Array<Cell>(cols).fill(null)),
     ...remaining,
   ];
   return { board: board2, cleared };
@@ -121,13 +136,14 @@ function clearLines(board: Cell[][]): { board: Cell[][]; cleared: number } {
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
 function lockPiece(state: GameState, nextPiece: PieceType): GameState {
+  const cols = state.board[0].length;
   const board = state.board.map((row) => [...row]);
   for (const [x, y] of cellsFor(state.current)) {
     if (y < 0) return { ...state, gameOver: true };
     board[y][x] = state.current.type;
   }
   const { board: clearedBoard, cleared } = clearLines(board);
-  const spawned: Piece = { type: nextPiece, rotation: 0, x: 3, y: -2 };
+  const spawned: Piece = { type: nextPiece, rotation: 0, x: Math.floor(cols / 2) - 2, y: -2 };
   const gameOver = collides(clearedBoard, spawned);
   return {
     board: clearedBoard,
@@ -145,9 +161,6 @@ export function softDrop(state: GameState, nextPiece: PieceType): GameState {
 }
 
 export function hardDrop(state: GameState, nextPiece: PieceType): GameState {
-  let piece = state.current;
-  while (!collides(state.board, { ...piece, y: piece.y + 1 })) {
-    piece = { ...piece, y: piece.y + 1 };
-  }
+  const piece = { ...state.current, y: landingRow(state.board, state.current) };
   return lockPiece({ ...state, current: piece }, nextPiece);
 }

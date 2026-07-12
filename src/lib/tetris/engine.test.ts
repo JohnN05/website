@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, COLS, ROWS } from './engine';
+import { createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, landingRow, COLS, ROWS } from './engine';
 
 describe('createGame', () => {
   it('spawns the requested piece near the top center, no lines cleared', () => {
@@ -68,5 +68,47 @@ describe('locking and line clears', () => {
       state = hardDrop(state, 'O');
     }
     expect(state.gameOver).toBe(true);
+  });
+});
+
+describe('custom board dimensions', () => {
+  it('creates a board with the requested column and row counts', () => {
+    const state = createGame('O', 6, 12);
+    expect(state.board).toHaveLength(12);
+    expect(state.board[0]).toHaveLength(6);
+  });
+
+  it('spawns the piece centered for the requested width', () => {
+    const state = createGame('O', 6, 12);
+    expect(state.current.x).toBe(1); // Math.floor(6 / 2) - 2
+  });
+
+  it('respects the custom width when moving to the right wall', () => {
+    let state = createGame('O', 6, 12);
+    for (let i = 0; i < 10; i++) state = moveRight(state);
+    const rightmost = state.current.x;
+    expect(rightmost).toBeLessThan(6);
+    expect(moveRight(state).current.x).toBe(rightmost);
+  });
+
+  it('defaults to the standard 10x20 board when no size is given', () => {
+    const state = createGame('O');
+    expect(state.board).toHaveLength(ROWS);
+    expect(state.board[0]).toHaveLength(COLS);
+  });
+});
+
+describe('landingRow', () => {
+  it('finds the resting row on an empty board', () => {
+    const state = createGame('O');
+    expect(landingRow(state.board, state.current)).toBe(ROWS - 2);
+  });
+
+  it('stops one row above an existing stack', () => {
+    const state = createGame('O');
+    const board = state.board.map((row) => [...row]);
+    board[ROWS - 1][4] = 'O';
+    board[ROWS - 1][5] = 'O';
+    expect(landingRow(board, state.current)).toBe(ROWS - 3);
   });
 });
