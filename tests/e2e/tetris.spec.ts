@@ -20,3 +20,20 @@ test('mobile: the hero widget is hidden entirely', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.tetris-hero')).toBeHidden();
 });
+
+test('desktop: tetris ambient background occupies ~70% of the hero, flush to its right edge', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  const hero = await page.locator('.hero').boundingBox();
+  const tetrisHero = await page.locator('.tetris-hero').boundingBox();
+  expect(hero).not.toBeNull();
+  expect(tetrisHero).not.toBeNull();
+
+  const ratio = tetrisHero!.width / hero!.width;
+  expect(ratio).toBeGreaterThan(0.65);
+  expect(ratio).toBeLessThan(0.75);
+
+  const rightEdgeGap = hero!.x + hero!.width - (tetrisHero!.x + tetrisHero!.width);
+  expect(rightEdgeGap).toBeLessThan(2);
+});

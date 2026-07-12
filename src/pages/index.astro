@@ -35,6 +35,13 @@ const featured = selectFeatured(
   .hero-copy {
     max-width: 60ch;
   }
+  @media (min-width: 769px) {
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      max-width: 30%;
+    }
+  }
   .eyebrow {
     text-transform: uppercase;
     letter-spacing: 0.08em;

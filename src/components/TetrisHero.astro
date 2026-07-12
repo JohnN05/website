@@ -19,23 +19,36 @@
 <style>
   .tetris-hero {
     position: absolute;
-    top: var(--space-6);
-    right: var(--space-6);
-    width: 120px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 70%;
+    overflow: hidden;
     --tetris-i: #6B9AA8;
     --tetris-o: #C9A75C;
     --tetris-t: #8B6B9E;
     --tetris-j: #5C7FA6;
   }
   @media (max-width: 768px) { .tetris-hero { display: none; } }
-  .tetris-ambient, .tetris-board {
+  .tetris-board {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     gap: 1px;
     background: var(--color-text-secondary);
+    width: 200px;
+    aspect-ratio: 10 / 20;
   }
-  .tetris-ambient { width: 120px; aspect-ratio: 10 / 20; filter: blur(1px); opacity: 0.82; }
-  .tetris-board { width: 200px; aspect-ratio: 10 / 20; }
+  .tetris-ambient {
+    display: grid;
+    gap: 1px;
+    width: 100%;
+    height: 100%;
+    background: var(--color-text-secondary);
+    filter: blur(1.5px);
+    opacity: 0.85;
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 15%, black 65%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 15%, black 65%);
+  }
   /* :global() is required here because the grid cells are created at
      runtime via document.createElement (see the script above), so they
      never receive Astro's scoped data-astro-cid attribute and would
@@ -67,7 +80,7 @@
 </style>
 <script>
   import {
-    createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, COLS, ROWS, type GameState,
+    createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, type GameState,
   } from '../lib/tetris/engine';
   import { createBag } from '../lib/tetris/bag';
   import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
@@ -82,8 +95,10 @@
 
   function renderBoard(el: HTMLElement, state: GameState) {
     el.innerHTML = '';
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
+    const rows = state.board.length;
+    const cols = state.board[0].length;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
         const cell = document.createElement('div');
         const piece = state.board[y][x];
         if (piece) cell.dataset.piece = piece;
@@ -92,7 +107,12 @@
     }
   }
 
-  let ambientState = createAmbientDemo();
+  const CELL_SIZE = 30;
+  const ambientCols = Math.max(4, Math.floor(ambientEl.clientWidth / CELL_SIZE));
+  const ambientRows = Math.max(4, Math.floor(ambientEl.clientHeight / CELL_SIZE));
+  ambientEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+
+  let ambientState = createAmbientDemo(ambientCols, ambientRows);
   let ambientStep = 0;
   renderBoard(ambientEl, ambientState);
 
