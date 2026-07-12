@@ -8,7 +8,7 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-h1, h2, h3 { font-family: 'Syne', sans-serif; font-weight: 800; }
+h1, h2, h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; }
 
 .eyebrow, .meta, .wordmark { font-family: 'IBM Plex Mono', monospace; }
 
