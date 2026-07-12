@@ -62,6 +62,7 @@ export interface GameState {
   score: number;
   linesCleared: number;
   gameOver: boolean;
+  lastMoveWasRotation: boolean;
 }
 
 function emptyBoard(cols: number, rows: number): Cell[][] {
@@ -89,12 +90,13 @@ export function createGame(firstPiece: PieceType, cols: number = COLS, rows: num
     score: 0,
     linesCleared: 0,
     gameOver: false,
+    lastMoveWasRotation: false,
   };
 }
 
 function withPiece(state: GameState, piece: Piece): GameState {
   if (collides(state.board, piece)) return state;
-  return { ...state, current: piece };
+  return { ...state, current: piece, lastMoveWasRotation: false };
 }
 
 export function moveLeft(state: GameState): GameState {
@@ -105,9 +107,40 @@ export function moveRight(state: GameState): GameState {
   return withPiece(state, { ...state.current, x: state.current.x + 1 });
 }
 
+// Simplified SRS-style wall kicks, adapted to this engine's downward-y
+// coordinate system (the published guideline tables assume y-up, so every
+// dy here is the guideline value negated). JLSTZ pieces share one table;
+// O never needs a kick (all 4 rotations are the same shape); I gets a
+// deliberately simplified horizontal-only kick set rather than the full
+// guideline I-table — this is a decorative ambient/casual-play engine, not
+// a competitive one, and the simplified I table still lets I rotate cleanly
+// near walls, which is all that's needed here.
+const WALL_KICKS_JLSTZ: Record<string, number[][]> = {
+  '0>>1': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '1>>0': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '1>>2': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '2>>1': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '2>>3': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  '3>>2': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '3>>0': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '0>>3': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+};
+const WALL_KICKS_I: number[][] = [[0, 0], [1, 0], [-1, 0], [2, 0], [-2, 0]];
+
 export function rotate(state: GameState): GameState {
-  const rotation = (state.current.rotation + 1) % 4;
-  return withPiece(state, { ...state.current, rotation });
+  const from = state.current.rotation;
+  const to = (from + 1) % 4;
+  const kicks =
+    state.current.type === 'O' ? [[0, 0]] :
+    state.current.type === 'I' ? WALL_KICKS_I :
+    WALL_KICKS_JLSTZ[`${from}>>${to}`];
+  for (const [dx, dy] of kicks) {
+    const candidate: Piece = { ...state.current, rotation: to, x: state.current.x + dx, y: state.current.y + dy };
+    if (!collides(state.board, candidate)) {
+      return { ...state, current: candidate, lastMoveWasRotation: true };
+    }
+  }
+  return state;
 }
 
 // Walks a candidate piece straight down until it would collide, without
@@ -122,6 +155,28 @@ export function landingRow(board: Cell[][], piece: Piece): number {
   return y;
 }
 
+// Standard 3-corner T-spin rule: of the 4 cells diagonally adjacent to the
+// T piece's center (its pivot cell, index (1,1) in every one of its 4
+// rotation shapes), at least 3 must be occupied — by a block or by being
+// off the board. Deliberately doesn't distinguish "T-Spin" from "T-Spin
+// Mini" (the guideline's finer-grained corner-direction rule) — one bonus
+// tier is enough for a decorative ambient loop's "feels more real" goal.
+export function isTSpin(board: Cell[][], piece: Piece): boolean {
+  if (piece.type !== 'T') return false;
+  const cols = board[0].length;
+  const rows = board.length;
+  const cx = piece.x + 1;
+  const cy = piece.y + 1;
+  const corners = [
+    [cx - 1, cy - 1], [cx + 1, cy - 1],
+    [cx - 1, cy + 1], [cx + 1, cy + 1],
+  ];
+  const filled = corners.filter(
+    ([x, y]) => x < 0 || x >= cols || y < 0 || y >= rows || board[y][x] !== null
+  ).length;
+  return filled >= 3;
+}
+
 function clearLines(board: Cell[][]): { board: Cell[][]; cleared: number } {
   const cols = board[0].length;
   const remaining = board.filter((row) => row.some((cell) => cell === null));
@@ -134,9 +189,11 @@ function clearLines(board: Cell[][]): { board: Cell[][]; cleared: number } {
 }
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const TSPIN_LINE_SCORES = [400, 800, 1200, 1600];
 
 function lockPiece(state: GameState, nextPiece: PieceType): GameState {
   const cols = state.board[0].length;
+  const tspin = state.lastMoveWasRotation && isTSpin(state.board, state.current);
   const board = state.board.map((row) => [...row]);
   for (const [x, y] of cellsFor(state.current)) {
     if (y < 0) return { ...state, gameOver: true };
@@ -145,19 +202,21 @@ function lockPiece(state: GameState, nextPiece: PieceType): GameState {
   const { board: clearedBoard, cleared } = clearLines(board);
   const spawned: Piece = { type: nextPiece, rotation: 0, x: Math.floor(cols / 2) - 2, y: -2 };
   const gameOver = collides(clearedBoard, spawned);
+  const scoreGain = tspin ? TSPIN_LINE_SCORES[cleared] : LINE_SCORES[cleared];
   return {
     board: clearedBoard,
     current: spawned,
-    score: state.score + LINE_SCORES[cleared],
+    score: state.score + scoreGain,
     linesCleared: state.linesCleared + cleared,
     gameOver,
+    lastMoveWasRotation: false,
   };
 }
 
 export function softDrop(state: GameState, nextPiece: PieceType): GameState {
   const dropped = { ...state.current, y: state.current.y + 1 };
   if (collides(state.board, dropped)) return lockPiece(state, nextPiece);
-  return { ...state, current: dropped };
+  return { ...state, current: dropped, lastMoveWasRotation: false };
 }
 
 export function hardDrop(state: GameState, nextPiece: PieceType): GameState {

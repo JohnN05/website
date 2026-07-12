@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, landingRow, COLS, ROWS } from './engine';
+import {
+  createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, landingRow, cellsFor, isTSpin,
+  COLS, ROWS, type GameState, type Piece, type Cell,
+} from './engine';
 
 describe('createGame', () => {
   it('spawns the requested piece near the top center, no lines cleared', () => {
@@ -112,3 +115,100 @@ describe('landingRow', () => {
     expect(landingRow(board, state.current)).toBe(ROWS - 3);
   });
 });
+
+describe('wall kicks', () => {
+  it('kicks the piece away from the left wall when a plain rotation would go out of bounds', () => {
+    let state = createGame('T', 6, 10);
+    for (let i = 0; i < 10; i++) state = moveLeft(state); // pinned at rotation 0, x = 0
+    state = rotate(state); // rotation 0 -> 1, fits at x = 0 without a kick
+    for (let i = 0; i < 10; i++) state = moveLeft(state); // pinned at rotation 1, x = -1
+    expect(state.current.x).toBe(-1);
+    state = rotate(state); // rotation 1 -> 2: naive (0,0) kick goes off-board;
+                           // the kick table's next test, (+1, 0), fits and should land
+    expect(state.current.rotation).toBe(2);
+    expect(state.current.x).toBe(0);
+  });
+
+  it('leaves the piece exactly where it was if every wall-kick position collides', () => {
+    const cols = 5, rows = 5;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill('O'));
+    const piece: Piece = { type: 'T', rotation: 0, x: 1, y: 1 };
+    // Carve out only this piece's own rot0 footprint; every other cell stays
+    // filled, so no translated copy of the differently-shaped rot1 footprint
+    // can fit anywhere, and every kick test should fail.
+    for (const [x, y] of cellsFor(piece)) board[y][x] = null;
+    const state: GameState = { ...createGame('T', cols, rows), board, current: piece };
+    const result = rotate(state);
+    expect(result.current.rotation).toBe(0);
+    expect(result.current.x).toBe(1);
+    expect(result.current.y).toBe(1);
+  });
+});
+
+describe('isTSpin', () => {
+  it('is true when at least 3 of the 4 diagonal corners around the T center are filled', () => {
+    const cols = 5, rows = 6;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    // T at rotation 0, x=1, y=2 -> center = (x+1, y+1) = (2, 3); corners are
+    // (1,2) (3,2) (1,4) (3,4). Fill 3 of them, leave (3,4) open.
+    board[2][1] = 'O';
+    board[2][3] = 'O';
+    board[4][1] = 'O';
+    const piece: Piece = { type: 'T', rotation: 0, x: 1, y: 2 };
+    expect(isTSpin(board, piece)).toBe(true);
+  });
+
+  it('is false when only 2 of the 4 diagonal corners are filled', () => {
+    const cols = 5, rows = 6;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    board[2][1] = 'O';
+    board[2][3] = 'O';
+    const piece: Piece = { type: 'T', rotation: 0, x: 1, y: 2 };
+    expect(isTSpin(board, piece)).toBe(false);
+  });
+
+  it('is always false for non-T pieces, even with all 4 corners filled', () => {
+    const cols = 5, rows = 6;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    board[2][1] = 'O'; board[2][3] = 'O'; board[4][1] = 'O'; board[4][3] = 'O';
+    const piece: Piece = { type: 'J', rotation: 0, x: 1, y: 2 };
+    expect(isTSpin(board, piece)).toBe(false);
+  });
+});
+
+describe('T-spin scoring requires the last action to be a rotation', () => {
+  // Board where a T at rotation 0, x=1, y=3 fits its own 4 body cells into
+  // empty squares, can't fall any further (blocked at y=4 by the (1,5)
+  // filled cell below), and has 3 of its 4 diagonal corners filled —
+  // (1,3), (3,3), (1,5) filled; (3,5) left open. Verified by hand: body
+  // cells at (2,3) (1,4) (2,4) (3,4) never overlap (1,3) (3,3) (1,5).
+  function boardWithTPocket(): Cell[][] {
+    const cols = 5, rows = 6;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    board[3][1] = 'O';
+    board[3][3] = 'O';
+    board[5][1] = 'O';
+    return board;
+  }
+
+  it('awards T-spin points when the piece is rotated immediately before locking', () => {
+    let state: GameState = { ...createGame('T', 5, 6), board: boardWithTPocket() };
+    state = rotate(state); // sets lastMoveWasRotation = true (open board, trivial rotation)
+    state = { ...state, current: { type: 'T', rotation: 0, x: 1, y: 3 } };
+    const before = state.score;
+    state = hardDrop(state, 'O');
+    expect(state.score).toBeGreaterThanOrEqual(before + 400);
+  });
+
+  it('does not award T-spin points when a move happened after the last rotation', () => {
+    let state: GameState = { ...createGame('T', 5, 6), board: boardWithTPocket() };
+    state = rotate(state);   // lastMoveWasRotation = true
+    state = moveRight(state); // lastMoveWasRotation = false
+    state = moveLeft(state);  // still false
+    state = { ...state, current: { type: 'T', rotation: 0, x: 1, y: 3 } };
+    const before = state.score;
+    state = hardDrop(state, 'O');
+    expect(state.score).toBeLessThan(before + 400);
+  });
+});
+
