@@ -183,8 +183,24 @@ un-animated in comparison, distinguishing decoration from gameplay.
 page, needs its context line — see spec) and the butterfly-knife-flip
 light/dark toggle.
 
-All four use standard smooth CSS easing — a "stepped/frame-based" motion
-language was tried and explicitly rejected as janky.
+The capybara, Minesweeper reveal, and butterfly-knife toggle all use
+standard smooth CSS easing — a "stepped/frame-based" motion language across
+all four details was tried and explicitly rejected as janky. The Tetris
+ambient piece is a narrower, deliberate exception to that default (not a
+reversal of it): its turn/fall transitions use CSS `steps()` timing instead
+of smooth easing, snapping row-by-row for a blocky, snap-to-grid feel that
+reads as more authentically Tetris — the fall phase in particular is sped
+up (not just stepped) to feel like a piece being soft-dropped rather than
+gliding down.
+
+The ambient loop also plays real wall kicks and awards a T-spin score bonus
+(`isTSpin` in `engine.ts`, gated on `GameState.lastMoveWasRotation`), builds
+its stack up to at least 50% of board height before its heuristic starts
+rewarding line clears (`BUILD_UP_HEIGHT_RATIO` in `ambientDemo.ts`), and
+never resets below that same 50% floor even in a hole-heavy ("unfavorable")
+position — resets only trigger at or above it. Cleared rows flash a few
+times before disappearing (`stepAmbientDemo`'s `clearedRows`/`preClearBoard`,
+consumed in `TetrisHero.astro`'s `runAmbientCycle`).
 
 ## Hard constraints (don't reintroduce these)
 

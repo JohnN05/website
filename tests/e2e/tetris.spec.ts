@@ -49,7 +49,7 @@ test('desktop: ambient piece animates from spawn through fall before merging', a
   await expect(crispLayer.locator('.cell')).toHaveCount(4);
 
   const spawnTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
-  await page.waitForTimeout(700); // safely inside the fall phase (350ms turn + up to 450ms fall = 800ms merge point); avoids the 800-1000ms window where the piece layers are briefly empty between merge and the next spawn
+  await page.waitForTimeout(450); // safely inside the fall phase (300ms turn + up to 220ms fall = 520ms merge point); avoids the 520-720ms window where the piece layers are briefly empty between merge and the next spawn
   const laterTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
   expect(laterTop).not.toBe(spawnTop);
 });

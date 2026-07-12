@@ -102,11 +102,11 @@
   }
   .tetris-piece.phase-turn .piece-layer-soft :global(.cell),
   .tetris-piece.phase-turn .piece-layer-crisp :global(.cell) {
-    transition: left 0.35s ease, top 0.35s ease;
+    transition: left 0.3s steps(3, end), top 0.3s steps(3, end);
   }
   .tetris-piece.phase-fall .piece-layer-soft :global(.cell),
   .tetris-piece.phase-fall .piece-layer-crisp :global(.cell) {
-    transition: top 0.45s ease-in;
+    transition: top 0.22s steps(6, end);
   }
   .tetris-open-btn { position: absolute; inset: 0; background: transparent; border: none; cursor: pointer; }
   .tetris-overlay {
@@ -179,8 +179,8 @@
   const pieceEl = document.getElementById('tetris-piece')!;
   const pieceSoftEl = document.getElementById('tetris-piece-soft')!;
   const pieceCrispEl = document.getElementById('tetris-piece-crisp')!;
-  const TURN_MS = 350;
-  const FALL_MS = 450;
+  const TURN_MS = 300;
+  const FALL_MS = 220;
   const PAUSE_MS = 200;
   let pieceCellsSoft: HTMLElement[] = [];
   let pieceCellsCrisp: HTMLElement[] = [];
