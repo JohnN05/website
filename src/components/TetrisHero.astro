@@ -205,7 +205,7 @@
       // predicted landing spot is replaced by an empty board right as it
       // lands, accepted as-is since this is a decorative background loop,
       // not gameplay.
-      ambientState = stepAmbientDemo(ambientState, ambientStep++);
+      ambientState = stepAmbientDemo(ambientState, ambientStep++).state;
       renderBoard(ambientEl, ambientState);
       pieceEl.innerHTML = '';
       window.setTimeout(runAmbientCycle, PAUSE_MS);
