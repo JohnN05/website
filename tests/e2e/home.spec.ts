@@ -20,3 +20,12 @@ test('featured section shares the hero copy\'s left inset', async ({ page }) => 
   expect(featuredHeading).not.toBeNull();
   expect(Math.abs(heroCopy!.x - featuredHeading!.x)).toBeLessThan(1);
 });
+
+test('project cards share the same left inset as the featured heading', async ({ page }) => {
+  await page.goto('/');
+  const featuredHeading = await page.locator('.featured h2').boundingBox();
+  const projectGrid = await page.locator('.project-grid').boundingBox();
+  expect(featuredHeading).not.toBeNull();
+  expect(projectGrid).not.toBeNull();
+  expect(Math.abs(featuredHeading!.x - projectGrid!.x)).toBeLessThan(1);
+});
