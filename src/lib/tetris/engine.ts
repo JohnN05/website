@@ -73,6 +73,24 @@ export function cellsFor(piece: Piece): number[][] {
   return SHAPES[piece.type][piece.rotation].map(([dx, dy]) => [piece.x + dx, piece.y + dy]);
 }
 
+export function boardWithPiece(board: Cell[][], piece: Piece): Cell[][] {
+  const copy = board.map((row) => [...row]);
+  const rows = copy.length;
+  const cols = copy[0].length;
+  for (const [x, y] of cellsFor(piece)) {
+    if (y >= 0 && y < rows && x >= 0 && x < cols) copy[y][x] = piece.type;
+  }
+  return copy;
+}
+
+export function fullRowIndices(board: Cell[][]): number[] {
+  const indices: number[] = [];
+  board.forEach((row, i) => {
+    if (row.every((cell) => cell !== null)) indices.push(i);
+  });
+  return indices;
+}
+
 function collides(board: Cell[][], piece: Piece): boolean {
   const cols = board[0].length;
   const rows = board.length;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, landingRow, cellsFor, isTSpin,
-  COLS, ROWS, type GameState, type Piece, type Cell,
+  boardWithPiece, fullRowIndices, COLS, ROWS, type GameState, type Piece, type Cell,
 } from './engine';
 
 describe('createGame', () => {
@@ -209,6 +209,35 @@ describe('T-spin scoring requires the last action to be a rotation', () => {
     const before = state.score;
     state = hardDrop(state, 'O');
     expect(state.score).toBeLessThan(before + 400);
+  });
+});
+
+describe('boardWithPiece', () => {
+  it('stamps the piece cells into a copy without mutating the original board', () => {
+    const state = createGame('O', 6, 10);
+    const stamped = boardWithPiece(state.board, { ...state.current, y: 5 });
+    expect(state.board[5].some((c) => c !== null)).toBe(false);
+    expect(stamped[5].some((c) => c === 'O')).toBe(true);
+  });
+
+  it('ignores cells above the top of the board (negative y)', () => {
+    const state = createGame('O', 6, 10); // spawn y = -2
+    const stamped = boardWithPiece(state.board, state.current);
+    expect(stamped.every((row) => row.every((c) => c === null || c === 'O'))).toBe(true);
+  });
+});
+
+describe('fullRowIndices', () => {
+  it('returns the indices of fully-filled rows', () => {
+    const rows = 4, cols = 3;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    board[2] = ['O', 'O', 'O'];
+    expect(fullRowIndices(board)).toEqual([2]);
+  });
+
+  it('returns an empty array when no row is full', () => {
+    const board: Cell[][] = Array.from({ length: 3 }, () => Array<Cell>(3).fill(null));
+    expect(fullRowIndices(board)).toEqual([]);
   });
 });
 
