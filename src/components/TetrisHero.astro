@@ -319,6 +319,15 @@
       // by an empty board right as it lands, accepted as-is since this is a
       // decorative background loop, not gameplay.
       const stepResult = stepAmbientDemo(ambientState, ambientStep++);
+      // Clear the falling-piece overlay as soon as the piece locks, before
+      // any flash. The locked piece is now baked into the board cells
+      // themselves (preClearBoard), so leaving the overlay in place during
+      // the flash left a stale, un-flashing copy of the piece sitting on
+      // top of the grid for the whole flash duration — the only case where
+      // this dangling overlay was visible long enough to notice, since a
+      // non-clearing drop clears it on the very next synchronous lines.
+      pieceSoftEl.innerHTML = '';
+      pieceCrispEl.innerHTML = '';
       if (stepResult.clearedRows.length > 0) {
         renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
         renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
@@ -327,8 +336,6 @@
       ambientState = stepResult.state;
       renderBoard(ambientSoftEl, ambientState);
       renderBoard(ambientCrispEl, ambientState);
-      pieceSoftEl.innerHTML = '';
-      pieceCrispEl.innerHTML = '';
       window.setTimeout(runAmbientCycle, PAUSE_MS);
     }, TURN_MS + FALL_MS);
   }

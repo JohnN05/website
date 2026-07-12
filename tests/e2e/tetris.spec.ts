@@ -53,3 +53,19 @@ test('desktop: ambient piece animates from spawn through fall before merging', a
   const laterTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
   expect(laterTop).not.toBe(spawnTop);
 });
+
+test('desktop: falling-piece overlay is cleared during a line-clear flash, not left stuck on top of it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  // The ambient loop builds its stack up before its heuristic rewards line
+  // clears, so this waits for whatever the first real clear happens to be
+  // rather than assuming a fixed timing.
+  await page.waitForSelector('.tetris-ambient-crisp div.flashing', { timeout: 30000 });
+
+  // The locked piece is already baked into the flashing board cells
+  // themselves; the separate overlay layer must be empty during the flash,
+  // or it sits on top of the grid unaffected by the flash toggle.
+  await expect(page.locator('#tetris-piece-crisp .cell')).toHaveCount(0);
+  await expect(page.locator('#tetris-piece-soft .cell')).toHaveCount(0);
+});
