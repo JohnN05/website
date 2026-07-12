@@ -33,28 +33,43 @@
     --tetris-o: #C9A75C;
     --tetris-t: #8B6B9E;
     --tetris-j: #5C7FA6;
-    /* Cubic ease-in (alpha = t^3) sampled as static gradient stops — mask-image
-       can only interpolate linearly between stops, so a true curve has to be
-       baked in as enough intermediate stops to read as smooth. Both masks
-       share a 40% dead zone (hero copy never sees the board) and reach full
-       opacity by 90%; soft finishes its ramp earlier (65%) than crisp (90%)
-       so the blurred layer resolves first and the sharp layer overtakes it,
-       preserving the original two-layer depth-of-field order. */
+    /* Depth-of-field via two stacked copies of the same board: a blurred
+       "soft" layer and a sharp "crisp" layer. The illusion only works if the
+       two masks are SEPARATED across the width — the blurred layer has to be
+       the only thing visible in the near/left zone, and the sharp layer must
+       stay absent there and only take over toward the right. (An earlier
+       revision collapsed both to the same 8% dead zone, so the sharp layer
+       was present everywhere and there was no visible blur at all.)
+
+       This container is `right: 0; width: 70%` of the hero, so its own left
+       edge already sits at ~30% of the hero width — right where the copy
+       ends. All offsets below are relative to the container's own width.
+
+       soft (blurred): NO dead-zone step and NO opacity floor — it starts at
+       literal transparent right at the container's left edge and rises on a
+       gentle ease-in (alpha ~ t^1.4) so the near edge melts in with no
+       visible seam, then climbs steadily to full at 90%. The seam in earlier
+       revisions came from jumping straight to a nonzero alpha (0.15/0.35) at
+       the first stop; easing up from 0 removes it. This layer governs where
+       the board appears / the whole fade.
+       crisp (sharp): dead zone 42%, starts from ZERO, quadratic rise so the
+       sharp layer stays absent through the blurred middle and only overtakes
+       near the right edge, full by 92%. Net left→right: nothing → faint+
+       blurred → brighter+blurred → full+sharp. */
     --tetris-mask-soft: linear-gradient(
-      90deg, transparent 0%, transparent 40%,
-      rgba(0, 0, 0, 0.001) 42.5%, rgba(0, 0, 0, 0.008) 45%,
-      rgba(0, 0, 0, 0.027) 47.5%, rgba(0, 0, 0, 0.064) 50%,
-      rgba(0, 0, 0, 0.125) 52.5%, rgba(0, 0, 0, 0.216) 55%,
-      rgba(0, 0, 0, 0.343) 57.5%, rgba(0, 0, 0, 0.512) 60%,
-      rgba(0, 0, 0, 0.729) 62.5%, black 65%
+      90deg, transparent 0%,
+      rgba(0, 0, 0, 0.03) 12%, rgba(0, 0, 0, 0.10) 22%,
+      rgba(0, 0, 0, 0.19) 32%, rgba(0, 0, 0, 0.30) 42%,
+      rgba(0, 0, 0, 0.43) 52%, rgba(0, 0, 0, 0.57) 62%,
+      rgba(0, 0, 0, 0.72) 72%, rgba(0, 0, 0, 0.88) 82%,
+      black 90%
     );
     --tetris-mask-crisp: linear-gradient(
-      90deg, transparent 0%, transparent 40%,
-      rgba(0, 0, 0, 0.001) 45%, rgba(0, 0, 0, 0.008) 50%,
-      rgba(0, 0, 0, 0.027) 55%, rgba(0, 0, 0, 0.064) 60%,
-      rgba(0, 0, 0, 0.125) 65%, rgba(0, 0, 0, 0.216) 70%,
-      rgba(0, 0, 0, 0.343) 75%, rgba(0, 0, 0, 0.512) 80%,
-      rgba(0, 0, 0, 0.729) 85%, black 90%
+      90deg, transparent 0%, transparent 42%,
+      rgba(0, 0, 0, 0.026) 50%, rgba(0, 0, 0, 0.102) 58%,
+      rgba(0, 0, 0, 0.23) 66%, rgba(0, 0, 0, 0.41) 74%,
+      rgba(0, 0, 0, 0.64) 82%, rgba(0, 0, 0, 0.85) 88%,
+      black 92%
     );
   }
   @media (max-width: 768px) { .tetris-hero { display: none; } }
