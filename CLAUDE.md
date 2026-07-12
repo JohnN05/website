@@ -18,15 +18,22 @@ sitewide), and a Tetris hero polish pass (8 tasks + one post-review
 integration fix: SRS wall kicks + T-spin scoring, exact ambient cell
 sizing, layered soft/crisp gradual blur, blocky-but-fast piece motion, a
 build-up-before-clearing heuristic with a 50%-height reset floor, and
-flash-before-clear). This file describes the site as actually built, not
+flash-before-clear), followed by a small post-merge bug-fix pass (3
+commits, no plan doc — each was a user-reported visual bug fixed via
+`superpowers:systematic-debugging` directly on `TetrisHero.astro`): a
+stale falling-piece overlay left rendered on top of the grid during the
+line-clear flash, the ambient piece visually scrambling instead of
+rotating cleanly, and a `setTimeout`/CSS-transition race in the piece's
+phase timers. This file describes the site as actually built, not
 just as planned. Every pass has hit the same environment limitation in this
 particular sandbox — no root access, missing Playwright's native
 `libnspr4` dependency — so each pass's e2e suite needed a real-environment
 run afterward; done for the rewrite and the first two refinement passes
-(all Playwright/axe suites green there). The Tetris hero polish pass is the
-one exception as of this doc update — verified here via unit tests (72/72)
-and a clean production build only; its Playwright suite still needs that
-same real-environment confirmation before merging to `main`.
+(all Playwright/axe suites green there). The Tetris hero polish pass and
+the post-merge bug-fix pass are the exceptions as of this doc update —
+verified here via unit tests (72/72) and a clean production build only;
+their Playwright suites still need that same real-environment
+confirmation before merging to `main`.
 
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
@@ -56,7 +63,12 @@ integration bug the per-task reviews couldn't see until the whole branch
 was reviewed together — the ambient piece's animated landing spot and its
 committed landing spot could silently diverge below the build-up floor,
 fixed by giving both call sites one shared source of truth for the
-line-clear weighting decision.
+line-clear weighting decision. Post-merge bug-fix pass (see "Ambient piece
+animation" below for the mechanics): three separate root causes behind
+what looked like one recurring "piece isn't aligned to the grid" visual
+bug — a DOM-clearing order bug, a data-shape mismatch, and a timer race —
+each only reproducible by watching the live animation, not by unit tests
+(this widget's DOM wiring is e2e-only per the architecture pattern above).
 
 ## Stack
 
@@ -223,11 +235,45 @@ the rightmost column/row. Board cols/rows are computed from the container's
 component script) rather than hardcoded to the engine's 10x20 default, so
 `createAmbientDemo`/`stepAmbientDemo`/`createGame` all take explicit
 cols/rows through every code path, including the demo's internal
-game-over-reset branch. Each piece plays a real spawn → rotate → fall
+game-over-reset branch. Each piece plays a real spawn → turn → fall
 animation cycle (`#tetris-piece`, `.phase-turn`/`.phase-fall` CSS
 transitions driven by `runAmbientCycle()`) instead of snapping directly
 into its landing position; the real click-to-play board stays crisp and
 un-animated in comparison, distinguishing decoration from gameplay.
+
+**Ambient piece animation — three bugs found from one user report of "the
+piece isn't aligned to the grid," each with a different root cause:**
+1. The piece now *spawns already in its final rotation* rather than
+   rotation 0 — `SHAPES` in `engine.ts` defines each of a piece's 4
+   rotation states as an independently hand-authored array, not one shape
+   rotated per cell index (e.g. the I piece's cell index 0 jumps from
+   `(0,1)` to `(2,0)` between rotations 0 and 1), so animating `left`/`top`
+   from a rotation-0 shape to the target rotation sent each of the 4 cell
+   divs flying along its own unrelated diagonal — landing off-grid for the
+   transition's mid-frames before snapping onto the grid at the end. With
+   both ends of the turn phase holding the same rotation, every cell moves
+   by one uniform `(dx, 0)`: a rigid horizontal slide, not a scramble.
+2. The turn phase's `TURN_MS`/fall phase's `FALL_MS` `setTimeout` delays
+   are chained *inside* the callback that actually starts their paired CSS
+   transition (the `requestAnimationFrame` for the turn, the turn's own
+   phase-switch callback for the fall) rather than scheduled from cycle
+   start alongside it. `TURN_MS` (300) and `FALL_MS` (220) exactly equal
+   their transitions' declared durations (`0.3s`/`0.22s`) with zero margin,
+   but `requestAnimationFrame` doesn't fire until the next paint — so a
+   timer anchored to cycle start could fire before the transition's final
+   `steps(N, end)` jump landed, freezing the piece mid-slide for the rest
+   of that phase. Worse the farther the piece had to travel, which is why
+   S/Z (whose autoplay placements tend to need bigger horizontal jumps)
+   showed it most visibly. `setTimeout` never fires early, so anchoring
+   both clocks to the same instant removes the race.
+3. The falling-piece overlay (`pieceSoftEl`/`pieceCrispEl`) is cleared
+   immediately once `stepAmbientDemo` locks the piece into the board —
+   *before* the clear-flash branch runs, not after. The locked piece is
+   already baked into the board cells themselves (`preClearBoard`); leaving
+   the overlay in place during the flash left a stale, un-flashing copy of
+   the piece sitting on top of the grid for the whole flash duration, only
+   visible long enough to notice because a non-clearing drop clears the
+   overlay on the very next synchronous line anyway.
 
 **Lower priority (simpler first pass is fine):** Minesweeper (the `/404`
 page, needs its context line — see spec) and the butterfly-knife-flip
