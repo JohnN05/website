@@ -83,6 +83,28 @@ test('desktop: ambient piece stays a rigid shape while turning, sliding rather t
   expect(lateShape).toEqual(earlyShape);
 });
 
+test('desktop: ambient piece finishes its horizontal slide before it starts falling', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  const crispLayer = page.locator('#tetris-piece-crisp');
+  const firstCell = crispLayer.locator('.cell').first();
+  await expect(crispLayer.locator('.cell')).toHaveCount(4);
+
+  // Sample deep into the turn phase (300ms) but still before the fall
+  // phase begins, then again well into the fall phase — the horizontal
+  // (left) position must be identical at both points. If the turn's
+  // setTimeout fires before its CSS transition's last steps() jump lands
+  // (a race this test guards against), left keeps changing after the
+  // phase switch instead of staying put while only top (the fall) moves.
+  await page.waitForTimeout(290);
+  const leftNearTurnEnd = await firstCell.evaluate((el) => (el as HTMLElement).style.left);
+  await page.waitForTimeout(150);
+  const leftDuringFall = await firstCell.evaluate((el) => (el as HTMLElement).style.left);
+
+  expect(leftDuringFall).toBe(leftNearTurnEnd);
+});
+
 test('desktop: falling-piece overlay is cleared during a line-clear flash, not left stuck on top of it', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');

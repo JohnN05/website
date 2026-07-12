@@ -307,49 +307,67 @@
       const turned = { ...spawnPiece, x: placement.x };
       positionPieceCells(pieceCellsSoft, cellsFor(turned));
       positionPieceCells(pieceCellsCrisp, cellsFor(turned));
+
+      // Chained from inside this rAF callback — where the turn's CSS
+      // transition actually starts — rather than scheduled from cycle
+      // start alongside it. TURN_MS (300) exactly equals the phase-turn
+      // transition's own 0.3s duration with zero margin, but rAF doesn't
+      // fire until the next paint (~1 frame after cycle start), so a timer
+      // anchored to cycle start could fire before the transition's final
+      // steps(3, end) jump landed, freezing the piece mid-slide — worse
+      // the farther it had to travel, which is why S/Z (whose autoplay
+      // placements tend to need bigger horizontal jumps) showed it most.
+      // Anchoring both clocks to the same instant removes the race:
+      // setTimeout never fires early, so by the time it fires here the
+      // transition (started at this same instant) is guaranteed done.
+      window.setTimeout(() => {
+        pieceEl.classList.remove('phase-turn');
+        pieceEl.classList.add('phase-fall');
+        const landed = { ...spawnPiece, x: placement.x, y: landingY };
+        positionPieceCells(pieceCellsSoft, cellsFor(landed));
+        positionPieceCells(pieceCellsCrisp, cellsFor(landed));
+
+        // Same reasoning as above, one phase down: chained from the exact
+        // moment the fall's CSS transition starts instead of racing it
+        // from cycle start.
+        window.setTimeout(async () => {
+          // stepAmbientDemo recomputes chooseBestPlacement itself and
+          // commits via hardDrop. It locks the piece in exactly the spot
+          // just animated to because both calls resolve
+          // chooseBestPlacement's lines-cleared weight through the same
+          // isBuildingUp(board) helper above, not just because they see
+          // the same state — the state alone was previously assumed to be
+          // enough and wasn't (see ambientDemo.ts's isBuildingUp doc
+          // comment). If the commit would have caused game over,
+          // stepAmbientDemo silently resets to a fresh empty board
+          // instead (see ambientDemo.ts) rather than surfacing it — a
+          // rare, purely cosmetic edge case where this animation's
+          // predicted landing spot is replaced by an empty board right as
+          // it lands, accepted as-is since this is a decorative
+          // background loop, not gameplay.
+          const stepResult = stepAmbientDemo(ambientState, ambientStep++);
+          // Clear the falling-piece overlay as soon as the piece locks,
+          // before any flash. The locked piece is now baked into the
+          // board cells themselves (preClearBoard), so leaving the
+          // overlay in place during the flash left a stale, un-flashing
+          // copy of the piece sitting on top of the grid for the whole
+          // flash duration — the only case where this dangling overlay
+          // was visible long enough to notice, since a non-clearing drop
+          // clears it on the very next synchronous lines.
+          pieceSoftEl.innerHTML = '';
+          pieceCrispEl.innerHTML = '';
+          if (stepResult.clearedRows.length > 0) {
+            renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
+            renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
+            await flashRows(stepResult.clearedRows);
+          }
+          ambientState = stepResult.state;
+          renderBoard(ambientSoftEl, ambientState);
+          renderBoard(ambientCrispEl, ambientState);
+          window.setTimeout(runAmbientCycle, PAUSE_MS);
+        }, FALL_MS);
+      }, TURN_MS);
     });
-
-    window.setTimeout(() => {
-      pieceEl.classList.remove('phase-turn');
-      pieceEl.classList.add('phase-fall');
-      const landed = { ...spawnPiece, x: placement.x, y: landingY };
-      positionPieceCells(pieceCellsSoft, cellsFor(landed));
-      positionPieceCells(pieceCellsCrisp, cellsFor(landed));
-    }, TURN_MS);
-
-    window.setTimeout(async () => {
-      // stepAmbientDemo recomputes chooseBestPlacement itself and commits
-      // via hardDrop. It locks the piece in exactly the spot just animated
-      // to because both calls resolve chooseBestPlacement's lines-cleared
-      // weight through the same isBuildingUp(board) helper above, not just
-      // because they see the same state — the state alone was previously
-      // assumed to be enough and wasn't (see ambientDemo.ts's isBuildingUp
-      // doc comment). If the commit would have caused game over,
-      // stepAmbientDemo silently resets to a fresh empty board instead (see
-      // ambientDemo.ts) rather than surfacing it — a rare, purely cosmetic
-      // edge case where this animation's predicted landing spot is replaced
-      // by an empty board right as it lands, accepted as-is since this is a
-      // decorative background loop, not gameplay.
-      const stepResult = stepAmbientDemo(ambientState, ambientStep++);
-      // Clear the falling-piece overlay as soon as the piece locks, before
-      // any flash. The locked piece is now baked into the board cells
-      // themselves (preClearBoard), so leaving the overlay in place during
-      // the flash left a stale, un-flashing copy of the piece sitting on
-      // top of the grid for the whole flash duration — the only case where
-      // this dangling overlay was visible long enough to notice, since a
-      // non-clearing drop clears it on the very next synchronous lines.
-      pieceSoftEl.innerHTML = '';
-      pieceCrispEl.innerHTML = '';
-      if (stepResult.clearedRows.length > 0) {
-        renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
-        renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
-        await flashRows(stepResult.clearedRows);
-      }
-      ambientState = stepResult.state;
-      renderBoard(ambientSoftEl, ambientState);
-      renderBoard(ambientCrispEl, ambientState);
-      window.setTimeout(runAmbientCycle, PAUSE_MS);
-    }, TURN_MS + FALL_MS);
   }
 
   if (!reducedMotion.matches) {
