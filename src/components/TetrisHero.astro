@@ -130,10 +130,18 @@
     }
   }
 
-  const CELL_SIZE = 30;
-  const ambientCols = Math.max(4, Math.floor(ambientEl.clientWidth / CELL_SIZE));
-  const ambientRows = Math.max(4, Math.floor(ambientEl.clientHeight / CELL_SIZE));
+  // Target cell size used only to derive how many columns/rows fit — the
+  // actual on-screen cell size (cellW/cellH below) is always computed
+  // exactly from the container's real box plus the grid's 1px gaps, so the
+  // falling-piece overlay never drifts out of alignment with the grid
+  // (see this task's plan notes for why that drift/cutoff bug existed).
+  const CELL_SIZE = 44;
+  const GAP = 1;
+  const ambientCols = Math.max(4, Math.floor((ambientEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
+  const ambientRows = Math.max(4, Math.floor((ambientEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
   ambientEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+  const cellW = (ambientEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
+  const cellH = (ambientEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
 
   let ambientState = createAmbientDemo(ambientCols, ambientRows);
   let ambientStep = 0;
@@ -159,10 +167,10 @@
   function positionPieceCells(coords: number[][]) {
     coords.forEach(([x, y], i) => {
       const cell = pieceCells[i];
-      cell.style.width = `${CELL_SIZE}px`;
-      cell.style.height = `${CELL_SIZE}px`;
-      cell.style.left = `${x * CELL_SIZE}px`;
-      cell.style.top = `${y * CELL_SIZE}px`;
+      cell.style.width = `${cellW}px`;
+      cell.style.height = `${cellH}px`;
+      cell.style.left = `${x * cellW}px`;
+      cell.style.top = `${y * cellH}px`;
     });
   }
 
