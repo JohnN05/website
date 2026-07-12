@@ -11,10 +11,10 @@ project write-ups and a couple of subtle hobby-inspired interactive details
 refinement pass implemented on top (15 more tasks: spacing scale, tag-accent
 colors, chrome-reduced cards, Tetris autoplay heuristic, collapsible sidebar
 nav). This file describes the site as actually built, not just as planned.
-The visual refinement pass's full Playwright/axe e2e suite has not yet been
-executed against a real browser environment — the sandbox it was built in
-had no root access and was missing Playwright's native dependencies. Run
-`npm run test:e2e` before merging/deploying this branch.
+The visual refinement pass was built in a sandbox with no root access and
+missing Playwright's native dependencies, so its e2e suite couldn't run
+there — it has since been run in a real environment (all 28 Playwright
+tests passing, including the accessibility sweep and the new nav coverage).
 
 Full design rationale (original rewrite):
 `docs/superpowers/specs/2026-07-11-website-revamp-design.md`. Full design
@@ -226,10 +226,8 @@ caught the ARIA containment bugs above during implementation.
 `tests/e2e/nav.spec.ts` covers the collapsible sidebar rail (collapsed by
 default, `aria-expanded` toggles and persists across reload, links keep
 accessible names while collapsed) and the mobile drawer (rail hidden below
-769px, hamburger opens the drawer, links reachable). **Caveat:** this suite
-and the accessibility sweep above have not been executed against the
-visual-refinement branch's changes in a real browser — see Status at the
-top of this file.
+769px, hamburger opens the drawer, links reachable) — passing, along with
+the rest of the 28-test Playwright suite, in a real browser environment.
 
 ## Repo history
 
