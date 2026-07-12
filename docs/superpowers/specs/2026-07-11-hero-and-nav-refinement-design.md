@@ -8,15 +8,17 @@ collapsible sidebar rail felt gratuitously hidden-by-default rather than a
 deliberate choice; the Tetris ambient widget, even relocated to a hero
 corner, still read as a small decorative box rather than "the entire
 background of the main message" as originally intended; the sitewide Syne
-800 display face is hard to read as a full sentence (confirmed against the
-hero's actual copy) even though it works well as a short label/wordmark; and
-"Featured projects" sits flush against the content edge while the hero copy
-above it has a left inset, an inconsistency traced to a missing padding rule.
+800 display face is hard to read past short-label length, confirmed against
+the hero's actual copy; and "Featured projects" sits flush against the
+content edge while the hero copy above it has a left inset, an
+inconsistency traced to a missing padding rule.
 
 This spec amends the prior visual-refinement spec's §3 (Tetris Hero) and §5
-(Navigation). Everything else from that spec and the original revamp spec
+(Navigation), and updates the original revamp spec's heading-font
+assignment (Syne → Bricolage Grotesque). Everything else from both specs
 (site map, content model, contact form, accessibility, spacing scale,
-accent system, card treatment) stands unchanged.
+accent system, card treatment, the Source Serif 4 article body font, the
+IBM Plex Mono UI/label font) stands unchanged.
 
 Design values below (70% board width, 30px cells, mask/blur numbers, rail
 width, font choice) were settled interactively against a running mockup, not
@@ -105,25 +107,35 @@ still reads as a small decorative token, not a background.
   small, crisp modal board as before, no background/masking treatment
   applied to it.
 
-## 3. Hero quote typography — Bricolage Grotesque
+## 3. Headline typography — Bricolage Grotesque replaces Syne sitewide
 
-**Problem:** Syne 800 (the sitewide `h1, h2, h3` face) works well as a short
-display label (nav wordmark, "Featured projects", article titles) but is
-hard to read set as a full sentence — confirmed against the hero's actual
-copy, not a hypothetical.
+**Problem:** Syne 800 (the sitewide `h1, h2, h3` face) is hard to read past
+short-label length — confirmed against the hero's actual copy. First
+instinct was a scoped swap (hero `<h1>` only, Syne kept everywhere else),
+but on reflection that split reads as inconsistent rather than deliberate:
+"Featured projects", project card titles, and article titles all sit close
+enough to the hero in the visual hierarchy that keeping two competing
+display faces on the same page undercuts the "creative but considered"
+goal, not serves it.
 
-**Decision:**
+**Decision:** Bricolage Grotesque (weight 600, `opsz` optical-size axis)
+replaces Syne as *the* heading face, full stop:
 
-- Add **Bricolage Grotesque** (weight 600, using its `opsz` optical-size
-  axis) to the Google Fonts `<link>` in `BaseLayout.astro`, alongside the
-  existing Syne / Source Serif 4 / Inter / IBM Plex Mono.
-- **Scoped swap, not a global font change:** only the home hero's `<h1>`
-  (`.hero-copy h1` in `index.astro`) switches to Bricolage Grotesque 600.
-  Every other heading — nav wordmark, "Featured projects" h2, article
-  titles, project card titles — keeps Syne 800 exactly as today. The
-  sitewide `h1, h2, h3 { font-family: 'Syne' }` rule in `global.css` is
-  unchanged; this is a single additional selector overriding it for one
-  element.
+- `global.css`: `h1, h2, h3 { font-family: 'Syne', sans-serif; font-weight:
+  800; }` becomes `h1, h2, h3 { font-family: 'Bricolage Grotesque',
+  sans-serif; font-weight: 600; }`. This alone covers the hero `<h1>`,
+  "Featured projects" `<h2>`, and project card `<h3>` titles.
+- `ArticleLayout.astro`'s `.prose h1 { font-family: 'Syne', sans-serif; }`
+  (an explicit per-component override, redundant now that the base rule
+  changes) is deleted — article titles inherit the same updated `h1, h2, h3`
+  rule instead of re-asserting a now-wrong font.
+- `BaseLayout.astro`'s Google Fonts `<link>`: add **Bricolage Grotesque**,
+  drop **Syne** — grepping the codebase confirms only the two selectors
+  above ever referenced it, so nothing else depends on it once they're
+  updated.
+- The nav wordmark ("JOHN NG") is unaffected either way — it was never
+  Syne to begin with (`.wordmark` maps to IBM Plex Mono in `global.css`),
+  so this change doesn't touch it.
 - Rejected alternatives (for context, not to revisit): a first round of
   options (Space Grotesk, Manrope, Sora, Inter semibold) read as generic
   tech-portfolio grotesks; a second round paired Bricolage
