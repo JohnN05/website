@@ -3,15 +3,17 @@
 ## Overview
 
 The visual refinement pass (`2026-07-11-website-visual-refinement-design.md`)
-shipped and was reviewed live. Four things still needed adjustment: the
+shipped and was reviewed live. Five things still needed adjustment: the
 collapsible sidebar rail felt gratuitously hidden-by-default rather than a
 deliberate choice; the Tetris ambient widget, even relocated to a hero
 corner, still read as a small decorative box rather than "the entire
 background of the main message" as originally intended; the sitewide Syne
 800 display face is hard to read past short-label length, confirmed against
-the hero's actual copy; and "Featured projects" sits flush against the
+the hero's actual copy; "Featured projects" sits flush against the
 content edge while the hero copy above it has a left inset, an
-inconsistency traced to a missing padding rule.
+inconsistency traced to a missing padding rule; and the ambient board's
+rotation/drop already happen in the placement logic but are never visibly
+animated — pieces just jump-cut to their landed state every tick.
 
 This spec amends the prior visual-refinement spec's §3 (Tetris Hero) and §5
 (Navigation), and updates the original revamp spec's heading-font
@@ -161,6 +163,50 @@ double-spacing), and replace `.project-grid`'s hardcoded `1.5rem` with
 `var(--space-5)`. Both sections now share the same left inset from the nav
 rail's dividing line.
 
+## 5. Tetris ambient loop — visible rotation and drop animation
+
+**Problem:** the auto-player's placement logic (`chooseBestPlacement` in
+`autoplay.ts`) already evaluates all 4 rotations when scoring a placement,
+so pieces land correctly rotated — but the ambient loop's rendering doesn't
+show any of that happening. `TetrisHero.astro`'s current loop calls
+`stepAmbientDemo` on a 900ms `setInterval` and immediately re-renders the
+*entire* board via `renderBoard` (which clears and rebuilds every cell from
+scratch). A piece's spawn, rotation, horizontal placement, and drop all
+happen inside one `stepAmbientDemo` call and appear on screen as a single
+instant jump cut — a piece is simply already rotated and already landed on
+the next redraw, with no visible motion at all. The gap is animation, not
+game logic.
+
+**Decision:** the currently-falling piece renders as a distinct animated
+element, separate from the static grid of already-landed cells:
+
+- On spawn, the piece appears at the top of the board in its default
+  (rotation 0) orientation.
+- It then animates to `chooseBestPlacement`'s chosen rotation and column via
+  smooth CSS transforms/transitions (not a discrete step-by-step redraw) —
+  a rotate transform easing to the target orientation, a horizontal
+  translate easing to the target column.
+- It then visibly falls — smooth, eased vertical motion from spawn row to
+  landing row — rather than appearing already at rest.
+- On landing, the piece's cells merge into the static board (no pop/flash)
+  and the next piece spawns.
+- This follows the same "standard smooth CSS easing, no stepped/frame-based
+  motion" rule already established for all four hobby details (see
+  CLAUDE.md/original spec) — the rotation and fall are continuous eased
+  motion, not snapped frame-to-frame jumps.
+- The overall loop's pacing (currently one placement per 900ms tick) will
+  need to change to give the rotate+move+fall sequence room to actually
+  play out — exact per-piece animation duration and any adjustment to the
+  tick/pause interval between pieces is an implementation-level tuning call
+  (see open items), not specified precisely here, as long as the motion
+  reads as smooth rather than rushed or stalled.
+- `prefers-reduced-motion` handling is unchanged: the ambient loop already
+  skips its `setInterval` entirely under reduced motion, freezing on its
+  first spawned frame (documented behavior, covered by
+  `tests/e2e/accessibility.spec.ts`). This new animation only applies
+  inside that same interval, so reduced-motion users still see a fully
+  static board — no new accessibility surface to cover.
+
 ## Open items for the implementation plan
 
 - Exact vertical padding split between `.hero`, `.featured`, and
@@ -177,3 +223,13 @@ rail's dividing line.
 - Before deleting `nav.ts`/`nav.test.ts` and the `nav-rail` localStorage
   key, grep for any other reference to it (analytics, other tests) so
   nothing dangles.
+- Exact animation durations/easing for the ambient piece's rotate, move,
+  and fall (§5), and how much (if at all) the current 900ms-per-placement
+  pacing needs to change to fit them — tune during implementation for a
+  smooth, unhurried read.
+- Rendering approach for the animated piece (§5) — e.g. a small
+  fixed-bounding-box container per piece type with its cells laid out via
+  CSS grid, rotated as a unit via `transform: rotate()` — is an
+  implementation-level technique choice, not decided here, as long as it
+  produces smooth (not stepped) motion and merges cleanly into the static
+  board on landing.
