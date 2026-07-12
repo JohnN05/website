@@ -54,6 +54,35 @@ test('desktop: ambient piece animates from spawn through fall before merging', a
   expect(laterTop).not.toBe(spawnTop);
 });
 
+test('desktop: ambient piece stays a rigid shape while turning, sliding rather than scrambling into its rotation', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  const crispLayer = page.locator('#tetris-piece-crisp');
+  const cells = crispLayer.locator('.cell');
+  await expect(cells).toHaveCount(4);
+
+  const readShape = async () => {
+    const positions = await cells.evaluateAll((els) =>
+      (els as HTMLElement[]).map((el) => ({
+        left: parseFloat((el as HTMLElement).style.left),
+        top: parseFloat((el as HTMLElement).style.top),
+      }))
+    );
+    // Relative to the first cell, so the turn phase's intended horizontal
+    // slide doesn't itself register as a shape change — only a change in
+    // rotation (cells moving relative to each other) should.
+    const [origin, ...rest] = positions;
+    return rest.map((p) => ({ dLeft: p.left - origin.left, dTop: p.top - origin.top }));
+  };
+
+  const earlyShape = await readShape();
+  await page.waitForTimeout(250); // still inside the 300ms turn phase
+  const lateShape = await readShape();
+
+  expect(lateShape).toEqual(earlyShape);
+});
+
 test('desktop: falling-piece overlay is cleared during a line-clear flash, not left stuck on top of it', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');

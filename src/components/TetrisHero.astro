@@ -270,14 +270,6 @@
   }
 
   function runAmbientCycle() {
-    const spawnPiece: Piece = { ...ambientState.current, rotation: 0, y: 0 };
-    pieceCellsSoft = initPieceCells(pieceSoftEl, spawnPiece.type);
-    pieceCellsCrisp = initPieceCells(pieceCrispEl, spawnPiece.type);
-    pieceEl.classList.remove('phase-fall');
-    pieceEl.classList.add('phase-turn');
-    positionPieceCells(pieceCellsSoft, cellsFor(spawnPiece));
-    positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
-
     // Must resolve the lines-cleared weight exactly the way stepAmbientDemo
     // will when it commits this same placement below, or the two calls can
     // rank placements differently and the piece will animate toward one
@@ -291,8 +283,28 @@
       x: placement.x,
     });
 
+    // Spawn already in its final rotation, not rotation 0. SHAPES' 4
+    // rotation states are independently hand-authored (SRS-style), not one
+    // shape rotated per cell index — so index i's offset can jump by a
+    // completely unrelated (dx, dy) between two rotation states (e.g. the
+    // I piece's index 0 goes from (0,1) to (2,0) between rotations 0 and
+    // 1). Animating left/top from a rotation-0 shape to the target
+    // rotation made each of the 4 cell divs fly along its own unrelated
+    // diagonal, landing off-grid for the transition's mid-frames before
+    // snapping onto the grid at the end. Keeping the same rotation on both
+    // ends of the turn phase means every cell moves by one uniform
+    // (dx, 0) — a rigid slide into the target column instead of a
+    // scramble.
+    const spawnPiece: Piece = { ...ambientState.current, rotation: placement.rotation, y: 0 };
+    pieceCellsSoft = initPieceCells(pieceSoftEl, spawnPiece.type);
+    pieceCellsCrisp = initPieceCells(pieceCrispEl, spawnPiece.type);
+    pieceEl.classList.remove('phase-fall');
+    pieceEl.classList.add('phase-turn');
+    positionPieceCells(pieceCellsSoft, cellsFor(spawnPiece));
+    positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
+
     requestAnimationFrame(() => {
-      const turned = { ...spawnPiece, rotation: placement.rotation, x: placement.x };
+      const turned = { ...spawnPiece, x: placement.x };
       positionPieceCells(pieceCellsSoft, cellsFor(turned));
       positionPieceCells(pieceCellsCrisp, cellsFor(turned));
     });
@@ -300,7 +312,7 @@
     window.setTimeout(() => {
       pieceEl.classList.remove('phase-turn');
       pieceEl.classList.add('phase-fall');
-      const landed = { ...spawnPiece, rotation: placement.rotation, x: placement.x, y: landingY };
+      const landed = { ...spawnPiece, x: placement.x, y: landingY };
       positionPieceCells(pieceCellsSoft, cellsFor(landed));
       positionPieceCells(pieceCellsCrisp, cellsFor(landed));
     }, TURN_MS);
