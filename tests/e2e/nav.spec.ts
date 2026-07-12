@@ -1,22 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test('desktop: rail is collapsed by default, expands on toggle, and pins across reload', async ({ page }) => {
+test('desktop: rail renders fully expanded with both links reachable and labeled', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
 
-  const toggle = page.locator('#rail-toggle');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  const rail = page.locator('#nav-rail');
+  await expect(rail).toHaveCSS('width', '224px'); // 14rem at the 16px root font size
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-  await page.reload();
-  await expect(page.locator('#rail-toggle')).toHaveAttribute('aria-expanded', 'true');
-});
-
-test('desktop: rail links have accessible names even while collapsed', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
   await expect(page.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Contact', exact: true })).toBeVisible();
 });

@@ -60,14 +60,8 @@ a { color: inherit; }
   border: 0;
 }
 
-#main-content {
-  transition: margin-left 0.2s ease;
-}
 @media (min-width: 769px) {
   #main-content {
-    margin-left: var(--space-8);
-  }
-  :root[data-rail='expanded'] #main-content {
     margin-left: 14rem;
   }
 }

@@ -31,9 +31,6 @@ const { title, description = 'John Ng — software engineer portfolio' } = Astro
         var stored = localStorage.getItem('theme');
         var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.dataset.theme = theme;
-
-        var rail = localStorage.getItem('nav-rail') === 'expanded' ? 'expanded' : 'collapsed';
-        document.documentElement.dataset.rail = rail;
       })();
     </script>
   </head>

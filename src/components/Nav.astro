@@ -3,16 +3,8 @@ import ThemeToggle from './ThemeToggle.astro';
 ---
 <nav class="rail" id="nav-rail" aria-label="Primary">
   <a href="/" class="rail-home" aria-label="John Ng — Home">
-    <span class="rail-mark" aria-hidden="true">JN</span>
     <span class="rail-wordmark wordmark">JOHN NG</span>
   </a>
-
-  <button id="rail-toggle" class="rail-toggle" type="button" aria-expanded="false" aria-controls="nav-rail">
-    <span class="rail-toggle-glyph" aria-hidden="true">
-      <span></span><span></span><span></span><span></span>
-    </span>
-    <span class="sr-only">Expand navigation</span>
-  </button>
 
   <div class="rail-links">
     <a href="/projects" aria-label="Projects">
@@ -42,53 +34,19 @@ import ThemeToggle from './ThemeToggle.astro';
       top: 0;
       left: 0;
       bottom: 0;
-      width: var(--space-8);
-      padding: var(--space-4) 0;
-      overflow: hidden;
-      transition: width 0.2s ease;
-      border-right: 1px solid var(--line);
-    }
-    :global(:root[data-rail='expanded']) .rail {
       width: 14rem;
+      padding: var(--space-4) 0;
+      border-right: 1px solid var(--line);
     }
   }
 
   .rail-home {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
     padding: 0 var(--space-4);
     text-decoration: none;
     color: var(--color-text);
     letter-spacing: 0.05em;
-  }
-  .rail-wordmark { display: none; white-space: nowrap; }
-  :global(:root[data-rail='expanded']) .rail-wordmark { display: inline; }
-  :global(:root[data-rail='expanded']) .rail-mark { display: none; }
-
-  .rail-toggle {
-    align-self: flex-start;
-    margin-left: var(--space-4);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text);
-    padding: var(--space-2);
-  }
-  .rail-toggle-glyph {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2px;
-    width: 14px;
-    height: 14px;
-    transition: transform 0.2s ease;
-  }
-  .rail-toggle-glyph span {
-    background: currentColor;
-    border-radius: 1px;
-  }
-  .rail-toggle[aria-expanded='true'] .rail-toggle-glyph {
-    transform: rotate(90deg);
   }
 
   .rail-links {
@@ -105,32 +63,9 @@ import ThemeToggle from './ThemeToggle.astro';
     color: var(--color-text);
     white-space: nowrap;
   }
-  .rail-label { display: none; }
-  :global(:root[data-rail='expanded']) .rail-label { display: inline; }
 
   .rail-footer {
     margin-top: auto;
     padding: 0 var(--space-4);
   }
 </style>
-<script>
-  import { getInitialRailState, toggleRailState, persistRailState, type RailState } from '../lib/nav';
-
-  const toggle = document.getElementById('rail-toggle')!;
-  const label = toggle.querySelector('.sr-only')!;
-
-  function applyState(state: RailState) {
-    document.documentElement.dataset.rail = state;
-    toggle.setAttribute('aria-expanded', state === 'expanded' ? 'true' : 'false');
-    label.textContent = state === 'expanded' ? 'Collapse navigation' : 'Expand navigation';
-  }
-
-  let state = getInitialRailState(localStorage);
-  applyState(state);
-
-  toggle.addEventListener('click', () => {
-    state = toggleRailState(state);
-    persistRailState(localStorage, state);
-    applyState(state);
-  });
-</script>
