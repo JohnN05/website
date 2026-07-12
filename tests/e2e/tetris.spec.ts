@@ -42,11 +42,14 @@ test('desktop: ambient piece animates from spawn through fall before merging', a
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
 
-  const piece = page.locator('#tetris-piece');
-  await expect(piece.locator('.cell')).toHaveCount(4);
+  // #tetris-piece now wraps two layers (blurred + crisp) for the gradual
+  // depth-of-field fade — check the crisp layer specifically, which is the
+  // one that's fully opaque and visible across most of the widget.
+  const crispLayer = page.locator('#tetris-piece-crisp');
+  await expect(crispLayer.locator('.cell')).toHaveCount(4);
 
-  const spawnTop = await piece.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
-  await page.waitForTimeout(700); // safely inside the fall phase (350ms turn + up to 450ms fall = 800ms merge point); avoids the 800-1000ms window where #tetris-piece is briefly empty between merge and the next spawn
-  const laterTop = await piece.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
+  const spawnTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
+  await page.waitForTimeout(700); // safely inside the fall phase (350ms turn + up to 450ms fall = 800ms merge point); avoids the 800-1000ms window where the piece layers are briefly empty between merge and the next spawn
+  const laterTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
   expect(laterTop).not.toBe(spawnTop);
 });

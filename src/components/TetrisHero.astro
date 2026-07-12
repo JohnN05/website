@@ -1,6 +1,10 @@
 <div class="tetris-hero" id="tetris-hero">
-  <div class="tetris-ambient" id="tetris-ambient" aria-hidden="true" role="presentation"></div>
-  <div class="tetris-piece" id="tetris-piece" aria-hidden="true"></div>
+  <div class="tetris-ambient-soft" id="tetris-ambient-soft" aria-hidden="true" role="presentation"></div>
+  <div class="tetris-ambient-crisp" id="tetris-ambient-crisp" aria-hidden="true" role="presentation"></div>
+  <div class="tetris-piece" id="tetris-piece" aria-hidden="true">
+    <div class="piece-layer-soft" id="tetris-piece-soft"></div>
+    <div class="piece-layer-crisp" id="tetris-piece-crisp"></div>
+  </div>
   <button id="tetris-open" class="tetris-open-btn" aria-label="Play Tetris" type="button"></button>
 
   <div class="tetris-overlay" id="tetris-overlay" hidden>
@@ -39,47 +43,69 @@
     width: 200px;
     aspect-ratio: 10 / 20;
   }
-  .tetris-ambient {
+  .tetris-ambient-soft, .tetris-ambient-crisp {
+    position: absolute;
+    inset: 0;
     display: grid;
     gap: 1px;
-    width: 100%;
-    height: 100%;
     background: var(--color-text-secondary);
-    filter: blur(1.5px);
+  }
+  .tetris-ambient-soft {
+    filter: blur(4px);
     opacity: 0.85;
-    mask-image: linear-gradient(90deg, transparent 0%, transparent 15%, black 65%);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 15%, black 65%);
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
+  }
+  .tetris-ambient-crisp {
+    opacity: 0.9;
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
   }
   /* :global() is required here because the grid cells are created at
      runtime via document.createElement (see the script above), so they
      never receive Astro's scoped data-astro-cid attribute and would
      otherwise not match these rules at all. */
-  .tetris-ambient :global(div), .tetris-board :global(div), .tetris-piece :global(.cell) { background: var(--color-bg); }
-  .tetris-ambient :global(div[data-piece='I']), .tetris-board :global(div[data-piece='I']), .tetris-piece :global(.cell[data-piece='I']) { background: var(--tetris-i); }
-  .tetris-ambient :global(div[data-piece='O']), .tetris-board :global(div[data-piece='O']), .tetris-piece :global(.cell[data-piece='O']) { background: var(--tetris-o); }
-  .tetris-ambient :global(div[data-piece='T']), .tetris-board :global(div[data-piece='T']), .tetris-piece :global(.cell[data-piece='T']) { background: var(--tetris-t); }
-  .tetris-ambient :global(div[data-piece='J']), .tetris-board :global(div[data-piece='J']), .tetris-piece :global(.cell[data-piece='J']) { background: var(--tetris-j); }
-  .tetris-ambient :global(div[data-piece='S']), .tetris-board :global(div[data-piece='S']), .tetris-piece :global(.cell[data-piece='S']) { background: var(--color-accent-moss); }
-  .tetris-ambient :global(div[data-piece='Z']), .tetris-board :global(div[data-piece='Z']), .tetris-piece :global(.cell[data-piece='Z']) { background: var(--color-accent-maroon); }
-  .tetris-ambient :global(div[data-piece='L']), .tetris-board :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
+  .tetris-ambient-soft :global(div), .tetris-ambient-crisp :global(div),
+  .tetris-board :global(div), .tetris-piece :global(.cell) { background: var(--color-bg); }
+  .tetris-ambient-soft :global(div[data-piece='I']), .tetris-ambient-crisp :global(div[data-piece='I']), .tetris-board :global(div[data-piece='I']), .tetris-piece :global(.cell[data-piece='I']) { background: var(--tetris-i); }
+  .tetris-ambient-soft :global(div[data-piece='O']), .tetris-ambient-crisp :global(div[data-piece='O']), .tetris-board :global(div[data-piece='O']), .tetris-piece :global(.cell[data-piece='O']) { background: var(--tetris-o); }
+  .tetris-ambient-soft :global(div[data-piece='T']), .tetris-ambient-crisp :global(div[data-piece='T']), .tetris-board :global(div[data-piece='T']), .tetris-piece :global(.cell[data-piece='T']) { background: var(--tetris-t); }
+  .tetris-ambient-soft :global(div[data-piece='J']), .tetris-ambient-crisp :global(div[data-piece='J']), .tetris-board :global(div[data-piece='J']), .tetris-piece :global(.cell[data-piece='J']) { background: var(--tetris-j); }
+  .tetris-ambient-soft :global(div[data-piece='S']), .tetris-ambient-crisp :global(div[data-piece='S']), .tetris-board :global(div[data-piece='S']), .tetris-piece :global(.cell[data-piece='S']) { background: var(--color-accent-moss); }
+  .tetris-ambient-soft :global(div[data-piece='Z']), .tetris-ambient-crisp :global(div[data-piece='Z']), .tetris-board :global(div[data-piece='Z']), .tetris-piece :global(.cell[data-piece='Z']) { background: var(--color-accent-maroon); }
+  .tetris-ambient-soft :global(div[data-piece='L']), .tetris-ambient-crisp :global(div[data-piece='L']), .tetris-board :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
+  .tetris-ambient-soft :global(div.flashing), .tetris-ambient-crisp :global(div.flashing) { background: var(--color-bg) !important; }
 
   .tetris-piece {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    filter: blur(1.5px);
-    opacity: 0.85;
-    mask-image: linear-gradient(90deg, transparent 0%, transparent 15%, black 65%);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 15%, black 65%);
   }
-  .tetris-piece :global(.cell) {
+  .piece-layer-soft, .piece-layer-crisp {
+    position: absolute;
+    inset: 0;
+  }
+  .piece-layer-soft {
+    filter: blur(4px);
+    opacity: 0.85;
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 8%, black 45%);
+  }
+  .piece-layer-crisp {
+    opacity: 0.9;
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, black 80%);
+  }
+  .piece-layer-soft :global(.cell), .piece-layer-crisp :global(.cell) {
     position: absolute;
     border-radius: 1px;
   }
-  .tetris-piece.phase-turn :global(.cell) {
+  .tetris-piece.phase-turn .piece-layer-soft :global(.cell),
+  .tetris-piece.phase-turn .piece-layer-crisp :global(.cell) {
     transition: left 0.35s ease, top 0.35s ease;
   }
-  .tetris-piece.phase-fall :global(.cell) {
+  .tetris-piece.phase-fall .piece-layer-soft :global(.cell),
+  .tetris-piece.phase-fall .piece-layer-crisp :global(.cell) {
     transition: top 0.45s ease-in;
   }
   .tetris-open-btn { position: absolute; inset: 0; background: transparent; border: none; cursor: pointer; }
@@ -108,7 +134,8 @@
   import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
   import { chooseBestPlacement } from '../lib/tetris/autoplay';
 
-  const ambientEl = document.getElementById('tetris-ambient')!;
+  const ambientSoftEl = document.getElementById('tetris-ambient-soft')!;
+  const ambientCrispEl = document.getElementById('tetris-ambient-crisp')!;
   const boardEl = document.getElementById('tetris-board')!;
   const scoreEl = document.getElementById('tetris-score')!;
   const overlay = document.getElementById('tetris-overlay')!;
@@ -137,36 +164,41 @@
   // (see this task's plan notes for why that drift/cutoff bug existed).
   const CELL_SIZE = 44;
   const GAP = 1;
-  const ambientCols = Math.max(4, Math.floor((ambientEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
-  const ambientRows = Math.max(4, Math.floor((ambientEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
-  ambientEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
-  const cellW = (ambientEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
-  const cellH = (ambientEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
+  const ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
+  const ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
+  ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+  ambientCrispEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+  const cellW = (ambientSoftEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
+  const cellH = (ambientSoftEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
 
   let ambientState = createAmbientDemo(ambientCols, ambientRows);
   let ambientStep = 0;
-  renderBoard(ambientEl, ambientState);
+  renderBoard(ambientSoftEl, ambientState);
+  renderBoard(ambientCrispEl, ambientState);
 
   const pieceEl = document.getElementById('tetris-piece')!;
+  const pieceSoftEl = document.getElementById('tetris-piece-soft')!;
+  const pieceCrispEl = document.getElementById('tetris-piece-crisp')!;
   const TURN_MS = 350;
   const FALL_MS = 450;
   const PAUSE_MS = 200;
-  let pieceCells: HTMLElement[] = [];
+  let pieceCellsSoft: HTMLElement[] = [];
+  let pieceCellsCrisp: HTMLElement[] = [];
 
-  function initPieceCells(type: string) {
-    pieceEl.innerHTML = '';
-    pieceCells = Array.from({ length: 4 }, () => {
+  function initPieceCells(el: HTMLElement, type: string): HTMLElement[] {
+    el.innerHTML = '';
+    return Array.from({ length: 4 }, () => {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.dataset.piece = type;
-      pieceEl.appendChild(cell);
+      el.appendChild(cell);
       return cell;
     });
   }
 
-  function positionPieceCells(coords: number[][]) {
+  function positionPieceCells(cells: HTMLElement[], coords: number[][]) {
     coords.forEach(([x, y], i) => {
-      const cell = pieceCells[i];
+      const cell = cells[i];
       cell.style.width = `${cellW}px`;
       cell.style.height = `${cellH}px`;
       cell.style.left = `${x * cellW}px`;
@@ -176,10 +208,12 @@
 
   function runAmbientCycle() {
     const spawnPiece: Piece = { ...ambientState.current, rotation: 0, y: 0 };
-    initPieceCells(spawnPiece.type);
+    pieceCellsSoft = initPieceCells(pieceSoftEl, spawnPiece.type);
+    pieceCellsCrisp = initPieceCells(pieceCrispEl, spawnPiece.type);
     pieceEl.classList.remove('phase-fall');
     pieceEl.classList.add('phase-turn');
-    positionPieceCells(cellsFor(spawnPiece));
+    positionPieceCells(pieceCellsSoft, cellsFor(spawnPiece));
+    positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
 
     const placement = chooseBestPlacement(ambientState);
     const landingY = landingRow(ambientState.board, {
@@ -189,18 +223,17 @@
     });
 
     requestAnimationFrame(() => {
-      positionPieceCells(cellsFor({ ...spawnPiece, rotation: placement.rotation, x: placement.x }));
+      const turned = { ...spawnPiece, rotation: placement.rotation, x: placement.x };
+      positionPieceCells(pieceCellsSoft, cellsFor(turned));
+      positionPieceCells(pieceCellsCrisp, cellsFor(turned));
     });
 
     window.setTimeout(() => {
       pieceEl.classList.remove('phase-turn');
       pieceEl.classList.add('phase-fall');
-      positionPieceCells(cellsFor({
-        ...spawnPiece,
-        rotation: placement.rotation,
-        x: placement.x,
-        y: landingY,
-      }));
+      const landed = { ...spawnPiece, rotation: placement.rotation, x: placement.x, y: landingY };
+      positionPieceCells(pieceCellsSoft, cellsFor(landed));
+      positionPieceCells(pieceCellsCrisp, cellsFor(landed));
     }, TURN_MS);
 
     window.setTimeout(() => {
@@ -214,8 +247,10 @@
       // lands, accepted as-is since this is a decorative background loop,
       // not gameplay.
       ambientState = stepAmbientDemo(ambientState, ambientStep++).state;
-      renderBoard(ambientEl, ambientState);
-      pieceEl.innerHTML = '';
+      renderBoard(ambientSoftEl, ambientState);
+      renderBoard(ambientCrispEl, ambientState);
+      pieceSoftEl.innerHTML = '';
+      pieceCrispEl.innerHTML = '';
       window.setTimeout(runAmbientCycle, PAUSE_MS);
     }, TURN_MS + FALL_MS);
   }
