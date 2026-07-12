@@ -191,11 +191,29 @@ own muted color — I/O/T/J via dedicated hex values, S/Z/L reusing the
 site's moss/maroon/clay accent tokens directly.
 
 `TetrisHero.astro` renders the board as a ~70%-width absolutely-positioned
-background layer behind the hero copy (not a small corner widget). It's
-actually two duplicate board layers stacked on top of each other for a
-gradual depth-of-field falloff: a blurred "soft" layer masked to the
-near/fade-in zone and a sharp "crisp" layer masked to the far/fully-visible
-zone, replacing an earlier single flat-blur layer. Cell size targets a
+background layer (`right: 0; width: 70%` of the hero, so its own left edge
+sits at ~30% of the hero width — just past where the hero copy ends) behind
+the hero copy (not a small corner widget). It's actually two duplicate board
+layers stacked on top of each other for a gradual depth-of-field falloff,
+driven by two `--tetris-mask-*` custom properties (shared by both the ambient
+board layers and the falling-piece layers so they stay in lockstep). Both are
+horizontal `mask-image` gradients whose stops are measured relative to the
+container's own width, and the two are deliberately *separated* across that
+width so the effect reads — an earlier revision collapsed both to the same
+dead zone and the sharp layer covered the blurred one everywhere, killing the
+blur entirely. `--tetris-mask-soft` (the blurred layer) starts at literal
+`transparent` at the container's left edge with **no dead-zone step and no
+opacity floor** — a nonzero first stop showed as a hard vertical seam — and
+eases up (≈`t^1.4`) to full opacity by 90%, so it governs both where the
+board appears and the whole left→right fade. `--tetris-mask-crisp` (the sharp
+layer) holds a 42% dead zone, rises from zero on a quadratic ease, and only
+overtakes the blur near the right edge (full by 92%). Net left→right: nothing
+→ faint+blurred → brighter+blurred → full+sharp. Because a true CSS curve
+can't be handed to `mask-image` directly (it only interpolates linearly
+between stops), each curve is baked in as ~8–10 sampled `rgba(0,0,0,a)` stops.
+This falloff was tuned iteratively against a live dev server and screenshots,
+not derived analytically — the exact stop values are a hand-picked result,
+not a formula to "correct." Cell size targets a
 larger 44px per cell but is always computed exactly from the container's
 real box plus the grid's 1px gaps (`cellW`/`cellH` in the component script)
 rather than assumed from the target size directly — a prior version derived
@@ -322,3 +340,20 @@ Old CRA site's commit history is preserved — useful for content reference
   testing), a standard model once a task has real integration/behavioral
   judgment or a history of subtle bugs even with literal code given, and
   the most capable available model for the final whole-branch review.
+- For visual/CSS work (the Tetris mask falloff, spacing, colors), confirm
+  the intended look *before* touching component code: build a self-contained
+  mock and publish it as an Artifact for the user to react to, iterate on the
+  mock until they approve the exact curve/values, then port the approved
+  result into the real component. Then stand up a dev server (`npm run dev`)
+  so they can see it live in-context, and expect several rounds of eyeballed
+  tuning — these values are hand-picked against screenshots, not computed.
+- HMR is unreliable in this WSL2 sandbox because the repo lives on the
+  Windows drive (`/mnt/c/...`), where inotify file-change events frequently
+  don't fire — Vite/Astro then silently serves stale CSS and an edit "does
+  nothing." Do NOT diagnose an unchanged-looking result as a bad value until
+  you've ruled this out: after any edit, fully restart the dev server (kill +
+  relaunch, optionally `rm -rf node_modules/.vite`), `curl` the served page
+  and grep for a distinctive string from the new CSS to confirm it's actually
+  being served, and have the user hard-refresh (Ctrl+Shift+R). Chasing this
+  as a styling problem instead of a caching one already cost several wasted
+  iterations once.
