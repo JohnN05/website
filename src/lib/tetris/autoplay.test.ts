@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createGame, moveLeft, moveRight, rotate, hardDrop, COLS, ROWS, type GameState, type Cell } from './engine';
-import { chooseBestPlacement } from './autoplay';
+import { chooseBestPlacement, columnHeights, countHoles as countHolesExported } from './autoplay';
 
 function boardWithBottomRowGapAt(col: number, cols: number = COLS, rows: number = ROWS): Cell[][] {
   const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
@@ -64,5 +64,44 @@ describe('chooseBestPlacement on a board wider than the fixed 10-column default'
     const placement = chooseBestPlacement(state);
     const result = applyPlacement(state, placement);
     expect(result.linesCleared).toBeGreaterThan(state.linesCleared);
+  });
+});
+
+describe('chooseBestPlacement lines-cleared weight', () => {
+  it('still finds a line-clearing placement when the weight is high', () => {
+    const base = createGame('I');
+    const state: GameState = { ...base, board: boardWithBottomRowGapAt(4) };
+    const placement = chooseBestPlacement(state, { linesClearedWeight: 20 });
+    const result = applyPlacement(state, placement);
+    expect(result.linesCleared).toBeGreaterThan(state.linesCleared);
+  });
+
+  it('does not throw and still returns an in-bounds placement when the weight is zero', () => {
+    const base = createGame('I');
+    const state: GameState = { ...base, board: boardWithBottomRowGapAt(4) };
+    const placement = chooseBestPlacement(state, { linesClearedWeight: 0 });
+    expect(placement.x).toBeGreaterThanOrEqual(0);
+    expect(placement.x).toBeLessThan(COLS);
+  });
+});
+
+describe('columnHeights (exported)', () => {
+  it('reports rows-minus-topmost-filled-row per column', () => {
+    const rows = 5, cols = 3;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    board[3][1] = 'O'; // topmost filled row for column 1 is row 3 of 5 -> height 2
+    expect(columnHeights(board)).toEqual([0, 2, 0]);
+  });
+});
+
+describe('countHoles (exported)', () => {
+  it('counts empty cells with a filled cell above them in the same column', () => {
+    const rows = 4, cols = 2;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    board[0][0] = 'O';
+    board[2][0] = 'O';
+    board[3][0] = 'O';
+    // row 1, column 0 is empty with row 0's block above it -> 1 hole
+    expect(countHolesExported(board)).toBe(1);
   });
 });

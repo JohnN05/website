@@ -5,12 +5,16 @@ export interface Placement {
   x: number;
 }
 
+export interface AutoplayConfig {
+  linesClearedWeight?: number;
+}
+
 const WEIGHT_HOLES = 4;
 const WEIGHT_BUMPINESS = 1;
 const WEIGHT_HEIGHT = 1;
-const WEIGHT_LINES_CLEARED = 6;
+export const WEIGHT_LINES_CLEARED = 6;
 
-function columnHeights(board: Cell[][]): number[] {
+export function columnHeights(board: Cell[][]): number[] {
   const cols = board[0].length;
   const rows = board.length;
   const heights = new Array(cols).fill(0);
@@ -25,7 +29,7 @@ function columnHeights(board: Cell[][]): number[] {
   return heights;
 }
 
-function countHoles(board: Cell[][]): number {
+export function countHoles(board: Cell[][]): number {
   let holes = 0;
   for (let x = 0; x < board[0].length; x++) {
     let seenFilled = false;
@@ -43,7 +47,7 @@ function bumpiness(heights: number[]): number {
   return total;
 }
 
-function scoreResult(before: GameState, after: GameState): number {
+function scoreResult(before: GameState, after: GameState, linesClearedWeight: number): number {
   const heights = columnHeights(after.board);
   const aggregateHeight = heights.reduce((sum, h) => sum + h, 0);
   const linesCleared = after.linesCleared - before.linesCleared;
@@ -51,7 +55,7 @@ function scoreResult(before: GameState, after: GameState): number {
     countHoles(after.board) * WEIGHT_HOLES +
     bumpiness(heights) * WEIGHT_BUMPINESS +
     aggregateHeight * WEIGHT_HEIGHT -
-    linesCleared * WEIGHT_LINES_CLEARED
+    linesCleared * linesClearedWeight
   );
 }
 
@@ -60,7 +64,8 @@ function scoreResult(before: GameState, after: GameState): number {
 // piece can actually occupy, for each of the 4 rotations — and returns the
 // lowest-cost one. No lookahead/search tree: this is a standard greedy
 // simple-AI heuristic, not a competitive solver.
-export function chooseBestPlacement(state: GameState): Placement {
+export function chooseBestPlacement(state: GameState, config: AutoplayConfig = {}): Placement {
+  const linesClearedWeight = config.linesClearedWeight ?? WEIGHT_LINES_CLEARED;
   let best: Placement = { rotation: 0, x: state.current.x };
   let bestScore = Infinity;
 
@@ -74,7 +79,7 @@ export function chooseBestPlacement(state: GameState): Placement {
     let probe = leftmost;
     while (true) {
       const dropped = hardDrop(probe, 'O');
-      const score = scoreResult(state, dropped);
+      const score = scoreResult(state, dropped, linesClearedWeight);
       if (score < bestScore) {
         bestScore = score;
         best = { rotation: r, x: probe.current.x };
