@@ -37,3 +37,16 @@ test('desktop: tetris ambient background occupies ~70% of the hero, flush to its
   const rightEdgeGap = hero!.x + hero!.width - (tetrisHero!.x + tetrisHero!.width);
   expect(rightEdgeGap).toBeLessThan(2);
 });
+
+test('desktop: ambient piece animates from spawn through fall before merging', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  const piece = page.locator('#tetris-piece');
+  await expect(piece.locator('.cell')).toHaveCount(4);
+
+  const spawnTop = await piece.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
+  await page.waitForTimeout(900); // past the 350ms turn + 450ms fall
+  const laterTop = await piece.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
+  expect(laterTop).not.toBe(spawnTop);
+});

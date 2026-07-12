@@ -68,7 +68,7 @@ function emptyBoard(cols: number, rows: number): Cell[][] {
   return Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
 }
 
-function cellsFor(piece: Piece): number[][] {
+export function cellsFor(piece: Piece): number[][] {
   return SHAPES[piece.type][piece.rotation].map(([dx, dy]) => [piece.x + dx, piece.y + dy]);
 }
 
