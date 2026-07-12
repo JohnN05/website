@@ -7,31 +7,56 @@ CRA SPA into a professional/minimal, multi-page site with dedicated space for
 project write-ups and a couple of subtle hobby-inspired interactive details
 (tetris, minesweeper, butterfly-knife-flip toggle, capybara mascot).
 
-**Status:** initial rewrite implemented (16 tasks, PR #1), then a visual
-refinement pass implemented on top (15 more tasks: spacing scale, tag-accent
-colors, chrome-reduced cards, Tetris autoplay heuristic, collapsible sidebar
-nav). This file describes the site as actually built, not just as planned.
-The visual refinement pass was built in a sandbox with no root access and
-missing Playwright's native dependencies, so its e2e suite couldn't run
-there — it has since been run in a real environment (all 28 Playwright
-tests passing, including the accessibility sweep and the new nav coverage).
+**Status:** initial rewrite implemented (16 tasks, PR #1), followed by
+three refinement passes built on top: a visual refinement pass (15 tasks:
+spacing scale, tag-accent colors, chrome-reduced cards, Tetris autoplay
+heuristic, collapsible sidebar nav), a hero & nav refinement pass (8 tasks:
+removed the redundant Home nav item and the rail's collapse/expand toggle
+in favor of a permanently-expanded desktop rail, widened the Tetris ambient
+layer into a full-hero-width background, parameterized board dimensions
+sitewide), and a Tetris hero polish pass (8 tasks + one post-review
+integration fix: SRS wall kicks + T-spin scoring, exact ambient cell
+sizing, layered soft/crisp gradual blur, blocky-but-fast piece motion, a
+build-up-before-clearing heuristic with a 50%-height reset floor, and
+flash-before-clear). This file describes the site as actually built, not
+just as planned. Every pass has hit the same environment limitation in this
+particular sandbox — no root access, missing Playwright's native
+`libnspr4` dependency — so each pass's e2e suite needed a real-environment
+run afterward; done for the rewrite and the first two refinement passes
+(all Playwright/axe suites green there). The Tetris hero polish pass is the
+one exception as of this doc update — verified here via unit tests (72/72)
+and a clean production build only; its Playwright suite still needs that
+same real-environment confirmation before merging to `main`.
 
-Full design rationale (original rewrite):
-`docs/superpowers/specs/2026-07-11-website-revamp-design.md`. Full design
-rationale (visual refinement):
-`docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`.
-Implementation plans (task-by-task, with exact deviations disclosed):
-`docs/superpowers/plans/2026-07-11-website-revamp.md` and
-`docs/superpowers/plans/2026-07-11-website-visual-refinement.md`. Read each
-spec for the "why" behind anything below; read each plan for the "how" and
-for bugs found and fixed during implementation. Original rewrite: a
-dependency version pin, an unwinnable Tetris ambient-demo script, Astro
-CSS-scoping gaps, flaky/infinite-looping test fixtures, a CSS-cascade bug,
-two ARIA violations caught by axe-core. Visual refinement: the capybara
-mascot's `color` token was inert because its SVG is painted via
-`background-image` (an isolated rendering context where `currentColor`
-can't resolve to the host element) — fixed by switching to `mask-image` +
-`background-color`, which does respect it.
+Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
+(original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
+(visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`
+(hero & nav refinement — the Tetris hero polish pass has no separate design
+spec, only its own plan). Implementation plans (task-by-task, with exact
+deviations disclosed): `docs/superpowers/plans/2026-07-11-website-revamp.md`,
+`docs/superpowers/plans/2026-07-11-website-visual-refinement.md`,
+`docs/superpowers/plans/2026-07-11-hero-and-nav-refinement.md`, and
+`docs/superpowers/plans/2026-07-12-tetris-hero-polish.md`. Read each spec
+for the "why" behind anything below; read each plan for the "how" and for
+bugs found and fixed during implementation. Original rewrite: a dependency
+version pin, an unwinnable Tetris ambient-demo script, Astro CSS-scoping
+gaps, flaky/infinite-looping test fixtures, a CSS-cascade bug, two ARIA
+violations caught by axe-core. Visual refinement: the capybara mascot's
+`color` token was inert because its SVG is painted via `background-image`
+(an isolated rendering context where `currentColor` can't resolve to the
+host element) — fixed by switching to `mask-image` + `background-color`,
+which does respect it. Hero & nav refinement: a project-grid double-padding
+bug, an ambient-demo game-over reset that silently dropped custom board
+dimensions back to the engine's 10x20 default, and an e2e test whose read
+landed in an animation's brief empty-overlay gap by coincidence rather than
+by margin. Tetris hero polish: two real bugs found in the plan's own
+literal test/implementation code (a miscounted-holes test fixture and a
+50%-reset-floor gate that checked the wrong side of a drop), plus one
+integration bug the per-task reviews couldn't see until the whole branch
+was reviewed together — the ambient piece's animated landing spot and its
+committed landing spot could silently diverge below the build-up floor,
+fixed by giving both call sites one shared source of truth for the
+line-clear weighting decision.
 
 ## Stack
 
@@ -268,3 +293,32 @@ rest of the Playwright suite, in a real browser environment.
 
 Old CRA site's commit history is preserved — useful for content reference
 (bio copy, past repo list) even after the rewrite.
+
+## Workflow preferences
+
+- Execute multi-task implementation plans in this repo with
+  `superpowers:subagent-driven-development`: a fresh implementer subagent
+  per task, a task-scoped reviewer after each (spec compliance + code
+  quality), and one broad whole-branch review on the most capable
+  available model once every task is done.
+- Verify, don't just trust. When a subagent's fix touches production logic
+  or deviates from a plan's literal code, or its safety classifier was
+  unavailable for a given run, re-derive or re-run the claim independently
+  before accepting it — this repo's plans have had genuine bugs in their
+  own literal test/implementation code more than once (see the Status
+  section above), not just implementer mistakes.
+- Escalate, don't resolve. When a finding conflicts with what the plan's
+  own text mandates — or when two of the plan's own requirements conflict
+  with each other, as happened with Task 1's wall-kicks/T-spin change
+  reaching the real click-to-play game despite a constraint saying it
+  shouldn't — ask directly rather than picking a side unilaterally.
+- `npm run test:all` (unit + build + e2e) is the real CI gate. This
+  particular sandbox cannot launch a Playwright browser (missing
+  `libnspr4`, no root) — treat that specific failure signature as a known
+  environment limitation, not a regression, but always get a
+  real-environment Playwright run before merging any branch built here.
+- Cost-tier subagent models to the task, not the session default: a cheap
+  model for tasks where the plan supplies literal code (transcription plus
+  testing), a standard model once a task has real integration/behavioral
+  judgment or a history of subtle bugs even with literal code given, and
+  the most capable available model for the final whole-branch review.
