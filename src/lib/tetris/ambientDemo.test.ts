@@ -29,4 +29,14 @@ describe('ambient demo', () => {
     }
     expect(a).toEqual(b);
   });
+
+  it('stays within bounds on a board wider than the fixed 10-column default', () => {
+    let state = createAmbientDemo(24, 20);
+    for (let i = 0; i < 30; i++) {
+      state = stepAmbientDemo(state, i);
+      for (const row of state.board) {
+        expect(row).toHaveLength(24);
+      }
+    }
+  });
 });

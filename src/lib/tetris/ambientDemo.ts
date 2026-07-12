@@ -1,4 +1,4 @@
-import { createGame, moveLeft, moveRight, rotate, hardDrop, type GameState, type PieceType } from './engine';
+import { createGame, moveLeft, moveRight, rotate, hardDrop, COLS, ROWS, type GameState, type PieceType } from './engine';
 import { createBag } from './bag';
 import { chooseBestPlacement } from './autoplay';
 
@@ -31,8 +31,8 @@ function pieceForStep(step: number): PieceType {
   return piece;
 }
 
-export function createAmbientDemo(): GameState {
-  return createGame(pieceForStep(0));
+export function createAmbientDemo(cols: number = COLS, rows: number = ROWS): GameState {
+  return createGame(pieceForStep(0), cols, rows);
 }
 
 export function stepAmbientDemo(state: GameState, stepIndex: number): GameState {
@@ -41,7 +41,7 @@ export function stepAmbientDemo(state: GameState, stepIndex: number): GameState 
 
   let next = state;
   for (let i = 0; i < placement.rotation; i++) next = rotate(next);
-  for (let i = 0; i < 20; i++) next = moveLeft(next);
+  for (let i = 0; i < state.board[0].length; i++) next = moveLeft(next);
   while (next.current.x < placement.x) next = moveRight(next);
 
   const result = hardDrop(next, nextPiece);

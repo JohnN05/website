@@ -1,4 +1,4 @@
-import { moveLeft, moveRight, rotate, hardDrop, COLS, ROWS, type GameState, type Cell } from './engine';
+import { moveLeft, moveRight, rotate, hardDrop, type GameState, type Cell } from './engine';
 
 export interface Placement {
   rotation: number;
@@ -11,11 +11,13 @@ const WEIGHT_HEIGHT = 1;
 const WEIGHT_LINES_CLEARED = 6;
 
 function columnHeights(board: Cell[][]): number[] {
-  const heights = new Array(COLS).fill(0);
-  for (let x = 0; x < COLS; x++) {
-    for (let y = 0; y < ROWS; y++) {
+  const cols = board[0].length;
+  const rows = board.length;
+  const heights = new Array(cols).fill(0);
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
       if (board[y][x] !== null) {
-        heights[x] = ROWS - y;
+        heights[x] = rows - y;
         break;
       }
     }
@@ -25,9 +27,9 @@ function columnHeights(board: Cell[][]): number[] {
 
 function countHoles(board: Cell[][]): number {
   let holes = 0;
-  for (let x = 0; x < COLS; x++) {
+  for (let x = 0; x < board[0].length; x++) {
     let seenFilled = false;
-    for (let y = 0; y < ROWS; y++) {
+    for (let y = 0; y < board.length; y++) {
       if (board[y][x] !== null) seenFilled = true;
       else if (seenFilled) holes++;
     }
@@ -67,7 +69,7 @@ export function chooseBestPlacement(state: GameState): Placement {
     for (let i = 0; i < r; i++) rotated = rotate(rotated);
 
     let leftmost = rotated;
-    for (let i = 0; i < COLS; i++) leftmost = moveLeft(leftmost);
+    for (let i = 0; i < state.board[0].length; i++) leftmost = moveLeft(leftmost);
 
     let probe = leftmost;
     while (true) {
