@@ -131,8 +131,8 @@
     type GameState, type Piece,
   } from '../lib/tetris/engine';
   import { createBag } from '../lib/tetris/bag';
-  import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
-  import { chooseBestPlacement } from '../lib/tetris/autoplay';
+  import { createAmbientDemo, stepAmbientDemo, isBuildingUp } from '../lib/tetris/ambientDemo';
+  import { chooseBestPlacement, WEIGHT_LINES_CLEARED } from '../lib/tetris/autoplay';
 
   const ambientSoftEl = document.getElementById('tetris-ambient-soft')!;
   const ambientCrispEl = document.getElementById('tetris-ambient-crisp')!;
@@ -240,7 +240,13 @@
     positionPieceCells(pieceCellsSoft, cellsFor(spawnPiece));
     positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
 
-    const placement = chooseBestPlacement(ambientState);
+    // Must resolve the lines-cleared weight exactly the way stepAmbientDemo
+    // will when it commits this same placement below, or the two calls can
+    // rank placements differently and the piece will animate toward one
+    // column but lock into another.
+    const placement = chooseBestPlacement(ambientState, {
+      linesClearedWeight: isBuildingUp(ambientState.board) ? WEIGHT_LINES_CLEARED : 0,
+    });
     const landingY = landingRow(ambientState.board, {
       ...ambientState.current,
       rotation: placement.rotation,
@@ -263,14 +269,17 @@
 
     window.setTimeout(async () => {
       // stepAmbientDemo recomputes chooseBestPlacement itself and commits
-      // via hardDrop — a pure function of the same state, so it locks the
-      // piece in exactly the spot just animated to. If that commit would
-      // have caused game over, stepAmbientDemo silently resets to a fresh
-      // empty board instead (see ambientDemo.ts) rather than surfacing
-      // it — a rare, purely cosmetic edge case where this animation's
-      // predicted landing spot is replaced by an empty board right as it
-      // lands, accepted as-is since this is a decorative background loop,
-      // not gameplay.
+      // via hardDrop. It locks the piece in exactly the spot just animated
+      // to because both calls resolve chooseBestPlacement's lines-cleared
+      // weight through the same isBuildingUp(board) helper above, not just
+      // because they see the same state — the state alone was previously
+      // assumed to be enough and wasn't (see ambientDemo.ts's isBuildingUp
+      // doc comment). If the commit would have caused game over,
+      // stepAmbientDemo silently resets to a fresh empty board instead (see
+      // ambientDemo.ts) rather than surfacing it — a rare, purely cosmetic
+      // edge case where this animation's predicted landing spot is replaced
+      // by an empty board right as it lands, accepted as-is since this is a
+      // decorative background loop, not gameplay.
       const stepResult = stepAmbientDemo(ambientState, ambientStep++);
       if (stepResult.clearedRows.length > 0) {
         renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });

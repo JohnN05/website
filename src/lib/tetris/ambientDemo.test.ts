@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createAmbientDemo, stepAmbientDemo } from './ambientDemo';
+import { createAmbientDemo, stepAmbientDemo, isBuildingUp } from './ambientDemo';
 import { createGame, type GameState, type Cell } from './engine';
 
 describe('ambient demo', () => {
@@ -58,6 +58,31 @@ describe('ambient demo', () => {
       sawNonDefaultDimensions = true;
     }
     expect(sawNonDefaultDimensions).toBe(true);
+  });
+});
+
+describe('isBuildingUp', () => {
+  // A single filled column of the given height, `rows` tall — the simplest
+  // fixture that lets columnHeights() report an exact max height.
+  function boardWithColumnHeight(cols: number, rows: number, height: number): Cell[][] {
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    for (let y = rows - height; y < rows; y++) board[y][0] = 'O';
+    return board;
+  }
+
+  it('is false below the 50% height floor', () => {
+    const board = boardWithColumnHeight(10, 20, 9); // 45%
+    expect(isBuildingUp(board)).toBe(false);
+  });
+
+  it('is true once the stack reaches the 50% height floor', () => {
+    const board = boardWithColumnHeight(10, 20, 10); // exactly 50%
+    expect(isBuildingUp(board)).toBe(true);
+  });
+
+  it('is true above the 50% height floor', () => {
+    const board = boardWithColumnHeight(10, 20, 15); // 75%
+    expect(isBuildingUp(board)).toBe(true);
   });
 });
 

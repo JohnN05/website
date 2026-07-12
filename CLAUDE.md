@@ -166,9 +166,16 @@ own muted color — I/O/T/J via dedicated hex values, S/Z/L reusing the
 site's moss/maroon/clay accent tokens directly.
 
 `TetrisHero.astro` renders the board as a ~70%-width absolutely-positioned
-background layer behind the hero copy (not a small corner widget), masked
-with a horizontal gradient so it fades out under the H1/copy column rather
-than competing with it. Board cols/rows are computed from the container's
+background layer behind the hero copy (not a small corner widget). It's
+actually two duplicate board layers stacked on top of each other for a
+gradual depth-of-field falloff: a blurred "soft" layer masked to the
+near/fade-in zone and a sharp "crisp" layer masked to the far/fully-visible
+zone, replacing an earlier single flat-blur layer. Cell size targets a
+larger 44px per cell but is always computed exactly from the container's
+real box plus the grid's 1px gaps (`cellW`/`cellH` in the component script)
+rather than assumed from the target size directly — a prior version derived
+cell size before measuring gaps and drifted out of alignment, cutting off
+the rightmost column/row. Board cols/rows are computed from the container's
 `clientWidth`/`clientHeight` at init (`ambientCols`/`ambientRows` in the
 component script) rather than hardcoded to the engine's 10x20 default, so
 `createAmbientDemo`/`stepAmbientDemo`/`createGame` all take explicit
@@ -201,6 +208,13 @@ never resets below that same 50% floor even in a hole-heavy ("unfavorable")
 position — resets only trigger at or above it. Cleared rows flash a few
 times before disappearing (`stepAmbientDemo`'s `clearedRows`/`preClearBoard`,
 consumed in `TetrisHero.astro`'s `runAmbientCycle`).
+
+Wall kicks and T-spin scoring are shared engine behavior, not ambient-loop-
+only: `engine.ts`'s `rotate()`/`lockPiece()` back both the ambient loop and
+the real click-to-play overlay, so players can now wall-kick rotations that
+previously failed and score a T-spin bonus on the real board too. This is
+an intentional gameplay improvement, decided on deliberately rather than
+gated behind a flag.
 
 ## Hard constraints (don't reintroduce these)
 

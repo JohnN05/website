@@ -42,6 +42,18 @@ function maxHeight(board: Cell[][]): number {
 // the board's height — makes the ambient loop build a visible stack instead
 // of cashing in the first available single-line clear, per design ask.
 const BUILD_UP_HEIGHT_RATIO = 0.5;
+
+// Single source of truth for "is the stack currently in build-up phase" —
+// stepAmbientDemo uses this to decide the lines-cleared weight it hands to
+// chooseBestPlacement. TetrisHero.astro's runAmbientCycle must call this
+// same helper (not re-derive the condition) when it independently calls
+// chooseBestPlacement to animate the piece toward its landing spot, or the
+// two calls can disagree on weighting and pick different placements —
+// producing a piece that animates to one column but locks into another.
+export function isBuildingUp(board: Cell[][]): boolean {
+  return maxHeight(board) >= board.length * BUILD_UP_HEIGHT_RATIO;
+}
+
 // Above the build-up floor, a position counts as "unfavorable" (worth
 // resetting) once holes make up more than this fraction of all cells.
 const UNFAVORABLE_HOLE_RATIO = 0.03;
@@ -68,7 +80,7 @@ export function stepAmbientDemo(state: GameState, stepIndex: number): AmbientSte
   // on the post-placement height would make the "never reset below the
   // floor" guarantee meaningless for any stack that starts within one
   // piece's height of 50%.
-  const tall = maxHeight(state.board) >= rows * BUILD_UP_HEIGHT_RATIO;
+  const tall = isBuildingUp(state.board);
   const placement = chooseBestPlacement(state, { linesClearedWeight: tall ? WEIGHT_LINES_CLEARED : 0 });
   const nextPiece = pieceForStep(stepIndex + 1);
 
