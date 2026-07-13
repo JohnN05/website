@@ -14,9 +14,15 @@ const WEIGHT_BUMPINESS = 1;
 const WEIGHT_HEIGHT = 1;
 export const WEIGHT_LINES_CLEARED = 6;
 
-// Below this fraction of board height, line clears aren't weighted at all —
-// the ambient demo builds a visible stack before it starts cashing in lines.
+// Below this fraction of board height, line clears are actively penalized,
+// not just unweighted — clearing a line already reduces aggregateHeight
+// across every column, which alone outweighs a merely-zeroed bonus, so a
+// zero weight doesn't actually stop the heuristic from cashing in early. A
+// real penalty is needed to make "keep building" the better-scoring choice
+// below the threshold; the ambient demo builds a visible stack before it
+// starts cashing in lines.
 const BUILD_UP_HEIGHT_RATIO = 0.75;
+const BUILD_UP_CLEAR_PENALTY = 20;
 
 export function columnHeights(board: Cell[][]): number[] {
   const cols = board[0].length;
@@ -70,7 +76,7 @@ function scoreResult(before: GameState, after: GameState, linesClearedWeight: nu
 // simple-AI heuristic, not a competitive solver.
 export function chooseBestPlacement(state: GameState, config: AutoplayConfig = {}): Placement {
   const tall = Math.max(0, ...columnHeights(state.board)) >= state.board.length * BUILD_UP_HEIGHT_RATIO;
-  const linesClearedWeight = config.linesClearedWeight ?? (tall ? WEIGHT_LINES_CLEARED : 0);
+  const linesClearedWeight = config.linesClearedWeight ?? (tall ? WEIGHT_LINES_CLEARED : -BUILD_UP_CLEAR_PENALTY);
   let best: Placement = { rotation: 0, x: state.current.x };
   let bestScore = Infinity;
 

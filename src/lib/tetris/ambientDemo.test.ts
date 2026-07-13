@@ -12,9 +12,14 @@ describe('ambient demo', () => {
   });
 
   it('clears at least one line over a full cycle', () => {
+    // Raised from 20: the restored build-up heuristic (75% threshold, see
+    // autoplay.ts) genuinely delays the first clear now (first clear lands
+    // at step 22 against the current bag/heuristic implementation), unlike
+    // the old always-weighted version this loop count was originally sized
+    // for.
     let state = createAmbientDemo();
     let maxLinesCleared = 0;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 40; i++) {
       state = stepAmbientDemo(state, i).state;
       maxLinesCleared = Math.max(maxLinesCleared, state.linesCleared);
     }

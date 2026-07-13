@@ -10,6 +10,15 @@ function boardWithBottomRowGapAt(col: number, cols: number = COLS, rows: number 
   return board;
 }
 
+// Stamps a solid column onto an existing board so its max-height ratio
+// crosses the 75% build-up threshold, without disturbing whichever other
+// column the test is using as its line-clear gap.
+function withTallColumn(board: Cell[][], col: number, height: number): Cell[][] {
+  const rows = board.length;
+  for (let y = rows - height; y < rows; y++) board[y][col] = 'O';
+  return board;
+}
+
 function applyPlacement(state: GameState, placement: { rotation: number; x: number }): GameState {
   let piece = state;
   for (let i = 0; i < placement.rotation; i++) piece = rotate(piece);
@@ -40,12 +49,21 @@ describe('chooseBestPlacement', () => {
     expect(placement.x).toBeLessThan(COLS);
   });
 
-  it('fills a single-column gap to clear the line, rather than stacking elsewhere', () => {
+  it('once the stack is tall enough (>=75%), fills a single-column gap to clear the line rather than stacking elsewhere', () => {
     const base = createGame('I');
-    const state: GameState = { ...base, board: boardWithBottomRowGapAt(4) };
+    const board = withTallColumn(boardWithBottomRowGapAt(4), 9, 15); // 75% of ROWS
+    const state: GameState = { ...base, board };
     const placement = chooseBestPlacement(state);
     const result = applyPlacement(state, placement);
     expect(result.linesCleared).toBeGreaterThan(state.linesCleared);
+  });
+
+  it('below 75% height, avoids even a completely free line clear, to keep building the stack', () => {
+    const base = createGame('I');
+    const state: GameState = { ...base, board: boardWithBottomRowGapAt(4) }; // ~5% height
+    const placement = chooseBestPlacement(state);
+    const result = applyPlacement(state, placement);
+    expect(result.linesCleared).toBe(state.linesCleared);
   });
 
   it('does not create new holes on an empty board when a hole-free placement exists', () => {
@@ -60,7 +78,8 @@ describe('chooseBestPlacement on a board wider than the fixed 10-column default'
   it('still reaches the leftmost column when clearing a gap there', () => {
     const cols = 30;
     const base = createGame('I', cols, ROWS);
-    const state: GameState = { ...base, board: boardWithBottomRowGapAt(0, cols, ROWS) };
+    const board = withTallColumn(boardWithBottomRowGapAt(0, cols, ROWS), cols - 1, 15); // 75% of ROWS
+    const state: GameState = { ...base, board };
     const placement = chooseBestPlacement(state);
     const result = applyPlacement(state, placement);
     expect(result.linesCleared).toBeGreaterThan(state.linesCleared);

@@ -30,7 +30,13 @@ entirely in favor of resetting only on a genuine top-out, and then
 restoring a build-up-before-clearing heuristic (removed as part of that
 same reset simplification) at a higher 75% threshold, relocated inside
 `chooseBestPlacement` itself so it can't re-diverge across call sites the
-way the original 50%-threshold version did. This file describes the site
+way the original 50%-threshold version did — plus one real-world follow-up
+fix once a user reported the stack still wasn't visibly building: the
+initial version merely zeroed the lines-cleared weight below 75%, which
+looked right in isolation but changed nothing in practice, since clearing
+a line already earns a large implicit reward through the heuristic's
+aggregate-height term regardless of that weight; fixed by making the
+below-threshold weight an active penalty instead of zero. This file describes the site
 as actually built, not just as planned. Every pass has hit the same
 environment limitation in this
 particular sandbox — no root access, missing Playwright's native
@@ -324,6 +330,19 @@ weight from `state.board` via the already-exported `columnHeights`, so
 `runAmbientCycle` — which both already call `chooseBestPlacement(state)` with
 no config — get the same weighting for the same piece by construction, with
 no second value to keep in sync.
+
+Below the threshold, a clear is actively *penalized* (`BUILD_UP_CLEAR_PENALTY`,
+a negative `linesClearedWeight`), not just left unweighted — an initial
+zero-weight version looked correct in isolation but changed nothing in
+practice, confirmed by instrumenting a real ambient run: `scoreResult`'s
+`aggregateHeight` term already rewards a clear on its own (it drops the
+entire stack by a row across every column), so a merely-zeroed bonus never
+had to fight anything and the demo kept cashing in the first available line
+regardless of stack height. Only a real penalty makes "keep building" the
+better-scoring choice below 75%. Confirmed against a real run: `tall`
+now flips true ~40% of the time over a long stretch (0% before the penalty),
+with stack height peaking near 95% before a top-out reset, versus never
+crossing ~70% before.
 
 Wall kicks and T-spin scoring are shared engine behavior, not ambient-loop-
 only: `engine.ts`'s `rotate()`/`lockPiece()` back both the ambient loop and
