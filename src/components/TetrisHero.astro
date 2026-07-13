@@ -169,8 +169,8 @@
     type GameState, type Piece,
   } from '../lib/tetris/engine';
   import { createBag } from '../lib/tetris/bag';
-  import { createAmbientDemo, stepAmbientDemo, isBuildingUp } from '../lib/tetris/ambientDemo';
-  import { chooseBestPlacement, WEIGHT_LINES_CLEARED } from '../lib/tetris/autoplay';
+  import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
+  import { chooseBestPlacement } from '../lib/tetris/autoplay';
 
   const ambientSoftEl = document.getElementById('tetris-ambient-soft')!;
   const ambientCrispEl = document.getElementById('tetris-ambient-crisp')!;
@@ -270,13 +270,12 @@
   }
 
   function runAmbientCycle() {
-    // Must resolve the lines-cleared weight exactly the way stepAmbientDemo
-    // will when it commits this same placement below, or the two calls can
-    // rank placements differently and the piece will animate toward one
-    // column but lock into another.
-    const placement = chooseBestPlacement(ambientState, {
-      linesClearedWeight: isBuildingUp(ambientState.board) ? WEIGHT_LINES_CLEARED : 0,
-    });
+    // Must call chooseBestPlacement identically to how stepAmbientDemo will
+    // below when it commits this same placement, or the two calls can rank
+    // placements differently and the piece will animate toward one column
+    // but lock into another. Neither call overrides the default weighting
+    // anymore, so this is trivially true, but keep the calls symmetric.
+    const placement = chooseBestPlacement(ambientState);
     const landingY = landingRow(ambientState.board, {
       ...ambientState.current,
       rotation: placement.rotation,
@@ -334,17 +333,16 @@
           // stepAmbientDemo recomputes chooseBestPlacement itself and
           // commits via hardDrop. It locks the piece in exactly the spot
           // just animated to because both calls resolve
-          // chooseBestPlacement's lines-cleared weight through the same
-          // isBuildingUp(board) helper above, not just because they see
-          // the same state — the state alone was previously assumed to be
-          // enough and wasn't (see ambientDemo.ts's isBuildingUp doc
-          // comment). If the commit would have caused game over,
-          // stepAmbientDemo silently resets to a fresh empty board
-          // instead (see ambientDemo.ts) rather than surfacing it — a
-          // rare, purely cosmetic edge case where this animation's
-          // predicted landing spot is replaced by an empty board right as
-          // it lands, accepted as-is since this is a decorative
-          // background loop, not gameplay.
+          // chooseBestPlacement identically (same args, same default
+          // weighting) — not just because they see the same state, which
+          // was previously assumed to be enough and wasn't (see
+          // ambientDemo.ts's stepAmbientDemo). If the commit would have
+          // caused a real top-out, stepAmbientDemo silently resets to a
+          // fresh empty board instead (see ambientDemo.ts) rather than
+          // surfacing it — a rare, purely cosmetic edge case where this
+          // animation's predicted landing spot is replaced by an empty
+          // board right as it lands, accepted as-is since this is a
+          // decorative background loop, not gameplay.
           const stepResult = stepAmbientDemo(ambientState, ambientStep++);
           // Clear the falling-piece overlay as soon as the piece locks,
           // before any flash. The locked piece is now baked into the

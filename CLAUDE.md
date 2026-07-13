@@ -69,6 +69,12 @@ what looked like one recurring "piece isn't aligned to the grid" visual
 bug — a DOM-clearing order bug, a data-shape mismatch, and a timer race —
 each only reproducible by watching the live animation, not by unit tests
 (this widget's DOM wiring is e2e-only per the architecture pattern above).
+A follow-up small fix pass (spec:
+`docs/superpowers/specs/2026-07-12-tetris-ambient-topout-only-reset-design.md`,
+plan: `docs/superpowers/plans/2026-07-12-tetris-ambient-topout-only-reset.md`)
+then removed the ambient demo's heuristic hole-heavy reset entirely, per
+user report that it read as a random mid-stack restart — it now resets
+only on a genuine top-out.
 
 ## Stack
 
@@ -290,12 +296,13 @@ up (not just stepped) to feel like a piece being soft-dropped rather than
 gliding down.
 
 The ambient loop also plays real wall kicks and awards a T-spin score bonus
-(`isTSpin` in `engine.ts`, gated on `GameState.lastMoveWasRotation`), builds
-its stack up to at least 50% of board height before its heuristic starts
-rewarding line clears (`BUILD_UP_HEIGHT_RATIO` in `ambientDemo.ts`), and
-never resets below that same 50% floor even in a hole-heavy ("unfavorable")
-position — resets only trigger at or above it. Cleared rows flash a few
-times before disappearing (`stepAmbientDemo`'s `clearedRows`/`preClearBoard`,
+(`isTSpin` in `engine.ts`, gated on `GameState.lastMoveWasRotation`). It
+resets only on a genuine top-out (`stepAmbientDemo`'s `result.gameOver` in
+`ambientDemo.ts`) — an earlier heuristic reset for hole-heavy positions past
+a 50%-height floor was tried and removed because it read as a random
+mid-stack restart to a viewer rather than a real game over; hole-heavy
+positions are now left standing indefinitely. Cleared rows flash a few times
+before disappearing (`stepAmbientDemo`'s `clearedRows`/`preClearBoard`,
 consumed in `TetrisHero.astro`'s `runAmbientCycle`).
 
 Wall kicks and T-spin scoring are shared engine behavior, not ambient-loop-
