@@ -69,6 +69,24 @@ doc update — verified via unit tests, a clean production build, and (for the
 resize fix) confirming the dev server actually served the updated bundle,
 since this sandbox has no Chrome binary for either browser-automation MCP
 tool either; their Playwright suites still need a real-environment
+confirmation before merging to `main`. One more no-plan-doc pass, on
+direct user request, then removed the Tetris hidden click-to-play overlay
+(the real playable game triggered by clicking the ambient hero animation)
+entirely: the ambient hero animation alone was judged enough to convey the
+hobby, so the trigger button, modal overlay/panel, on-screen board, score
+display, touch controls, and their DOM wiring (`openOverlay`/`closeOverlay`,
+gravity timer, keyboard game controls, focus trap) were all deleted from
+`TetrisHero.astro`, along with the now-unused `createGame`/`moveLeft`/
+`moveRight`/`rotate`/`softDrop`/`hardDrop`/`createBag` imports — the ambient
+animation only ever needed `landingRow`/`cellsFor` from `engine.ts` plus
+`createAmbientDemo`/`stepAmbientDemo`/`chooseBestPlacement`, all of which
+stay. `engine.ts`'s and `bag.ts`'s full API is untouched (still exercised by
+their own unit tests) since the deletion only removed *callers* in
+`TetrisHero.astro`, not the underlying logic. Verified via unit tests (71/71)
+and a clean production build (output JS for this component's bundle dropped
+from ~12KB to ~7.5KB, consistent with the removed code); this sandbox still
+can't run Playwright, so the e2e suite (its one overlay-specific test
+deleted from `tests/e2e/tetris.spec.ts`) still needs a real-environment
 confirmation before merging to `main`.
 
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
@@ -238,8 +256,8 @@ Mono** (small labels: nav wordmark, eyebrows, article meta line).
 
 ## Hobby details — priority order
 
-**Primary (most polish):** Tetris (ambient hero-background animation,
-hidden click-to-play overlay, hidden below mobile breakpoint) and the
+**Primary (most polish):** Tetris (ambient hero-background animation only —
+there is no playable overlay; hidden below mobile breakpoint) and the
 capybara mascot (article reading-progress indicator, speed scales with
 scroll, collapses to resting pose at 100%). The ambient loop
 (`src/lib/tetris/ambientDemo.ts`) no longer runs a fixed O-piece-only
@@ -298,8 +316,7 @@ that its board was just replaced and bail instead of continuing to animate
 into stale coordinates. Each piece plays a real spawn → turn → fall
 animation cycle (`#tetris-piece`, `.phase-turn`/`.phase-fall` CSS
 transitions driven by `runAmbientCycle()`) instead of snapping directly
-into its landing position; the real click-to-play board stays crisp and
-un-animated in comparison, distinguishing decoration from gameplay.
+into its landing position.
 
 The hero copy sharing this section (`index.astro`'s `.hero-copy`) has the
 same fixed-vs-fluid consideration as the rail above: its desktop `max-width`
@@ -393,12 +410,12 @@ now flips true ~40% of the time over a long stretch (0% before the penalty),
 with stack height peaking near 95% before a top-out reset, versus never
 crossing ~70% before.
 
-Wall kicks and T-spin scoring are shared engine behavior, not ambient-loop-
-only: `engine.ts`'s `rotate()`/`lockPiece()` back both the ambient loop and
-the real click-to-play overlay, so players can now wall-kick rotations that
-previously failed and score a T-spin bonus on the real board too. This is
-an intentional gameplay improvement, decided on deliberately rather than
-gated behind a flag.
+Wall kicks and T-spin scoring live in `engine.ts`'s `rotate()`/`lockPiece()`,
+backing the ambient loop's autoplay. (They previously also backed a real
+click-to-play overlay triggered by clicking the ambient animation, removed
+per direct user request — see Status above — since the ambient animation
+alone was judged enough to convey the hobby; `engine.ts`'s full game-logic
+API is otherwise untouched.)
 
 ## Hard constraints (don't reintroduce these)
 
@@ -420,20 +437,19 @@ gated behind a flag.
 ## Accessibility (see spec for full list)
 
 `prefers-reduced-motion` fallbacks for all four hobby details, full keyboard
-operability for both games, visible focus states sitewide, skip-to-content
-link, and `aria-hidden` on the two purely-decorative details (Tetris ambient
-animation, capybara mascot — the capybara is a supplement to reading
-progress, never the only way it's conveyed).
+operability for Minesweeper (the only one of the four that's actually
+playable — Tetris is purely decorative, see Hobby details above), visible
+focus states sitewide, skip-to-content link, and `aria-hidden` on the two
+purely-decorative details (Tetris ambient animation, capybara mascot — the
+capybara is a supplement to reading progress, never the only way it's
+conveyed).
 
-Both game boards use proper ARIA containment (`role="grid"` →
+Minesweeper's board uses proper ARIA containment (`role="grid"` →
 `role="row"` → `role="gridcell"`, with `display: contents` on the row
 wrapper so the wrapper doesn't disturb the CSS Grid visual layout) rather
 than flat `role="grid"` → `<button>` children, which axe-core flags as
 `aria-required-children`. Minesweeper cells convey state via `aria-label`
 only (not `aria-pressed`, which isn't a permitted attribute on `gridcell`).
-The Tetris play overlay (`role="dialog" aria-modal="true"`) moves focus to
-its close button on open and traps Tab/Shift+Tab within the panel while
-open; closing restores focus to the trigger button.
 
 Verified sitewide by `tests/e2e/accessibility.spec.ts`: an
 `@axe-core/playwright` sweep (no serious/critical violations) and a

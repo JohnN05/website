@@ -5,21 +5,6 @@
     <div class="piece-layer-soft" id="tetris-piece-soft"></div>
     <div class="piece-layer-crisp" id="tetris-piece-crisp"></div>
   </div>
-  <button id="tetris-open" class="tetris-open-btn" aria-label="Play Tetris" type="button"></button>
-
-  <div class="tetris-overlay" id="tetris-overlay" hidden>
-    <div class="tetris-overlay-panel" role="dialog" aria-modal="true" aria-label="Tetris">
-      <button id="tetris-close" class="tetris-close-btn" aria-label="Close Tetris" type="button">&times;</button>
-      <div class="tetris-board" id="tetris-board"></div>
-      <p class="tetris-score" id="tetris-score">Score: 0</p>
-      <div class="tetris-touch-controls">
-        <button data-action="left" aria-label="Move left" type="button">&larr;</button>
-        <button data-action="rotate" aria-label="Rotate" type="button">&#8635;</button>
-        <button data-action="right" aria-label="Move right" type="button">&rarr;</button>
-        <button data-action="drop" aria-label="Hard drop" type="button">&darr;</button>
-      </div>
-    </div>
-  </div>
 </div>
 <style>
   .tetris-hero {
@@ -73,14 +58,6 @@
     );
   }
   @media (max-width: 768px) { .tetris-hero { display: none; } }
-  .tetris-board {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 1px;
-    background: var(--color-text-secondary);
-    width: 200px;
-    aspect-ratio: 10 / 20;
-  }
   .tetris-ambient-soft, .tetris-ambient-crisp {
     position: absolute;
     inset: 0;
@@ -103,15 +80,14 @@
      runtime via document.createElement (see the script above), so they
      never receive Astro's scoped data-astro-cid attribute and would
      otherwise not match these rules at all. */
-  .tetris-ambient-soft :global(div), .tetris-ambient-crisp :global(div),
-  .tetris-board :global(div), .tetris-piece :global(.cell) { background: var(--color-bg); }
-  .tetris-ambient-soft :global(div[data-piece='I']), .tetris-ambient-crisp :global(div[data-piece='I']), .tetris-board :global(div[data-piece='I']), .tetris-piece :global(.cell[data-piece='I']) { background: var(--tetris-i); }
-  .tetris-ambient-soft :global(div[data-piece='O']), .tetris-ambient-crisp :global(div[data-piece='O']), .tetris-board :global(div[data-piece='O']), .tetris-piece :global(.cell[data-piece='O']) { background: var(--tetris-o); }
-  .tetris-ambient-soft :global(div[data-piece='T']), .tetris-ambient-crisp :global(div[data-piece='T']), .tetris-board :global(div[data-piece='T']), .tetris-piece :global(.cell[data-piece='T']) { background: var(--tetris-t); }
-  .tetris-ambient-soft :global(div[data-piece='J']), .tetris-ambient-crisp :global(div[data-piece='J']), .tetris-board :global(div[data-piece='J']), .tetris-piece :global(.cell[data-piece='J']) { background: var(--tetris-j); }
-  .tetris-ambient-soft :global(div[data-piece='S']), .tetris-ambient-crisp :global(div[data-piece='S']), .tetris-board :global(div[data-piece='S']), .tetris-piece :global(.cell[data-piece='S']) { background: var(--color-accent-moss); }
-  .tetris-ambient-soft :global(div[data-piece='Z']), .tetris-ambient-crisp :global(div[data-piece='Z']), .tetris-board :global(div[data-piece='Z']), .tetris-piece :global(.cell[data-piece='Z']) { background: var(--color-accent-maroon); }
-  .tetris-ambient-soft :global(div[data-piece='L']), .tetris-ambient-crisp :global(div[data-piece='L']), .tetris-board :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
+  .tetris-ambient-soft :global(div), .tetris-ambient-crisp :global(div), .tetris-piece :global(.cell) { background: var(--color-bg); }
+  .tetris-ambient-soft :global(div[data-piece='I']), .tetris-ambient-crisp :global(div[data-piece='I']), .tetris-piece :global(.cell[data-piece='I']) { background: var(--tetris-i); }
+  .tetris-ambient-soft :global(div[data-piece='O']), .tetris-ambient-crisp :global(div[data-piece='O']), .tetris-piece :global(.cell[data-piece='O']) { background: var(--tetris-o); }
+  .tetris-ambient-soft :global(div[data-piece='T']), .tetris-ambient-crisp :global(div[data-piece='T']), .tetris-piece :global(.cell[data-piece='T']) { background: var(--tetris-t); }
+  .tetris-ambient-soft :global(div[data-piece='J']), .tetris-ambient-crisp :global(div[data-piece='J']), .tetris-piece :global(.cell[data-piece='J']) { background: var(--tetris-j); }
+  .tetris-ambient-soft :global(div[data-piece='S']), .tetris-ambient-crisp :global(div[data-piece='S']), .tetris-piece :global(.cell[data-piece='S']) { background: var(--color-accent-moss); }
+  .tetris-ambient-soft :global(div[data-piece='Z']), .tetris-ambient-crisp :global(div[data-piece='Z']), .tetris-piece :global(.cell[data-piece='Z']) { background: var(--color-accent-maroon); }
+  .tetris-ambient-soft :global(div[data-piece='L']), .tetris-ambient-crisp :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
   .tetris-ambient-soft :global(div.flashing), .tetris-ambient-crisp :global(div.flashing) { background: var(--color-bg) !important; }
 
   .tetris-piece {
@@ -146,39 +122,17 @@
   .tetris-piece.phase-fall .piece-layer-crisp :global(.cell) {
     transition: top 0.22s steps(6, end);
   }
-  .tetris-open-btn { position: absolute; inset: 0; background: transparent; border: none; cursor: pointer; }
-  .tetris-overlay {
-    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
-    display: flex; align-items: center; justify-content: center; z-index: 200;
-  }
-  .tetris-overlay[hidden] { display: none; }
-  .tetris-overlay-panel {
-    position: relative; background: var(--color-bg); padding: 1.5rem;
-    border-radius: 0.5rem; text-align: center;
-  }
-  .tetris-close-btn {
-    position: absolute; top: 0.5rem; right: 0.5rem; background: none;
-    border: none; font-size: 1.5rem; cursor: pointer; color: var(--color-text);
-  }
-  .tetris-touch-controls { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
-  @media (min-width: 769px) { .tetris-touch-controls { display: none; } }
 </style>
 <script>
   import {
-    createGame, moveLeft, moveRight, rotate, softDrop, hardDrop, landingRow, cellsFor,
+    landingRow, cellsFor,
     type GameState, type Piece,
   } from '../lib/tetris/engine';
-  import { createBag } from '../lib/tetris/bag';
   import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
   import { chooseBestPlacement } from '../lib/tetris/autoplay';
 
   const ambientSoftEl = document.getElementById('tetris-ambient-soft')!;
   const ambientCrispEl = document.getElementById('tetris-ambient-crisp')!;
-  const boardEl = document.getElementById('tetris-board')!;
-  const scoreEl = document.getElementById('tetris-score')!;
-  const overlay = document.getElementById('tetris-overlay')!;
-  const openBtn = document.getElementById('tetris-open')!;
-  const closeBtn = document.getElementById('tetris-close')!;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function renderBoard(el: HTMLElement, state: GameState) {
@@ -428,104 +382,5 @@
       setupAmbientBoard();
       if (!reducedMotion.matches) runAmbientCycle();
     }, 200);
-  });
-
-  let bag = createBag();
-  let game = createGame(bag());
-  let playing = false;
-  let gravityTimer: number | undefined;
-
-  function renderGame() {
-    renderBoard(boardEl, game);
-    scoreEl.textContent = `Score: ${game.score}`;
-  }
-
-  function startGravity() {
-    gravityTimer = window.setInterval(() => {
-      if (!playing) return;
-      game = softDrop(game, bag());
-      renderGame();
-    }, 800);
-  }
-
-  function stopGravity() {
-    if (gravityTimer !== undefined) window.clearInterval(gravityTimer);
-  }
-
-  function getFocusableInPanel(): HTMLElement[] {
-    return Array.from(
-      overlay.querySelectorAll<HTMLElement>(
-        '.tetris-overlay-panel button:not([hidden])'
-      )
-    ).filter((el) => el.offsetParent !== null);
-  }
-
-  function openOverlay() {
-    bag = createBag();
-    game = createGame(bag());
-    playing = true;
-    overlay.hidden = false;
-    renderGame();
-    startGravity();
-    closeBtn.focus();
-  }
-
-  function closeOverlay() {
-    playing = false;
-    stopGravity();
-    overlay.hidden = true;
-    openBtn.focus();
-  }
-
-  openBtn.addEventListener('click', openOverlay);
-  closeBtn.addEventListener('click', closeOverlay);
-
-  document.addEventListener('keydown', (e) => {
-    if (!playing) return;
-    if (e.key === 'Escape') return closeOverlay();
-    if (e.key === 'Tab') {
-      // Trap focus inside the modal panel so Tab/Shift+Tab cycle only
-      // among its focusable elements instead of escaping to the page
-      // behind the overlay.
-      const focusable = getFocusableInPanel();
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-      if (e.shiftKey) {
-        if (active === first || !focusable.includes(active as HTMLElement)) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else if (active === last || !focusable.includes(active as HTMLElement)) {
-        e.preventDefault();
-        first.focus();
-      }
-      return;
-    }
-    let handled = true;
-    if (e.key === 'ArrowLeft') game = moveLeft(game);
-    else if (e.key === 'ArrowRight') game = moveRight(game);
-    else if (e.key === 'ArrowUp') game = rotate(game);
-    else if (e.key === 'ArrowDown') game = softDrop(game, bag());
-    else if (e.key === ' ') game = hardDrop(game, bag());
-    else handled = false;
-    if (!handled) return;
-    // Prevent default so Space/Arrow keys don't scroll the page or
-    // re-activate the focused #tetris-open trigger button (which would
-    // silently reset the in-progress game).
-    e.preventDefault();
-    renderGame();
-  });
-
-  document.querySelectorAll('.tetris-touch-controls button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const action = btn.getAttribute('data-action');
-      if (action === 'left') game = moveLeft(game);
-      else if (action === 'right') game = moveRight(game);
-      else if (action === 'rotate') game = rotate(game);
-      else if (action === 'drop') game = hardDrop(game, bag());
-      renderGame();
-    });
   });
 </script>
