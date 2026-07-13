@@ -47,7 +47,17 @@ one, column width and row height drifted apart independently. Fixed by
 wrapping the setup in `setupAmbientBoard()` and re-running it from a
 debounced `resize` listener, with an `ambientGeneration` counter so an
 in-flight animation cycle detects a mid-cycle resize and bails instead of
-racing the just-replaced board. This file describes the site
+racing the just-replaced board. A further no-plan-doc pass, following the
+project's mock-first workflow preference below since it was pure layout/CSS,
+fixed a related complaint that the Home hero's copy wrapped far more
+aggressively on a narrower desktop window than at a wide one: both the
+hero copy's `max-width` and the desktop rail's `width` were flat
+percentages/fixed lengths tied to shrinking containers rather than holding
+their wide-window size as a floor. Mocked in an Artifact (rail width and
+hero-copy width sliders, tuned live against the user's own eyeballing) before
+touching `index.astro`/`Nav.astro`/`global.css`; landed as `--rail-width:
+clamp(9rem, 2.9rem + 12.68vw, 14rem)` (see Navigation below) and
+`.hero-copy`'s `max-width: max(23rem, 40%)`. This file describes the site
 as actually built, not just as planned. Every pass has hit the same
 environment limitation in this
 particular sandbox — no root access, missing Playwright's native
@@ -147,10 +157,19 @@ grid, not an error.
 ## Navigation
 
 Desktop (`min-width: 769px`): `Nav.astro` renders a fixed-left icon+label
-rail (`#nav-rail`), permanently expanded at `14rem` width — there is no
-collapse/expand toggle, no `localStorage` persistence, and no `data-rail`
-attribute. `#main-content`'s `margin-left` in `global.css` is a fixed offset
-matching the rail width, not something toggled at runtime.
+rail (`#nav-rail`), permanently expanded — there is no collapse/expand
+toggle, no `localStorage` persistence, and no `data-rail` attribute. Its
+width is fluid rather than a flat `14rem`, though: both `.rail`'s `width`
+here and `#main-content`'s `margin-left` in `global.css` read a single
+`--rail-width` custom property (`clamp(9rem, 2.9rem + 12.68vw, 14rem)`,
+defined once inside `global.css`'s own `min-width: 769px` block) rather than
+each hardcoding `14rem` independently — two call sites computing the same
+value from independent formulas is exactly the shape of bug this codebase
+already hit once with the Tetris ambient piece's animated vs. committed
+placement (see Status above), so this uses one shared source instead. The
+rail holds its full `14rem` from a 1400px-wide viewport upward, then narrows
+toward a `9rem` floor as the viewport shrinks toward the 769px breakpoint,
+where it disappears entirely in favor of the mobile drawer below.
 
 Mobile (`max-width: 768px`): `Nav.astro`'s rail is `display: none`;
 `MobileNav.astro` (a separate, always-mounted component) renders a top bar
@@ -281,6 +300,14 @@ animation cycle (`#tetris-piece`, `.phase-turn`/`.phase-fall` CSS
 transitions driven by `runAmbientCycle()`) instead of snapping directly
 into its landing position; the real click-to-play board stays crisp and
 un-animated in comparison, distinguishing decoration from gameplay.
+
+The hero copy sharing this section (`index.astro`'s `.hero-copy`) has the
+same fixed-vs-fluid consideration as the rail above: its desktop `max-width`
+is `max(23rem, 40%)`, not a plain percentage, so the copy column holds a
+fullscreen-derived floor width — and therefore wraps the same way it does at
+a wide window — as the window narrows, only yielding back to the 40% figure
+once the window is narrow enough that holding the floor would run text
+under the Tetris board.
 
 **Ambient piece animation — three bugs found from one user report of "the
 piece isn't aligned to the grid," each with a different root cause:**

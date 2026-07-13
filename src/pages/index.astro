@@ -39,7 +39,14 @@ const featured = selectFeatured(
     .hero-copy {
       position: relative;
       z-index: 1;
-      max-width: 30%;
+      /* A plain percentage shrinks the copy column every time the window
+         does, so it wraps far more aggressively on a narrower desktop
+         window than it does at a wide/fullscreen one. Holding a fixed
+         floor keeps the fullscreen wrap pattern as the window narrows,
+         only yielding back to the percentage once the window is narrow
+         enough that holding the floor would run text under the Tetris
+         board. */
+      max-width: max(23rem, 40%);
     }
   }
   .eyebrow {
