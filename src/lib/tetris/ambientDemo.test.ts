@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createAmbientDemo, stepAmbientDemo, isBuildingUp } from './ambientDemo';
+import { createAmbientDemo, stepAmbientDemo } from './ambientDemo';
 import { createGame, type GameState, type Cell } from './engine';
 
 describe('ambient demo', () => {
@@ -12,13 +12,9 @@ describe('ambient demo', () => {
   });
 
   it('clears at least one line over a full cycle', () => {
-    // Raised from 20 to 80 steps: the build-up-before-clearing heuristic
-    // (this task) deliberately delays the first clear until the stack
-    // reaches 50% height, which takes noticeably longer than the old
-    // clear-on-sight behavior did.
     let state = createAmbientDemo();
     let maxLinesCleared = 0;
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 20; i++) {
       state = stepAmbientDemo(state, i).state;
       maxLinesCleared = Math.max(maxLinesCleared, state.linesCleared);
     }
@@ -61,32 +57,7 @@ describe('ambient demo', () => {
   });
 });
 
-describe('isBuildingUp', () => {
-  // A single filled column of the given height, `rows` tall — the simplest
-  // fixture that lets columnHeights() report an exact max height.
-  function boardWithColumnHeight(cols: number, rows: number, height: number): Cell[][] {
-    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
-    for (let y = rows - height; y < rows; y++) board[y][0] = 'O';
-    return board;
-  }
-
-  it('is false below the 50% height floor', () => {
-    const board = boardWithColumnHeight(10, 20, 9); // 45%
-    expect(isBuildingUp(board)).toBe(false);
-  });
-
-  it('is true once the stack reaches the 50% height floor', () => {
-    const board = boardWithColumnHeight(10, 20, 10); // exactly 50%
-    expect(isBuildingUp(board)).toBe(true);
-  });
-
-  it('is true above the 50% height floor', () => {
-    const board = boardWithColumnHeight(10, 20, 15); // 75%
-    expect(isBuildingUp(board)).toBe(true);
-  });
-});
-
-describe('build-up-before-clearing and the 50%-height reset floor', () => {
+describe('holes never trigger a reset', () => {
   // Builds a solid block occupying the bottom `filledRows` rows, then caps
   // every column but the last one row above the block and hollows out its
   // bottom cell — an unambiguous, exactly-counted hole per capped column.
@@ -101,7 +72,7 @@ describe('build-up-before-clearing and the 50%-height reset floor', () => {
   // complete rows would clear away on the very first placement regardless
   // of where the new piece lands — collapsing the stack back down to a
   // couple of rows and defeating the entire point of this fixture (a
-  // stable, hole-heavy stack sitting right at/under the height floor).
+  // stable, hole-heavy stack).
   function makeHoleyBlock(cols: number, rows: number, filledRows: number): Cell[][] {
     const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
     const top = rows - filledRows;
@@ -115,25 +86,15 @@ describe('build-up-before-clearing and the 50%-height reset floor', () => {
     return board;
   }
 
-  it('never resets below 50% stack height, however hole-heavy the position', () => {
+  it('never resets a hole-heavy position, regardless of stack height', () => {
     const cols = 10, rows = 20;
-    // filledRows=8 -> capped columns reach height 9 (8 + the cap row) = 45%
-    const board = makeHoleyBlock(cols, rows, 8);
-    const base = createGame('T', cols, rows);
-    const state: GameState = { ...base, board, current: { ...base.current, x: 4 } };
-    const { state: after } = stepAmbientDemo(state, 0);
-    expect(after.board.some((row) => row.some((c) => c !== null))).toBe(true);
-  });
-
-  it('resets once an unfavorable, hole-heavy position reaches 50% stack height', () => {
-    const cols = 10, rows = 20;
-    // filledRows=9 -> capped columns reach height 10 (9 + the cap row) = 50%,
-    // with 9 genuine holes out of 200 cells (4.5%), comfortably over the
-    // "unfavorable" threshold.
+    // filledRows=9 -> capped columns reach height 10 (50%), with 9 genuine
+    // holes out of 200 cells (4.5%) — previously enough to trigger the
+    // now-removed "unfavorable" heuristic reset.
     const board = makeHoleyBlock(cols, rows, 9);
     const base = createGame('T', cols, rows);
     const state: GameState = { ...base, board, current: { ...base.current, x: 4 } };
     const { state: after } = stepAmbientDemo(state, 0);
-    expect(after.board.every((row) => row.every((c) => c === null))).toBe(true);
+    expect(after.board.some((row) => row.some((c) => c !== null))).toBe(true);
   });
 });
