@@ -202,21 +202,51 @@
   // (see this task's plan notes for why that drift/cutoff bug existed).
   const CELL_SIZE = 44;
   const GAP = 1;
-  const ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
-  const ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
-  ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
-  ambientCrispEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
-  const cellW = (ambientSoftEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
-  const cellH = (ambientSoftEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
-
-  let ambientState = createAmbientDemo(ambientCols, ambientRows);
+  // cols/rows/cellW/cellH all derive from the container's box at the moment
+  // this runs. The grid itself (columns: repeat(cols, 1fr), rows: implicit
+  // auto-stretch) re-flows to any container size on its own, but cols/rows
+  // stay whatever they were computed to be here — so if the container's
+  // aspect ratio changes later (a window resize) without recomputing them,
+  // column width (containerWidth / cols) and row height
+  // (containerHeight / rows) drift apart independently and cells stop being
+  // square. setupAmbientBoard() is re-run from a resize listener below for
+  // exactly this reason.
+  let ambientCols = 0;
+  let ambientRows = 0;
+  let cellW = 0;
+  let cellH = 0;
+  let ambientState!: GameState;
   let ambientStep = 0;
-  renderBoard(ambientSoftEl, ambientState);
-  renderBoard(ambientCrispEl, ambientState);
+  // Bumped every time setupAmbientBoard() reinitializes the board so any
+  // already-scheduled runAmbientCycle timeout chain (which closes over
+  // ambientCols/ambientState by reference) can detect it's stale and stop
+  // instead of continuing to animate/step a board that's just been replaced.
+  let ambientGeneration = 0;
+
+  function setupAmbientBoard() {
+    ambientGeneration++;
+    ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
+    ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
+    ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+    ambientCrispEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+    cellW = (ambientSoftEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
+    cellH = (ambientSoftEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
+
+    ambientState = createAmbientDemo(ambientCols, ambientRows);
+    ambientStep = 0;
+    renderBoard(ambientSoftEl, ambientState);
+    renderBoard(ambientCrispEl, ambientState);
+    pieceSoftEl.innerHTML = '';
+    pieceCrispEl.innerHTML = '';
+    pieceEl.classList.remove('phase-turn', 'phase-fall');
+  }
 
   const pieceEl = document.getElementById('tetris-piece')!;
   const pieceSoftEl = document.getElementById('tetris-piece-soft')!;
   const pieceCrispEl = document.getElementById('tetris-piece-crisp')!;
+
+  setupAmbientBoard();
+
   const TURN_MS = 300;
   const FALL_MS = 220;
   const PAUSE_MS = 200;
@@ -270,6 +300,14 @@
   }
 
   function runAmbientCycle() {
+    // Captured once per cycle: if setupAmbientBoard() reinitializes the
+    // board (a resize) while this cycle's chain of rAF/setTimeout callbacks
+    // is still in flight, every later checkpoint below compares against the
+    // *current* ambientGeneration and bails rather than animating/locking a
+    // piece into a board that's already been replaced with a differently-
+    // sized one.
+    const gen = ambientGeneration;
+
     // Must call chooseBestPlacement identically to how stepAmbientDemo will
     // below when it commits this same placement, or the two calls can rank
     // placements differently and the piece will animate toward one column
@@ -303,6 +341,7 @@
     positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
 
     requestAnimationFrame(() => {
+      if (gen !== ambientGeneration) return;
       const turned = { ...spawnPiece, x: placement.x };
       positionPieceCells(pieceCellsSoft, cellsFor(turned));
       positionPieceCells(pieceCellsCrisp, cellsFor(turned));
@@ -320,6 +359,7 @@
       // setTimeout never fires early, so by the time it fires here the
       // transition (started at this same instant) is guaranteed done.
       window.setTimeout(() => {
+        if (gen !== ambientGeneration) return;
         pieceEl.classList.remove('phase-turn');
         pieceEl.classList.add('phase-fall');
         const landed = { ...spawnPiece, x: placement.x, y: landingY };
@@ -330,6 +370,7 @@
         // moment the fall's CSS transition starts instead of racing it
         // from cycle start.
         window.setTimeout(async () => {
+          if (gen !== ambientGeneration) return;
           // stepAmbientDemo recomputes chooseBestPlacement itself and
           // commits via hardDrop. It locks the piece in exactly the spot
           // just animated to because both calls resolve
@@ -358,11 +399,15 @@
             renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
             renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
             await flashRows(stepResult.clearedRows);
+            if (gen !== ambientGeneration) return;
           }
           ambientState = stepResult.state;
           renderBoard(ambientSoftEl, ambientState);
           renderBoard(ambientCrispEl, ambientState);
-          window.setTimeout(runAmbientCycle, PAUSE_MS);
+          window.setTimeout(() => {
+            if (gen !== ambientGeneration) return;
+            runAmbientCycle();
+          }, PAUSE_MS);
         }, FALL_MS);
       }, TURN_MS);
     });
@@ -371,6 +416,19 @@
   if (!reducedMotion.matches) {
     runAmbientCycle();
   }
+
+  // Debounced: resize fires continuously while a window is being dragged,
+  // and each call tears down + recreates the whole ambient board, so
+  // reacting on every event would restart the animation dozens of times per
+  // drag instead of once after it settles.
+  let resizeTimer: number | undefined;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      setupAmbientBoard();
+      if (!reducedMotion.matches) runAmbientCycle();
+    }, 200);
+  });
 
   let bag = createBag();
   let game = createGame(bag());
