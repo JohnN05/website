@@ -36,16 +36,29 @@ initial version merely zeroed the lines-cleared weight below 75%, which
 looked right in isolation but changed nothing in practice, since clearing
 a line already earns a large implicit reward through the heuristic's
 aggregate-height term regardless of that weight; fixed by making the
-below-threshold weight an active penalty instead of zero. This file describes the site
+below-threshold weight an active penalty instead of zero. One more single-bug
+fix followed the same no-plan-doc pattern: a user reported that resizing the
+window turned the ambient board's square cells into rectangles. Root cause —
+found via `superpowers:systematic-debugging` — was that `ambientCols`/
+`ambientRows`/`cellW`/`cellH` were computed once at load and never again; the
+grid itself (`1fr` columns, auto-stretch rows) reflows to whatever container
+size exists, so once the viewport's aspect ratio diverged from the load-time
+one, column width and row height drifted apart independently. Fixed by
+wrapping the setup in `setupAmbientBoard()` and re-running it from a
+debounced `resize` listener, with an `ambientGeneration` counter so an
+in-flight animation cycle detects a mid-cycle resize and bails instead of
+racing the just-replaced board. This file describes the site
 as actually built, not just as planned. Every pass has hit the same
 environment limitation in this
 particular sandbox — no root access, missing Playwright's native
 `libnspr4` dependency — so each pass's e2e suite needed a real-environment
 run afterward; done for the rewrite and the first two refinement passes
-(all Playwright/axe suites green there). The Tetris hero polish pass and
-the post-merge bug-fix pass are the exceptions as of this doc update —
-verified here via unit tests (72/72) and a clean production build only;
-their Playwright suites still need that same real-environment
+(all Playwright/axe suites green there). The Tetris hero polish pass, the
+post-merge bug-fix pass, and this resize fix are the exceptions as of this
+doc update — verified via unit tests, a clean production build, and (for the
+resize fix) confirming the dev server actually served the updated bundle,
+since this sandbox has no Chrome binary for either browser-automation MCP
+tool either; their Playwright suites still need a real-environment
 confirmation before merging to `main`.
 
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
@@ -254,7 +267,16 @@ the rightmost column/row. Board cols/rows are computed from the container's
 component script) rather than hardcoded to the engine's 10x20 default, so
 `createAmbientDemo`/`stepAmbientDemo`/`createGame` all take explicit
 cols/rows through every code path, including the demo's internal
-game-over-reset branch. Each piece plays a real spawn → turn → fall
+game-over-reset branch. That computation — cols, rows, `cellW`, `cellH`, and
+the board reset — lives in `setupAmbientBoard()`, which also reruns from a
+debounced `window.resize` listener: the grid's own sizing (`1fr` columns,
+auto-stretch rows) reflows to any container box on its own, so leaving
+cols/rows frozen at their load-time values let a viewport resize skew the
+container's aspect ratio away from what those counts were chosen for,
+turning square cells into rectangles. An `ambientGeneration` counter lets a
+`runAmbientCycle()` animation already in flight when a resize lands detect
+that its board was just replaced and bail instead of continuing to animate
+into stale coordinates. Each piece plays a real spawn → turn → fall
 animation cycle (`#tetris-piece`, `.phase-turn`/`.phase-fall` CSS
 transitions driven by `runAmbientCycle()`) instead of snapping directly
 into its landing position; the real click-to-play board stays crisp and
