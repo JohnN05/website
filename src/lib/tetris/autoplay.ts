@@ -14,6 +14,10 @@ const WEIGHT_BUMPINESS = 1;
 const WEIGHT_HEIGHT = 1;
 export const WEIGHT_LINES_CLEARED = 6;
 
+// Below this fraction of board height, line clears aren't weighted at all —
+// the ambient demo builds a visible stack before it starts cashing in lines.
+const BUILD_UP_HEIGHT_RATIO = 0.75;
+
 export function columnHeights(board: Cell[][]): number[] {
   const cols = board[0].length;
   const rows = board.length;
@@ -65,7 +69,8 @@ function scoreResult(before: GameState, after: GameState, linesClearedWeight: nu
 // lowest-cost one. No lookahead/search tree: this is a standard greedy
 // simple-AI heuristic, not a competitive solver.
 export function chooseBestPlacement(state: GameState, config: AutoplayConfig = {}): Placement {
-  const linesClearedWeight = config.linesClearedWeight ?? WEIGHT_LINES_CLEARED;
+  const tall = Math.max(0, ...columnHeights(state.board)) >= state.board.length * BUILD_UP_HEIGHT_RATIO;
+  const linesClearedWeight = config.linesClearedWeight ?? (tall ? WEIGHT_LINES_CLEARED : 0);
   let best: Placement = { rotation: 0, x: state.current.x };
   let bestScore = Infinity;
 

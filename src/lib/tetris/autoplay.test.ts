@@ -105,3 +105,39 @@ describe('countHoles (exported)', () => {
     expect(countHolesExported(board)).toBe(1);
   });
 });
+
+describe('chooseBestPlacement build-up threshold (75% stack height)', () => {
+  // Column 0 is a solid tall column (controls the max-height ratio the
+  // threshold gates on). The bottom row is filled at every other column
+  // except `gapCol` and column 0, leaving a single-cell gap reachable only
+  // by an L-piece placement that also opens a new hole elsewhere on the
+  // board -- so completing the line has a real cost, not a free win, and
+  // only the lines-cleared weight (once it kicks in at/above 75%) makes it
+  // worthwhile.
+  function boardWithTallColumnAndGap(cols: number, rows: number, tallHeight: number, gapCol: number): Cell[][] {
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    for (let y = rows - tallHeight; y < rows; y++) board[y][0] = 'O';
+    for (let x = 1; x < cols; x++) {
+      if (x !== gapCol) board[rows - 1][x] = 'O';
+    }
+    return board;
+  }
+
+  it('below 75% height, does not chase a line clear that costs a new hole', () => {
+    const cols = 6;
+    const base = createGame('L', cols, ROWS);
+    const state: GameState = { ...base, board: boardWithTallColumnAndGap(cols, ROWS, 9, 5) }; // 45%
+    const placement = chooseBestPlacement(state);
+    const result = applyPlacement(state, placement);
+    expect(result.linesCleared).toBe(state.linesCleared);
+  });
+
+  it('at/above 75% height, chooses the line-clearing placement when one exists', () => {
+    const cols = 6;
+    const base = createGame('L', cols, ROWS);
+    const state: GameState = { ...base, board: boardWithTallColumnAndGap(cols, ROWS, 15, 5) }; // 75%
+    const placement = chooseBestPlacement(state);
+    const result = applyPlacement(state, placement);
+    expect(result.linesCleared).toBeGreaterThan(state.linesCleared);
+  });
+});

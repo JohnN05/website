@@ -24,8 +24,15 @@ commits, no plan doc — each was a user-reported visual bug fixed via
 stale falling-piece overlay left rendered on top of the grid during the
 line-clear flash, the ambient piece visually scrambling instead of
 rotating cleanly, and a `setTimeout`/CSS-transition race in the piece's
-phase timers. This file describes the site as actually built, not
-just as planned. Every pass has hit the same environment limitation in this
+phase timers. Two further small passes followed, each with its own
+spec/plan doc: removing the ambient demo's heuristic hole-heavy reset
+entirely in favor of resetting only on a genuine top-out, and then
+restoring a build-up-before-clearing heuristic (removed as part of that
+same reset simplification) at a higher 75% threshold, relocated inside
+`chooseBestPlacement` itself so it can't re-diverge across call sites the
+way the original 50%-threshold version did. This file describes the site
+as actually built, not just as planned. Every pass has hit the same
+environment limitation in this
 particular sandbox — no root access, missing Playwright's native
 `libnspr4` dependency — so each pass's e2e suite needed a real-environment
 run afterward; done for the rewrite and the first two refinement passes
@@ -304,6 +311,19 @@ mid-stack restart to a viewer rather than a real game over; hole-heavy
 positions are now left standing indefinitely. Cleared rows flash a few times
 before disappearing (`stepAmbientDemo`'s `clearedRows`/`preClearBoard`,
 consumed in `TetrisHero.astro`'s `runAmbientCycle`).
+
+Placement selection still favors building a visible stack before cashing in
+line clears, restored at a higher 75% threshold (`BUILD_UP_HEIGHT_RATIO` in
+`autoplay.ts`) after the reset-floor removal above stripped out its earlier
+50%-threshold form. Rather than a duplicated external helper threaded through
+two call sites (the shape that caused the animated-vs-committed-placement
+divergence bug described in the Status section), the decision now lives
+entirely inside `chooseBestPlacement` itself: it derives the build-up/cashing-in
+weight from `state.board` via the already-exported `columnHeights`, so
+`ambientDemo.ts`'s `stepAmbientDemo` and `TetrisHero.astro`'s
+`runAmbientCycle` — which both already call `chooseBestPlacement(state)` with
+no config — get the same weighting for the same piece by construction, with
+no second value to keep in sync.
 
 Wall kicks and T-spin scoring are shared engine behavior, not ambient-loop-
 only: `engine.ts`'s `rotate()`/`lockPiece()` back both the ambient loop and
