@@ -160,6 +160,51 @@ and a clean production build for both passes; as with every pass above,
 this sandbox can't run Playwright, so a real-environment e2e run is still
 needed before merging to `main`.
 
+A further no-plan-doc pass, on direct user request ("more minimal and
+spacy"), reworked Home's section rhythm. Followed the project's mock-first
+workflow preference through several rounds in an Artifact: hero/bio/
+featured/teaching each hold `min-height: 90vh` with `display: flex;
+align-items: center` rather than content-driven height, deliberately
+leaving ~10vh of the next section visible below the fold on first load (a
+"peek," meant as a future scroll-reveal hook) instead of exactly filling
+the viewport. Vertical section padding moved from `--space-9` (6rem) to a
+new `--space-10` (9rem) token in `tokens.css`; the hairline `border-top`
+dividers between sections were dropped entirely. Bio's two detail
+paragraphs collapsed into one, and the dropped "Secondary Education minor"
+line was folded into the eyebrow instead of lost; teaching's two detail
+lines similarly merged into one. In place of the dividers, each section now
+carries a subtle background wash — not an invented palette, but this
+codebase's own `ACCENT_ORDER` (`src/lib/tags.ts`: cobalt, maroon, clay,
+moss, the same sequence already deciding tag-chip colors sitewide) mapped
+1:1 against reading order via four new `--wash-*` tokens in `tokens.css`
+(each a `color-mix` of `--color-bg` and its accent at a `--wash-mix: 12%`,
+defined once in `:root` and recomputing correctly under
+`:root[data-theme='dark']` with no separate override, since custom
+properties resolve at point of use). A first version alternated only two
+flat colors and hit a real sizing bug worth recording: `box-sizing:
+border-box` means a section's padding is *inside* its `min-height`, so a
+short section (hero) hit its peek correctly but a copy-heavy section (bio,
+teaching) could push content+padding past `90vh` and show no peek at
+all — flat color alone made that invisible. The fix wasn't more precise vh
+math (fighting variable copy length indefinitely); it was `.seam`, a
+10rem-tall `position: relative; z-index: 1` band with negative
+top/bottom margins straddling each section boundary, filled with a
+`linear-gradient` between the two sections' wash colors and `filter:
+blur(40px)` — the blurred gradient reads as a soft tonal drift regardless
+of exact pixel heights, and the same blur-band device carries the wash back
+out to plain `--color-bg` before `Footer.astro`, which stays completely
+unchanged (it lives in the shared `BaseLayout` on every route — projects,
+articles, contact, 404 — none of which have a wash sequence leading into
+it, so tinting the footer itself would only have made sense on Home).
+Verified via unit tests (67/67, unaffected — this pass has no `src/lib/`
+logic) and a clean production build; confirmed the change was actually
+being served (not stale WSL2 HMR) by restarting the dev server fresh and
+`curl`-checking for the new wash/seam classes and trimmed copy in the
+response body, since this sandbox has no Chrome binary for either
+browser-automation MCP tool to take a real screenshot with. As with every
+pass above, a real-environment Playwright run is still needed before
+merging to `main`.
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
 (visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`

@@ -27,6 +27,20 @@
   --space-7: 3rem;
   --space-8: 4rem;
   --space-9: 6rem;
+  --space-10: 9rem;
+
+  /* One wash per Home section, reusing this codebase's own ACCENT_ORDER
+     (src/lib/tags.ts: cobalt, maroon, clay, moss — the same sequence
+     already deciding tag-chip colors sitewide) 1:1 against reading order,
+     not an invented palette. Each derives from var(--color-bg), so despite
+     living only in :root, it recomputes correctly under
+     :root[data-theme='dark'] below with no separate override needed —
+     custom properties resolve at point of use, not point of declaration. */
+  --wash-mix: 12%;
+  --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent) var(--wash-mix));
+  --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-maroon) var(--wash-mix));
+  --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-clay) var(--wash-mix));
+  --wash-teaching: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-moss) var(--wash-mix));
 }
 
 :root[data-theme='dark'] {

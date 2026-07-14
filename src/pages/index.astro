@@ -23,41 +23,57 @@ const featured = selectFeatured(
     <TetrisHero />
   </section>
 
+  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--wash-bio);"></div>
+
   <section class="bio">
     <div class="bio-inner">
       <div class="bio-frame">
         <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
       </div>
       <div class="bio-copy">
-        <p class="eyebrow">College Park, MD — CS @ UMD</p>
+        <p class="eyebrow">College Park, MD — CS + Secondary Ed @ UMD</p>
         <h2>Hi, I'm John Ng.</h2>
-        <p class="lede">I build software people actually use — then I teach the next person how to build it, too.</p>
-        <p class="detail">CS with a Secondary Education minor at Maryland, because those two things were never really separate for me.</p>
-        <p class="detail">Shipped a Chrome extension UMD students use every registration cycle. Spent a summer at Capital Technology Group turning a 270-million-row bottleneck into a working platform, then came back to own access-control and versioning on their data-to-slide-deck tool.</p>
+        <p class="lede">I build software people actually use, then teach the next person how to build it too.</p>
+        <p class="detail">Chrome extension UMD students use every registration cycle. A summer turning a 270M-row bottleneck into a shipped platform at Capital Technology Group.</p>
       </div>
     </div>
   </section>
 
+  <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
+
   <section class="featured">
-    <h2>Featured projects</h2>
-    <div class="project-grid">
-      {featured.map((p) => <ProjectCard project={p} />)}
+    <div class="featured-inner">
+      <h2>Featured projects</h2>
+      <div class="project-grid">
+        {featured.map((p) => <ProjectCard project={p} />)}
+      </div>
     </div>
   </section>
+
+  <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
 
   <section class="teaching">
     <div class="teaching-inner">
       <p class="eyebrow">Teaching</p>
       <h2>I teach as much as I build.</h2>
-      <p class="detail">Facilitator, Nobel Explorers (2022) — launched machine-learning and computer-vision curriculum for 60+ students across cohorts spanning Brazil, Ukraine, and Taiwan.</p>
-      <p class="detail">Now runs a 20&ndash;25 person officer corps for UMD's Chinese Student Association &mdash; same pattern, smaller scale: teach it, then hand it off.</p>
+      <p class="detail">Nobel Explorers ML/CV curriculum for 60+ students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
     </div>
   </section>
+
+  <div class="seam" style="--seam-from: var(--wash-teaching); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
   .hero {
     position: relative;
-    padding: var(--space-9) var(--space-5);
+    display: flex;
+    align-items: center;
+    /* Leaves --peek (10vh) of the next section visible below the fold on
+       first load rather than exactly filling the viewport — a deliberate
+       "there's more" cue, and the hook a future scroll-triggered reveal
+       would key off of. */
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-hero);
   }
   .hero-copy {
     max-width: 60ch;
@@ -141,8 +157,11 @@ const featured = selectFeatured(
     font-size: clamp(2rem, 5vw, 3.5rem);
   }
   .bio {
-    padding: var(--space-9) var(--space-5);
-    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-bio);
   }
   .bio-inner {
     max-width: 72rem;
@@ -205,19 +224,27 @@ const featured = selectFeatured(
   }
 
   .featured {
-    padding: var(--space-9) var(--space-5) 0;
-    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-featured);
+  }
+  .featured-inner {
+    width: 100%;
   }
   .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
-    padding-bottom: 4rem;
   }
 
   .teaching {
-    padding: var(--space-9) var(--space-5);
-    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-teaching);
   }
   .teaching-inner {
     max-width: 72rem;
@@ -239,6 +266,32 @@ const featured = selectFeatured(
     max-width: 56ch;
     color: var(--color-text-secondary);
     margin: 0 0 var(--space-3);
+  }
+
+  /* Blend zone between two adjacent sections' wash colors — a flat
+     color-mix boundary reads as a hard seam; a blurred gradient band
+     straddling it reads as one continuous surface. Needs position:relative
+     for z-index to take effect, which is what lets it paint over both
+     neighboring sections despite sitting between them in source order —
+     sections themselves stay position:static (flex doesn't change that),
+     which always paints below positioned+z-index content regardless of DOM
+     order. The last instance (teaching → --color-bg) fades the wash back
+     out before Footer.astro, which stays plain on every route and has no
+     idea this wash system exists. */
+  .seam {
+    position: relative;
+    z-index: 1;
+    height: 10rem;
+    margin-top: -5rem;
+    margin-bottom: -5rem;
+    background: linear-gradient(to bottom, var(--seam-from), var(--seam-to));
+    filter: blur(40px);
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero, .bio, .featured, .teaching {
+      transition: background-color 0.15s ease;
+    }
   }
 </style>
 
