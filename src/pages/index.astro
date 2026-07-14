@@ -24,15 +24,17 @@ const featured = selectFeatured(
   </section>
 
   <section class="bio">
-    <div class="bio-frame">
-      <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
-    </div>
-    <div class="bio-copy">
-      <p class="eyebrow">College Park, MD — CS @ UMD</p>
-      <h2>Hi, I'm John Ng.</h2>
-      <p class="lede">I build software people actually use — then I teach the next person how to build it, too.</p>
-      <p class="detail">CS with a Secondary Education minor at Maryland, because those two things were never really separate for me.</p>
-      <p class="detail">Shipped a Chrome extension UMD students use every registration cycle. Spent a summer at Capital Technology Group turning a 270-million-row bottleneck into a working platform, then came back to own access-control and versioning on their data-to-slide-deck tool.</p>
+    <div class="bio-inner">
+      <div class="bio-frame">
+        <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
+      </div>
+      <div class="bio-copy">
+        <p class="eyebrow">College Park, MD — CS @ UMD</p>
+        <h2>Hi, I'm John Ng.</h2>
+        <p class="lede">I build software people actually use — then I teach the next person how to build it, too.</p>
+        <p class="detail">CS with a Secondary Education minor at Maryland, because those two things were never really separate for me.</p>
+        <p class="detail">Shipped a Chrome extension UMD students use every registration cycle. Spent a summer at Capital Technology Group turning a 270-million-row bottleneck into a working platform, then came back to own access-control and versioning on their data-to-slide-deck tool.</p>
+      </div>
     </div>
   </section>
 
@@ -44,10 +46,12 @@ const featured = selectFeatured(
   </section>
 
   <section class="teaching">
-    <p class="eyebrow">Teaching</p>
-    <h2>I teach as much as I build.</h2>
-    <p class="detail">Facilitator, Nobel Explorers (2022) — launched machine-learning and computer-vision curriculum for 60+ students across cohorts spanning Brazil, Ukraine, and Taiwan.</p>
-    <p class="detail">Now runs a 20&ndash;25 person officer corps for UMD's Chinese Student Association &mdash; same pattern, smaller scale: teach it, then hand it off.</p>
+    <div class="teaching-inner">
+      <p class="eyebrow">Teaching</p>
+      <h2>I teach as much as I build.</h2>
+      <p class="detail">Facilitator, Nobel Explorers (2022) — launched machine-learning and computer-vision curriculum for 60+ students across cohorts spanning Brazil, Ukraine, and Taiwan.</p>
+      <p class="detail">Now runs a 20&ndash;25 person officer corps for UMD's Chinese Student Association &mdash; same pattern, smaller scale: teach it, then hand it off.</p>
+    </div>
   </section>
 </BaseLayout>
 <style>
@@ -137,14 +141,16 @@ const featured = selectFeatured(
     font-size: clamp(2rem, 5vw, 3.5rem);
   }
   .bio {
+    padding: var(--space-9) var(--space-5);
+    border-top: 1px solid var(--line);
+  }
+  .bio-inner {
     max-width: 72rem;
     margin: 0 auto;
-    padding: var(--space-9) var(--space-5);
     display: grid;
     grid-template-columns: 0.85fr 1fr;
     gap: var(--space-8);
     align-items: center;
-    border-top: 1px solid var(--line);
   }
   .bio-frame {
     position: relative;
@@ -184,7 +190,7 @@ const featured = selectFeatured(
     margin: 0 0 var(--space-3);
   }
   @media (max-width: 860px) {
-    .bio {
+    .bio-inner {
       grid-template-columns: 1fr;
     }
     .bio-frame {
@@ -210,10 +216,12 @@ const featured = selectFeatured(
   }
 
   .teaching {
-    max-width: 72rem;
-    margin: 0 auto;
     padding: var(--space-9) var(--space-5);
     border-top: 1px solid var(--line);
+  }
+  .teaching-inner {
+    max-width: 72rem;
+    margin: 0 auto;
   }
   .teaching .eyebrow {
     margin: 0 0 var(--space-4);
