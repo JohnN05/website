@@ -6,29 +6,65 @@ interface Props {
 }
 const { project } = Astro.props;
 const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(project.date);
+
+const ACCENT_VAR: Record<string, string> = {
+  cobalt: 'var(--color-accent)',
+  maroon: 'var(--color-accent-maroon)',
+  clay: 'var(--color-accent-clay)',
+  moss: 'var(--color-accent-moss)',
+};
+const coverAccent = ACCENT_VAR[accentForTag(project.tags[0] ?? project.title)];
+const initial = project.title.charAt(0);
 ---
 <a class="project-card" href={`/projects/${project.slug}`}>
-  <p class="meta">{formattedDate}</p>
-  <h3>{project.title}</h3>
-  <p class="summary">{project.summary}</p>
-  <ul class="tags">
-    {project.tags.map((tag) => <li class={`tag tag-${accentForTag(tag)}`}>{tag}</li>)}
-  </ul>
+  <div class="cover" style={`--cover-accent: ${coverAccent};`} aria-hidden="true">
+    <span class="glyph">{initial}</span>
+  </div>
+  <div class="card-body">
+    <p class="meta">{formattedDate}</p>
+    <h3>{project.title}</h3>
+    <p class="summary">{project.summary}</p>
+    <ul class="tags">
+      {project.tags.map((tag) => <li class={`tag tag-${accentForTag(tag)}`}>{tag}</li>)}
+    </ul>
+  </div>
 </a>
 <style>
   .project-card {
     display: block;
-    padding: var(--space-5) 0 0;
-    border-top: 1px solid transparent;
     border-radius: 6px;
+    overflow: hidden;
+    border-top: 1px solid transparent;
     text-decoration: none;
     color: var(--color-text);
-    transition: border-color 0.18s ease, background-color 0.18s ease, padding 0.18s ease;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
   }
   .project-card:hover,
   .project-card:focus-visible {
     border-top-color: var(--line);
     background-color: color-mix(in srgb, var(--color-text) 4%, var(--color-bg));
+  }
+  .cover {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-bg) 88%, var(--cover-accent) 12%);
+  }
+  .cover .glyph {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    font-size: 4.5rem;
+    line-height: 1;
+    color: var(--cover-accent);
+    opacity: 0.32;
+  }
+  .card-body {
+    padding: var(--space-5) 0 0;
+    transition: padding 0.18s ease;
+  }
+  .project-card:hover .card-body,
+  .project-card:focus-visible .card-body {
     padding: var(--space-5) var(--space-4) var(--space-4);
   }
   .project-card .summary {
