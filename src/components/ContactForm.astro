@@ -3,12 +3,18 @@
   <p hidden>
     <label>Don't fill this out if you're human: <input name="bot-field" /></label>
   </p>
-  <label for="name">Name</label>
-  <input id="name" name="name" type="text" required />
-  <label for="email">Email</label>
-  <input id="email" name="email" type="email" required />
-  <label for="message">Message</label>
-  <textarea id="message" name="message" required rows="6"></textarea>
+  <div class="field">
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" required />
+  </div>
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required />
+  </div>
+  <div class="field">
+    <label for="message">Message</label>
+    <textarea id="message" name="message" required rows="6"></textarea>
+  </div>
   <button type="submit">Send</button>
 </form>
 <p id="contact-success" hidden role="status">Thanks — I'll get back to you soon.</p>
@@ -17,29 +23,71 @@
   .contact-form {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-4);
     max-width: 32rem;
   }
   .contact-form[hidden] {
     display: none;
   }
-  .contact-form input,
-  .contact-form textarea {
-    padding: 0.5rem;
-    border: 1px solid var(--color-text-secondary);
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .field label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+  .field input,
+  .field textarea {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    padding: 0.65rem var(--space-3);
+    border-radius: 6px;
+    border: 1px solid var(--line);
     background: var(--color-bg);
     color: var(--color-text);
-    font-family: 'Inter', sans-serif;
+  }
+  .field input:focus-visible,
+  .field textarea:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-color: var(--color-accent);
   }
   .contact-form button {
     align-self: flex-start;
-    padding: 0.6rem 1.5rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    padding: 0.7rem 1.7rem;
+    border-radius: 6px;
     background: var(--color-accent);
     color: #fff;
     border: none;
     cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .contact-form button:hover {
+    background: color-mix(in srgb, var(--color-accent) 85%, black 15%);
+  }
+  .contact-form button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  #contact-success,
+  #contact-error {
+    margin: var(--space-4) 0 0;
+    padding: var(--space-4);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  #contact-success {
+    background: color-mix(in srgb, var(--color-accent-moss) 14%, var(--color-bg));
+    color: var(--color-text);
   }
   #contact-error {
+    background: color-mix(in srgb, var(--color-error) 12%, var(--color-bg));
     color: var(--color-error);
   }
 </style>
