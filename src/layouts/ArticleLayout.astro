@@ -1,6 +1,5 @@
 ---
 import BaseLayout from './BaseLayout.astro';
-import CapybaraProgress from '../components/CapybaraProgress.astro';
 import { accentForTag } from '../lib/tags';
 
 interface Props {
@@ -12,7 +11,6 @@ const { title, date, tags } = Astro.props;
 const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date);
 ---
 <BaseLayout title={`${title} — John Ng`}>
-  <CapybaraProgress />
   <article class="prose">
     <div class="meta">
       <span class="meta-date">{formattedDate}</span>

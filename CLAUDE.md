@@ -142,6 +142,24 @@ spec was added for this pass specifically (nothing here changes nav,
 a11y-tree shape beyond the accessible-name fix already covered by the
 `&nbsp;`, or any existing covered flow).
 
+Two more no-plan-doc passes followed, both on direct user request. The
+first replaced the Home bio's vaguer/partly-unverified copy and retired the
+single meta project write-up (about rebuilding this site itself) in favor
+of three real project stubs — Terp Rater, Movement Map, and the Echtralex/
+Lexicography capstone, each `featured: true` with a placeholder "full
+write-up in progress" body pending real articles — plus a new standalone
+Teaching section (Nobel Explorers, CSA leadership) that had previously been
+compressed into a single bio line. The second removed the article
+reading-progress capybara mascot entirely (`CapybaraProgress.astro`,
+`lib/capybara.ts` + its test, the `capybara-run` keyframe, its usage in
+`ArticleLayout.astro`, and the accessibility e2e's paired reduced-motion
+check) — no replacement progress indicator was added. The footer's
+capybara easter egg is a separate, self-contained component with no shared
+code or assets, and was untouched by this. Verified via unit tests (71/71)
+and a clean production build for both passes; as with every pass above,
+this sandbox can't run Playwright, so a real-environment e2e run is still
+needed before merging to `main`.
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
 (visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`
@@ -186,8 +204,9 @@ only on a genuine top-out.
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate
-  islands that need interactivity (Tetris widget, light/dark toggle, capybara
-  mascot, Minesweeper board).
+  islands that need interactivity (Tetris widget, light/dark toggle,
+  Minesweeper board). The footer's capybara easter egg is pure CSS (hover-
+  triggered caption animation) — no script, so it isn't one of these.
 - **MDX content collections** — each project article is one `.mdx` file under
   `src/content/projects/`. Astro derives the route slug from the filename.
   Adding a new project = add one file, no code changes.
@@ -205,7 +224,7 @@ only on a genuine top-out.
 
 Every interactive widget splits into two layers:
 - **Pure logic** in `src/lib/` (`theme.ts`, `projects.ts`, `contactForm.ts`,
-  `capybara.ts`, `tetris/engine.ts` + `tetris/bag.ts` + `tetris/ambientDemo.ts`,
+  `tetris/engine.ts` + `tetris/bag.ts` + `tetris/ambientDemo.ts`,
   `minesweeper/engine.ts`) — no DOM, no I/O, fully unit-tested with Vitest.
 - **DOM wiring** in the matching `.astro` component's `<script>` block —
   imports the pure module, renders/re-renders the DOM, handles events.
@@ -314,9 +333,12 @@ general role like the other four; loaded through the same Google Fonts
 ## Hobby details — priority order
 
 **Primary (most polish):** Tetris (ambient hero-background animation only —
-there is no playable overlay; hidden below mobile breakpoint) and the
-capybara mascot (article reading-progress indicator, speed scales with
-scroll, collapses to resting pose at 100%). The ambient loop
+there is no playable overlay; hidden below mobile breakpoint). The article
+reading-progress capybara mascot (`CapybaraProgress.astro`, `lib/capybara.ts`)
+was removed per direct user request — no replacement progress indicator was
+added, since the browser's own scrollbar already conveys position and this
+capybara wasn't the only cue. The footer's capybara easter egg (a separate,
+self-contained component with no shared code) is untouched. The ambient loop
 (`src/lib/tetris/ambientDemo.ts`) no longer runs a fixed O-piece-only
 script — it draws real pieces from the 7-bag randomizer
 (`src/lib/tetris/bag.ts`) and picks each placement via a genuine (if
@@ -493,13 +515,12 @@ API is otherwise untouched.)
 
 ## Accessibility (see spec for full list)
 
-`prefers-reduced-motion` fallbacks for all four hobby details, full keyboard
-operability for Minesweeper (the only one of the four that's actually
+`prefers-reduced-motion` fallbacks for the remaining hobby details, full
+keyboard operability for Minesweeper (the only one that's actually
 playable — Tetris is purely decorative, see Hobby details above), visible
-focus states sitewide, skip-to-content link, and `aria-hidden` on the two
-purely-decorative details (Tetris ambient animation, capybara mascot — the
-capybara is a supplement to reading progress, never the only way it's
-conveyed).
+focus states sitewide, skip-to-content link, and `aria-hidden` on
+purely-decorative details (Tetris ambient animation, the footer's capybara
+easter egg).
 
 Minesweeper's board uses proper ARIA containment (`role="grid"` →
 `role="row"` → `role="gridcell"`, with `display: contents` on the row
@@ -510,10 +531,12 @@ only (not `aria-pressed`, which isn't a permitted attribute on `gridcell`).
 
 Verified sitewide by `tests/e2e/accessibility.spec.ts`: an
 `@axe-core/playwright` sweep (no serious/critical violations) and a
-skip-link-is-first-tab-stop check on all 5 routes, plus two targeted
-reduced-motion checks (Tetris ambient loop freezes on a static frame;
-capybara has no run-cycle animation) — this is the suite that actually
-caught the ARIA containment bugs above during implementation.
+skip-link-is-first-tab-stop check on all 5 routes, plus a targeted
+reduced-motion check (Tetris ambient loop freezes on a static frame) — this
+is the suite that actually caught the ARIA containment bugs above during
+implementation. (Its former second reduced-motion check, for the
+now-removed reading-progress capybara, was deleted along with the
+component.)
 
 `tests/e2e/nav.spec.ts` covers the permanently-expanded desktop rail
 (renders at the full `14rem` width, both links reachable and labeled, the

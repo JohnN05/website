@@ -27,10 +27,3 @@ test('reduced motion: Tetris ambient loop shows a single static frame', async ({
   const after = await page.locator('#tetris-ambient').innerHTML();
   expect(after).toBe(before);
 });
-
-test('reduced motion: capybara mascot has no run-cycle animation', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/projects/portfolio-site-rewrite');
-  const animationName = await page.locator('#capybara').evaluate((el) => getComputedStyle(el).animationName);
-  expect(animationName === 'none' || animationName === '').toBe(true);
-});

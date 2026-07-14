@@ -1,5 +1,5 @@
-/* Keyframes for the knife-flip toggle, Tetris ambient loop, and capybara
-   run-cycle are added in Tasks 3, 8, and 10 respectively. */
+/* Keyframes for the knife-flip toggle and Tetris ambient loop are added in
+   Tasks 3 and 8 respectively. */
 
 .theme-toggle .handle-a,
 .theme-toggle .handle-b {
@@ -14,9 +14,4 @@
   .theme-toggle .handle-b {
     transition: none;
   }
-}
-
-@keyframes capybara-run {
-  0% { background-position-x: 0; }
-  100% { background-position-x: -192px; }
 }
