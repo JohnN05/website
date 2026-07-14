@@ -30,9 +30,9 @@ const featured = selectFeatured(
     <div class="bio-copy">
       <p class="eyebrow">College Park, MD — CS @ UMD</p>
       <h2>Hi, I'm John Ng.</h2>
-      <p class="lede">I build software — mostly Java and Python, sometimes JS, React, and C.</p>
-      <p class="detail">Five years in, I've mentored student coders from Brazil to Ukraine along the way.</p>
-      <p class="detail">Next up: putting that experience toward software for education and public health.</p>
+      <p class="lede">I build software people actually use — then I teach the next person how to build it, too.</p>
+      <p class="detail">CS with a Secondary Education minor at Maryland, because those two things were never really separate for me.</p>
+      <p class="detail">Shipped a Chrome extension UMD students use every registration cycle. Spent a summer at Capital Technology Group turning a 270-million-row bottleneck into a working platform, then came back to own access-control and versioning on their data-to-slide-deck tool.</p>
     </div>
   </section>
 
@@ -41,6 +41,13 @@ const featured = selectFeatured(
     <div class="project-grid">
       {featured.map((p) => <ProjectCard project={p} />)}
     </div>
+  </section>
+
+  <section class="teaching">
+    <p class="eyebrow">Teaching</p>
+    <h2>I teach as much as I build.</h2>
+    <p class="detail">Facilitator, Nobel Explorers (2022) — launched machine-learning and computer-vision curriculum for 60+ students across cohorts spanning Brazil, Ukraine, and Taiwan.</p>
+    <p class="detail">Now runs a 20&ndash;25 person officer corps for UMD's Chinese Student Association &mdash; same pattern, smaller scale: teach it, then hand it off.</p>
   </section>
 </BaseLayout>
 <style>
@@ -210,6 +217,30 @@ const featured = selectFeatured(
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
     padding-bottom: 4rem;
+  }
+
+  .teaching {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-9) var(--space-5);
+    border-top: 1px solid var(--line);
+  }
+  .teaching .eyebrow {
+    margin: 0 0 var(--space-4);
+  }
+  .teaching h2 {
+    font-size: clamp(2rem, 3.6vw, 2.6rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-5);
+    max-width: 20ch;
+  }
+  .teaching .detail {
+    font-size: 1.05rem;
+    line-height: 1.65;
+    max-width: 56ch;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-3);
   }
 </style>
 
