@@ -205,6 +205,21 @@ browser-automation MCP tool to take a real screenshot with. As with every
 pass above, a real-environment Playwright run is still needed before
 merging to `main`.
 
+One immediate user-reported follow-up fixed a real bug in that pass: the
+teaching→footer `.seam` bleeds 5rem into the footer's own box by design
+(that's what makes the wash fade out gradually instead of stopping dead at
+the boundary), but `Footer.astro`'s capybara caption text has no `z-index`
+of its own, so it stacked at the footer's ambient level and rendered
+*underneath* the seam's opaque blurred gradient instead of on top of it —
+illegible exactly where the two overlapped. Fixed with one rule:
+`.site-footer` now carries `position: relative; z-index: 2`, above the
+seam's `z-index: 1`, so the footer's real content always paints over any
+decorative wash bleeding into it from above, regardless of DOM order.
+Doesn't touch the seam or wash system at all — footer stays unaware of
+either, per the same "footer doesn't need to know about the wash" reasoning
+as the original pass. Verified via a clean production build and unit tests
+(67/67, unaffected).
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
 (visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`
