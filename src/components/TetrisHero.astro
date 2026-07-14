@@ -14,10 +14,8 @@
     bottom: 0;
     width: 70%;
     overflow: hidden;
-    --tetris-i: #6B9AA8;
-    --tetris-o: #C9A75C;
-    --tetris-t: #8B6B9E;
-    --tetris-j: #5C7FA6;
+    /* --tetris-i/o/t/j now live in tokens.css :root (shared with the home
+       hero's nameplate) rather than being redeclared here. */
     /* Depth-of-field via two stacked copies of the same board: a blurred
        "soft" layer and a sharp "crisp" layer. The illusion only works if the
        two masks are SEPARATED across the width — the blurred layer has to be

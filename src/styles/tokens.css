@@ -9,6 +9,15 @@
   --color-error: #B3261E;
   --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
 
+  /* Tetris piece hues — theme-invariant like the accent colors above.
+     Shared by TetrisHero.astro's ambient board and the home hero's
+     nameplate (index.astro), so both render the same piece exactly the
+     same color instead of each hardcoding their own copy. */
+  --tetris-i: #6B9AA8;
+  --tetris-o: #C9A75C;
+  --tetris-t: #8B6B9E;
+  --tetris-j: #5C7FA6;
+
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;

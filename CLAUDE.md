@@ -87,7 +87,60 @@ and a clean production build (output JS for this component's bundle dropped
 from ~12KB to ~7.5KB, consistent with the removed code); this sandbox still
 can't run Playwright, so the e2e suite (its one overlay-specific test
 deleted from `tests/e2e/tetris.spec.ts`) still needs a real-environment
-confirmation before merging to `main`.
+confirmation before merging to `main`. One more no-plan-doc pass, on direct
+user request, added a "JOHN NG" nameplate button above the Home hero's
+eyebrow line (`index.astro`), addressing feedback that it wasn't obvious
+whose portfolio the site was until scrolling to the bio section. Followed
+the project's mock-first workflow preference below through several rounds
+in an Artifact — initials-only coloring beat a few louder alternatives,
+then a Syne/Unbounded/etc. font survey, then an animation survey — landing
+on: **Unbounded** (a blocky/grid-native variable face, added to the
+existing Google Fonts `css2` link in `BaseLayout.astro` rather than
+self-hosting, matching how the other four typefaces already load) at
+800 weight; only **J** and **O** carry color, because they're the only
+letters in "JOHN NG" that are also real tetromino letters (I/O/T/S/Z/J/L),
+each using that exact piece's hue — not "first letter of each word," which
+read as arbitrary in review. `--tetris-i/o/t/j` moved from being redeclared
+locally inside `TetrisHero.astro`'s `.tetris-hero` rule to `tokens.css`'s
+`:root`, so the nameplate and the ambient board read the literal same
+values instead of two copies that could drift. The click/load flash effect
+does *not* use CSS `@keyframes` (an earlier Artifact-only draft did, and
+hit a real bug there worth recording: restarting a pseudo-element's
+animation via `el.style.animation = 'none'` from JS silently no-ops,
+because JS can only set inline styles on real elements, never on
+`::before`/`::after` — so "replay" only ever restarted the letter's own
+color transition, never the flash block layered on top of it, which is
+why replay visually looked like the name fading rather than flashing).
+The real component instead reuses `TetrisHero.astro`'s own `flashRows()`
+pattern verbatim — a `setTimeout`-driven `classList.toggle('flashing')`
+loop, same `FLASH_CYCLES`/`FLASH_INTERVAL_MS` constants — which sidesteps
+that whole bug class since there's no CSS animation to restart, just a
+class toggle, and happens to make the nameplate's flash read as the same
+motion language as the board's own line-clear flash rather than a
+separately-invented effect. The flash overlay itself is a fixed `#ffffff`,
+not `var(--color-bg)` like the board's flash, since the nameplate isn't
+sitting inside a grid of alternating cells the way the board is — a
+token-driven flash there would either blend into the page or flash navy
+in dark mode instead of reading as a flash. A second real bug, caught only
+by watching a live re-render rather than reading the code: the space
+between "JOHN" and "NG" is its own `.ch` span (for equal flex-cell width),
+and giving it the same treatment as the letter spans made an empty white
+block flash where there was no letter — excluded via `:not(.sp)`. A third,
+accessibility-only issue caught during the same pass: that space span had
+no actual space character in it (width came from CSS `min-width` alone),
+so the button's accessible name would have concatenated to "JOHNNG" — an
+`&nbsp;` inside the span fixes this without needing an `aria-label`
+override, keeping the accessible name the literal visible text rather than
+a maintained duplicate of it. Verified via unit tests (71/71, unaffected —
+this feature has no pure `src/lib/` logic, matching the architecture
+pattern's expectation that DOM-only widgets are e2e-covered, not
+unit-covered) and a clean production build confirming all 7 letter/space
+spans and the promoted tokens render in the output; this sandbox still
+can't run Playwright, so — as with every pass above — a real-environment
+e2e run is still needed before merging to `main`, and no new Playwright
+spec was added for this pass specifically (nothing here changes nav,
+a11y-tree shape beyond the accessible-name fix already covered by the
+`&nbsp;`, or any existing covered flow).
 
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
@@ -252,7 +305,11 @@ and `ArticleLayout.astro` share the same rules).
 Typography: **Bricolage Grotesque** (headlines, weight 600, using the
 `opsz` optical-size axis) · **Source Serif 4** (article prose body text
 only) · **Inter** (UI/interface copy — nav, buttons, forms) · **IBM Plex
-Mono** (small labels: nav wordmark, eyebrows, article meta line).
+Mono** (small labels: nav wordmark, eyebrows, article meta line). A fifth
+face, **Unbounded** (weight 800), is scoped to exactly one place — the
+Home hero's "JOHN NG" nameplate button (see Status above) — rather than a
+general role like the other four; loaded through the same Google Fonts
+`css2` link as the rest, not self-hosted separately.
 
 ## Hobby details — priority order
 

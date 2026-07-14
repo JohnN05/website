@@ -14,6 +14,9 @@ const featured = selectFeatured(
 <BaseLayout title="John Ng">
   <section class="hero">
     <div class="hero-copy">
+      <button class="nameplate" id="nameplate" type="button">
+        <span class="ch j-piece">J</span><span class="ch o-piece">O</span><span class="ch">H</span><span class="ch">N</span><span class="ch sp">&nbsp;</span><span class="ch">N</span><span class="ch">G</span>
+      </button>
       <p class="eyebrow">Software Engineer</p>
       <h1>Coding practical solutions for people. That's always been the point.</h1>
     </div>
@@ -61,6 +64,61 @@ const featured = selectFeatured(
          board. */
       max-width: max(23rem, 40%);
     }
+  }
+  .nameplate {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.7rem, 3.6vw, 2.4rem);
+    letter-spacing: -0.01em;
+    line-height: 1;
+    display: flex;
+    gap: 3px;
+    margin: 0 0 var(--space-3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .nameplate:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 6px;
+    border-radius: 4px;
+  }
+  .nameplate .ch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-width: 1.05em;
+    color: var(--cell, var(--color-text));
+  }
+  .nameplate .ch.sp {
+    min-width: 0.4em;
+  }
+  /* Only J and O are colored — they're the only letters in "JOHN NG" that
+     are also real tetromino letters (I/O/T/S/Z/J/L), each using that
+     piece's own hue. Not "first letter of each word" — H/N/N/G stay
+     neutral because none of them name a piece. */
+  .nameplate .ch.j-piece {
+    --cell: var(--tetris-j);
+  }
+  .nameplate .ch.o-piece {
+    --cell: var(--tetris-o);
+  }
+  /* The flash overlay — a fixed white, not a token, since it's meant to
+     read as a flash regardless of theme (unlike the ambient board's own
+     --color-bg flash, which sits inside a grid of alternating cells this
+     button doesn't have). Toggled by the "flashing" class from the script
+     below, in lockstep with TetrisHero.astro's own flashRows() cadence. */
+  .nameplate .ch:not(.sp)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    opacity: 0;
+  }
+  .nameplate .ch.flashing::before {
+    opacity: 1;
   }
   .eyebrow {
     text-transform: uppercase;
@@ -154,3 +212,41 @@ const featured = selectFeatured(
     padding-bottom: 4rem;
   }
 </style>
+
+<script>
+  // Kept in sync with TetrisHero.astro's own flashRows() constants/pattern
+  // (same class-toggle mechanism, same cadence) so the nameplate's flash
+  // reads as the same motion language as the board's line-clear flash
+  // rather than a separately-invented animation.
+  const FLASH_CYCLES = 3;
+  const FLASH_INTERVAL_MS = 90;
+
+  const nameplateEl = document.getElementById('nameplate');
+  if (nameplateEl) {
+    const flashCells = Array.from(
+      nameplateEl.querySelectorAll<HTMLElement>('.ch:not(.sp)')
+    );
+    let isFlashing = false;
+
+    function flashNameplate(): void {
+      if (isFlashing) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      isFlashing = true;
+      let tick = 0;
+      const step = () => {
+        flashCells.forEach((el) => el.classList.toggle('flashing'));
+        tick++;
+        if (tick >= FLASH_CYCLES * 2) {
+          flashCells.forEach((el) => el.classList.remove('flashing'));
+          isFlashing = false;
+          return;
+        }
+        window.setTimeout(step, FLASH_INTERVAL_MS);
+      };
+      step();
+    }
+
+    flashNameplate();
+    nameplateEl.addEventListener('click', flashNameplate);
+  }
+</script>
