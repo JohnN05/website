@@ -20,6 +20,19 @@ const featured = selectFeatured(
     <TetrisHero />
   </section>
 
+  <section class="bio">
+    <div class="bio-frame">
+      <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
+    </div>
+    <div class="bio-copy">
+      <p class="eyebrow">College Park, MD — CS @ UMD</p>
+      <h2>Hi, I'm John Ng.</h2>
+      <p class="lede">I build software — mostly Java and Python, sometimes JS, React, and C.</p>
+      <p class="detail">Five years in, I've mentored student coders from Brazil to Ukraine along the way.</p>
+      <p class="detail">Next up: putting that experience toward software for education and public health.</p>
+    </div>
+  </section>
+
   <section class="featured">
     <h2>Featured projects</h2>
     <div class="project-grid">
@@ -58,6 +71,79 @@ const featured = selectFeatured(
   .hero-copy h1 {
     font-size: clamp(2rem, 5vw, 3.5rem);
   }
+  .bio {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-9) var(--space-5);
+    display: grid;
+    grid-template-columns: 0.85fr 1fr;
+    gap: var(--space-8);
+    align-items: center;
+    border-top: 1px solid var(--line);
+  }
+  .bio-frame {
+    position: relative;
+    justify-self: start;
+    width: 100%;
+    max-width: 22rem;
+  }
+  .bio-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translate(16px, 16px);
+    background: var(--color-accent);
+    border-radius: 63% 37% 54% 46% / 43% 65% 35% 57%;
+    z-index: 0;
+  }
+  .bio-frame img {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 63% 37% 54% 46% / 43% 65% 35% 57%;
+  }
+  .bio-copy .eyebrow {
+    margin: 0 0 var(--space-4);
+  }
+  .bio-copy h2 {
+    font-size: clamp(2.2rem, 4vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-5);
+    text-wrap: balance;
+  }
+  .bio-copy .lede {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    max-width: 34ch;
+    margin: 0 0 var(--space-5);
+  }
+  .bio-copy .detail {
+    font-size: 1rem;
+    line-height: 1.65;
+    max-width: 42ch;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-3);
+  }
+  @media (max-width: 860px) {
+    .bio {
+      grid-template-columns: 1fr;
+    }
+    .bio-frame {
+      justify-self: center;
+      max-width: 16rem;
+      margin-bottom: var(--space-4);
+    }
+    .bio-copy .lede,
+    .bio-copy .detail {
+      max-width: 100%;
+    }
+  }
+
   .featured {
     padding: 0 var(--space-5);
   }
