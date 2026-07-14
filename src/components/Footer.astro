@@ -24,6 +24,14 @@ const year = new Date().getFullYear();
 </footer>
 <style>
   .site-footer {
+    /* position+z-index (higher than index.astro's .seam, at z-index:1) so
+       the footer's own content always paints above the blurred wash-fade
+       band that bleeds ~5rem into this element's top on Home — otherwise
+       the capybara caption text, which has no z-index of its own and so
+       stacks at the footer's ambient level, renders underneath the seam's
+       opaque gradient instead of on top of it. */
+    position: relative;
+    z-index: 2;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
