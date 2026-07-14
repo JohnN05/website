@@ -1,5 +1,10 @@
 * { box-sizing: border-box; }
 
+html {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
@@ -24,6 +29,10 @@ a { color: inherit; }
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+  html {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
   }
 }
 
