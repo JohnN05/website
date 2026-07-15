@@ -61,8 +61,11 @@ test.describe('the mark itself', () => {
     await page.setViewportSize({ width: 375, height: 700 });
     await page.goto('/');
 
-    // Without the sr-only space PieceMark renders between the stacked lines,
-    // this name would concatenate to "JOHNNG".
+    // Guards against this DOM shape's real failure mode: `.line` is
+    // `display: flex`, which blockifies its `.ch` letter children, so
+    // without `.line`'s `aria-label` the accessible name would come out
+    // per-letter-spaced as "J O H N N G" rather than the literal visible
+    // text.
     await expect(page.getByRole('link', { name: 'JOHN NG', exact: true })).toBeVisible();
   });
 });

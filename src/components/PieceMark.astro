@@ -32,13 +32,13 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
 >
   {lines.map((line, lineIndex) => (
     <Fragment>
-      {/* The stacked mark's two lines are separate elements, so without a real
-          space character between them the accessible name concatenates to
-          "JOHNNG". Same bug this repo already fixed once on the hero
-          nameplate — fixed here with a real space character, per that same
-          preference. That preference doesn't reach every instance of this
-          bug, though — see the aria-label a few lines down, which handles a
-          later-discovered case a literal space character can't fix. */}
+      {/* .piece-mark is display: flex; flex-direction: column, so the two
+          .line children are already blockified and accname computation
+          inserts a space at that boundary on its own — confirmed by removing
+          this span from a live DOM and finding the accessible name still
+          comes out "JOHN NG" verbatim. So this span isn't load-bearing today;
+          it's here to make that boundary space explicit rather than have the
+          accessible name depend on .piece-mark staying a flex column. */}
       {lineIndex > 0 && <span class="sr-only">&nbsp;</span>}
       {/* Second, different instance of the same spacing problem: `.line` is
           `display: flex`, which blockifies its `.ch` letter children, and

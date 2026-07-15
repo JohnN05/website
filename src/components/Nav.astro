@@ -53,8 +53,12 @@ const isHome = Astro.url.pathname === '/';
     padding: 0 var(--space-4);
     text-decoration: none;
     color: var(--color-text);
-  }
-  .rail-wordmark {
+    /* Lives here, not on .rail-wordmark: that class is passed as a prop into
+       PieceMark, whose root element is stamped with PieceMark's own Astro cid,
+       not this file's — a rule authored against .rail-wordmark from this
+       scoped <style> block would never match it. This wrapper contains
+       nothing but the mark, so the size just inherits down, same mechanism
+       index.astro's .nameplate already relies on. */
     font-size: 1.25rem;
   }
 

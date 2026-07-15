@@ -8,12 +8,15 @@ for (const path of pages) {
     await page.goto(path);
 
     // The reveal knocks a letter's color to var(--color-bg) on purpose — the
-    // piece shows through where the glyph was. axe alpha-blends a foreground
-    // into its background and scores the blend, so a scan landing mid-reveal
-    // reports a real contrast failure against a state that lasts ~800ms. Scan
-    // the resting state instead: same ruling as the scroll-reveal conflict this
-    // repo already settled (see CLAUDE.md) — no exclusions, no rule disabled,
-    // just don't scan a transient frame.
+    // piece shows through where the glyph was. This wait scans the resting
+    // state on principle, the same as every other reveal-timing wait in this
+    // suite — but for this component's single-character glyphs (J, O) axe
+    // currently files the mid-reveal contrast result under `incomplete`
+    // ("Element content is too short to determine if it is actual text
+    // content"), not `violations`, and this spec only asserts against
+    // `.violations`. So today this wait isn't load-bearing against a
+    // reported violation; it would start mattering if a glyph ever held more
+    // than one character.
     await page.waitForFunction(
       () => !document.querySelector('[data-piece-mark].revealing'),
       undefined,

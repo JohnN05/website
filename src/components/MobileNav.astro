@@ -33,8 +33,12 @@ import PieceMark from './PieceMark.astro';
     text-decoration: none;
     color: var(--color-text);
     display: flex;
-  }
-  .mobile-wordmark {
+    /* Lives here, not on .mobile-wordmark: that class is passed as a prop
+       into PieceMark, whose root element carries PieceMark's own Astro cid,
+       not this file's — a rule targeting it from this scoped <style> block
+       would never match. This wrapper holds nothing but the mark, so the
+       size just inherits down, same mechanism index.astro's .nameplate
+       already relies on. */
     font-size: 1.05rem;
   }
   .mobile-nav-toggle {
