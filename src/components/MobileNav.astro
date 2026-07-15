@@ -18,7 +18,7 @@ import ThemeToggle from './ThemeToggle.astro';
 <style>
   .mobile-nav { display: none; }
   @media (max-width: 768px) {
-    .mobile-nav { display: block; }
+    .mobile-nav { display: block; scroll-snap-align: start; }
   }
   .mobile-bar {
     display: flex;

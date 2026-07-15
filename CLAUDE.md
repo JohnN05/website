@@ -256,6 +256,59 @@ run will also surface a pre-existing, unrelated stale assertion in
 projects exist today, added in an earlier undocumented pass that never
 updated this test).
 
+The sandbox's missing-`libnspr4`/no-root limitation referenced throughout
+this doc is now resolved for this machine (not portable to a fresh
+checkout elsewhere): Chromium's own binary needs `libnspr4`/`libnss3`/
+`libasound2` at the OS level, which `apt install` can't provide without
+root, separately from Playwright's own browser download (already present
+and unaffected). Fixed by extracting those packages' `.deb`s user-locally
+(`dpkg-deb -x`, no root needed) into `~/.local/lib/playwright-deps` and
+prefixing `LD_LIBRARY_PATH` onto the `test:e2e`/`test:all` scripts in
+`package.json`, rather than mutating any global shell config. This let a
+Playwright suite actually run in this sandbox for the first time since the
+original rewrite and the first two refinement passes — every pass listed
+above from the Tetris hero polish pass onward had only ever been verified
+via unit tests and a clean build, never a real browser, and that first
+real run surfaced real, previously-invisible issues: a genuine mobile
+production bug (`global.css`'s `html { scroll-snap-type: y mandatory }`
+combined with Home's four `scroll-snap-align: start` sections had no snap
+point at the true top of the document, so mobile page loads force-snapped
+scroll position past `MobileNav.astro`'s top bar, hiding the hamburger
+toggle above the fold on first load — fixed by giving `.mobile-nav` its
+own `scroll-snap-align: start` so position 0 is itself a valid snap
+target); several tests that had drifted from the app entirely (the two
+`#capybara` tests in `article.spec.ts` testing a mascot already fully
+removed per an earlier pass — despite that pass's own note above claiming
+its paired e2e check was deleted, it wasn't — deleted now; the reduced-
+motion Tetris check in `accessibility.spec.ts` referencing a `#tetris-
+ambient` id that no longer exists, split into `-soft`/`-crisp` during the
+depth-of-field pass, updated to check `-crisp`; and `home.spec.ts`'s own
+stale project-card count alongside the already-known one in
+`projects.spec.ts`); and two genuinely flaky `tetris.spec.ts` timing
+tests, only exposed by real browser timing rather than a logic bug in
+`TetrisHero.astro` itself — both tests anchored their sampling waits to a
+wall-clock offset from `page.goto()` rather than to the ambient loop's own
+animation-cycle clock, which drift apart under real page-load latency
+(font loading, hydration) and, it turned out, even ordinary Playwright↔
+browser IPC round-trip time was enough on its own to blow past a 300ms
+phase boundary. Fixed by moving each test's whole synchronize-then-sample
+sequence into a single `page.evaluate()`, synchronizing to the actual
+phase-fall→phase-turn transition via an in-page `MutationObserver` instead
+of Node-side `toHaveClass` polling (which is itself level-triggered and
+adds its own latency), and — since even that isn't a substitute for
+proving two reads landed on the *same* spawned piece — adding a small
+test-only production hook: `pieceCycle`/`data-cycle` on `#tetris-piece`,
+bumped once per `runAmbientCycle()` call, asserted equal across both
+reads. One more real (if trivial) finding once cross-cycle drift was
+eliminated: two reads of the same unchanged CSS pixel value straddling a
+layout/paint pass can serialize to slightly different floating-point
+strings in Chromium (~0.0003px observed) — both tests now compare parsed
+floats with `toBeCloseTo(…, 2)` rather than exact string/deep equality,
+still tight enough to catch a real scramble-into-rotation bug (which would
+differ by whole cells, not thousandths of a pixel). All of the above
+verified via a real `npm run test:all` in this sandbox: 67/67 unit tests,
+a clean production build, and all 33 Playwright/axe e2e tests green.
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
 (visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`
@@ -664,10 +717,16 @@ Old CRA site's commit history is preserved — useful for content reference
   reaching the real click-to-play game despite a constraint saying it
   shouldn't — ask directly rather than picking a side unilaterally.
 - `npm run test:all` (unit + build + e2e) is the real CI gate. This
-  particular sandbox cannot launch a Playwright browser (missing
-  `libnspr4`, no root) — treat that specific failure signature as a known
-  environment limitation, not a regression, but always get a
-  real-environment Playwright run before merging any branch built here.
+  sandbox's Chromium binary previously failed to launch (missing
+  `libnspr4`/`libnss3`/`libasound2`, no root for `apt install`) — now
+  fixed on this machine only via a user-local lib extraction plus a
+  scoped `LD_LIBRARY_PATH` in `package.json` (see Status above), so
+  `npm run test:e2e` actually runs here now. That fix is local-machine
+  state, not something a fresh checkout inherits — if a from-scratch
+  environment hits the same missing-`libnspr4` signature, treat it as
+  that known limitation rather than a regression, and either redo the
+  same local fix or fall back to a real-environment Playwright run before
+  merging.
 - Cost-tier subagent models to the task, not the session default: a cheap
   model for tasks where the plan supplies literal code (transcription plus
   testing), a standard model once a task has real integration/behavioral

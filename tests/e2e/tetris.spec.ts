@@ -47,25 +47,69 @@ test('desktop: ambient piece stays a rigid shape while turning, sliding rather t
   const cells = crispLayer.locator('.cell');
   await expect(cells).toHaveCount(4);
 
-  const readShape = async () => {
-    const positions = await cells.evaluateAll((els) =>
-      (els as HTMLElement[]).map((el) => ({
-        left: parseFloat((el as HTMLElement).style.left),
-        top: parseFloat((el as HTMLElement).style.top),
-      }))
-    );
-    // Relative to the first cell, so the turn phase's intended horizontal
-    // slide doesn't itself register as a shape change — only a change in
-    // rotation (cells moving relative to each other) should.
-    const [origin, ...rest] = positions;
-    return rest.map((p) => ({ dLeft: p.left - origin.left, dTop: p.top - origin.top }));
-  };
+  // The whole synchronize-then-sample sequence runs inside one
+  // page.evaluate so nothing on the critical timing path round-trips
+  // through Playwright's CDP connection — that latency alone (both in
+  // detecting the phase-turn transition via polling, and in the delay
+  // between the two reads) was enough to land samples in the wrong phase
+  // or even the next piece's cycle. Synchronizing to the transition via an
+  // in-page MutationObserver (not toHaveClass polling from Node) catches
+  // the actual moment a fresh turn phase starts with no added latency:
+  // waiting for phase-fall first, then for phase-turn to reappear, catches
+  // a genuine edge instead of an already-true condition (page.goto() can
+  // resolve at an unpredictable point relative to the ambient loop's own
+  // cycle clock, e.g. font-load/hydration jitter). data-cycle (bumped once
+  // per runAmbientCycle(), see TetrisHero.astro) is then checked as a hard
+  // guarantee neither read landed on a different piece.
+  const { earlyShape, lateShape, cycleMatch } = await page.evaluate(async () => {
+    const piece = document.getElementById('tetris-piece')!;
+    const waitForClass = (cls: string) =>
+      new Promise<void>((resolve) => {
+        if (piece.classList.contains(cls)) {
+          resolve();
+          return;
+        }
+        const obs = new MutationObserver(() => {
+          if (piece.classList.contains(cls)) {
+            obs.disconnect();
+            resolve();
+          }
+        });
+        obs.observe(piece, { attributes: true, attributeFilter: ['class'] });
+      });
+    await waitForClass('phase-fall');
+    await waitForClass('phase-turn');
 
-  const earlyShape = await readShape();
-  await page.waitForTimeout(250); // still inside the 300ms turn phase
-  const lateShape = await readShape();
+    const cycleAtStart = piece.dataset.cycle;
+    const readShape = () => {
+      const els = Array.from(document.querySelectorAll('#tetris-piece-crisp .cell')) as HTMLElement[];
+      const positions = els.map((el) => ({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) }));
+      // Relative to the first cell, so the turn phase's intended horizontal
+      // slide doesn't itself register as a shape change — only a change in
+      // rotation (cells moving relative to each other) should.
+      const [origin, ...rest] = positions;
+      return rest.map((p) => ({ dLeft: p.left - origin.left, dTop: p.top - origin.top }));
+    };
+    const earlyShape = readShape();
+    await new Promise((resolve) => setTimeout(resolve, 250)); // still inside the 300ms turn phase
+    const lateShape = readShape();
+    return { earlyShape, lateShape, cycleMatch: piece.dataset.cycle === cycleAtStart };
+  });
 
-  expect(lateShape).toEqual(earlyShape);
+  expect(cycleMatch).toBe(true);
+  // Not toEqual: the two reads straddle a layout/paint pass, and Chromium
+  // reserializes .style.top/.left slightly differently once a value has
+  // actually been laid out — the same JS-assigned pixel value can read
+  // back as e.g. "44.6667px" pre-layout and "44.66700000000003px"
+  // post-layout, an observed ~0.0003px (1 part in 150,000) drift. That's
+  // three orders of magnitude below a single pixel and invisible; a real
+  // scramble-into-rotation bug would show a difference on the order of a
+  // full cell (single digits of px), not fractions of a thousandth of one.
+  expect(lateShape.length).toBe(earlyShape.length);
+  lateShape.forEach((late, i) => {
+    expect(late.dLeft).toBeCloseTo(earlyShape[i].dLeft, 2);
+    expect(late.dTop).toBeCloseTo(earlyShape[i].dTop, 2);
+  });
 });
 
 test('desktop: ambient piece finishes its horizontal slide before it starts falling', async ({ page }) => {
@@ -73,21 +117,60 @@ test('desktop: ambient piece finishes its horizontal slide before it starts fall
   await page.goto('/');
 
   const crispLayer = page.locator('#tetris-piece-crisp');
-  const firstCell = crispLayer.locator('.cell').first();
   await expect(crispLayer.locator('.cell')).toHaveCount(4);
 
-  // Sample deep into the turn phase (300ms) but still before the fall
-  // phase begins, then again well into the fall phase — the horizontal
-  // (left) position must be identical at both points. If the turn's
-  // setTimeout fires before its CSS transition's last steps() jump lands
-  // (a race this test guards against), left keeps changing after the
-  // phase switch instead of staying put while only top (the fall) moves.
-  await page.waitForTimeout(290);
-  const leftNearTurnEnd = await firstCell.evaluate((el) => (el as HTMLElement).style.left);
-  await page.waitForTimeout(150);
-  const leftDuringFall = await firstCell.evaluate((el) => (el as HTMLElement).style.left);
+  // The whole synchronize-then-sample sequence runs inside one
+  // page.evaluate, synchronizing to the phase-fall→phase-turn transition
+  // via an in-page MutationObserver rather than toHaveClass polling from
+  // Node — see the test above for the full reasoning (round-tripping
+  // through Playwright's CDP connection was, on its own, enough latency to
+  // drift samples into the wrong phase, or even the ~200ms empty-overlay
+  // window between one piece locking and the next spawning). Sample deep
+  // into the turn phase (300ms) but still before the fall phase begins,
+  // then again well into the fall phase — the horizontal (left) position
+  // must be identical at both points. If the turn's setTimeout fires
+  // before its CSS transition's last steps() jump lands (a race this test
+  // guards against), left keeps changing after the phase switch instead of
+  // staying put while only top (the fall) moves. data-cycle is checked as
+  // a hard guarantee both reads landed on the same piece.
+  const { leftNearTurnEnd, leftDuringFall, cycleMatch } = await page.evaluate(async () => {
+    const piece = document.getElementById('tetris-piece')!;
+    const waitForClass = (cls: string) =>
+      new Promise<void>((resolve) => {
+        if (piece.classList.contains(cls)) {
+          resolve();
+          return;
+        }
+        const obs = new MutationObserver(() => {
+          if (piece.classList.contains(cls)) {
+            obs.disconnect();
+            resolve();
+          }
+        });
+        obs.observe(piece, { attributes: true, attributeFilter: ['class'] });
+      });
+    await waitForClass('phase-fall');
+    await waitForClass('phase-turn');
 
-  expect(leftDuringFall).toBe(leftNearTurnEnd);
+    const cycleAtStart = piece.dataset.cycle;
+    const cell = () => document.querySelector('#tetris-piece-crisp .cell') as HTMLElement | null;
+    await new Promise((resolve) => setTimeout(resolve, 290));
+    const leftNearTurnEnd = parseFloat(cell()?.style.left ?? 'NaN');
+    // 440ms after phase-turn start: turn (300ms) is over, fall (220ms) is
+    // ~140ms in — still short of the 520ms lock/pause boundary.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const leftDuringFall = parseFloat(cell()?.style.left ?? 'NaN');
+    return { leftNearTurnEnd, leftDuringFall, cycleMatch: piece.dataset.cycle === cycleAtStart };
+  });
+
+  expect(cycleMatch).toBe(true);
+  // Not toBe: see the "rigid shape" test above for why two reads of the
+  // same unchanged pixel value can serialize to slightly different
+  // strings across a layout/paint pass (~0.0003px observed) — comparing
+  // parsed floats with a tolerance instead of raw strings avoids failing
+  // on that sub-pixel noise while still catching a real left-during-fall
+  // drift, which would be on the order of a full cell.
+  expect(leftDuringFall).toBeCloseTo(leftNearTurnEnd, 2);
 });
 
 test('desktop: falling-piece overlay is cleared during a line-clear flash, not left stuck on top of it', async ({ page }) => {

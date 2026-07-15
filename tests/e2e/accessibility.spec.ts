@@ -22,8 +22,8 @@ test('reduced motion: Tetris ambient loop shows a single static frame', async ({
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
-  const before = await page.locator('#tetris-ambient').innerHTML();
+  const before = await page.locator('#tetris-ambient-crisp').innerHTML();
   await page.waitForTimeout(2000);
-  const after = await page.locator('#tetris-ambient').innerHTML();
+  const after = await page.locator('#tetris-ambient-crisp').innerHTML();
   expect(after).toBe(before);
 });
