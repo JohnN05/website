@@ -376,8 +376,10 @@ re-suspected later. The first attempt at this trace was invalid and had to
 be rerun: Chromium restores scroll position across `reload()`, so each mode
 was silently measuring a *different* section pair, and the `both` run
 measured no travel at all; reruns must force `scrollY` to 0 before each
-sample. Desktop now uses `scroll-snap-type: y proximity` (in `global.css`'s
-existing `min-width: 769px` block, replacing the lock's listener entirely);
+sample. Desktop now uses `scroll-snap-type: y proximity` (in a new
+`min-width: 769px` block in `global.css`, replacing the lock's listener
+entirely — not the pre-existing `--rail-width` block of the same width, which
+is separate and untouched);
 mandatory was considered and rejected because it fires its own scroll
 animation on every gesture, which would re-create the same conflict in a
 milder form. Mobile's `scroll-snap-type: y mandatory` block is untouched.
@@ -389,8 +391,41 @@ a new `src/lib/parallax.ts` (`MAX_SHIFT_PX = 200`,
 ±200px), wired from `index.astro` via an rAF-throttled `scroll` listener
 that writes `--parallax-y` on each intersecting `[data-depth]` element;
 reveal adds `.in` to a section on entry via a second `IntersectionObserver`
-and drives `[data-reveal]` children through registered `@property
---reveal-y`/`--reveal-o` custom properties, staggered 70ms per child. One
+(`threshold: 0.15`) and drives `[data-reveal]` children through registered
+`@property --reveal-y`/`--reveal-o` custom properties, staggered 70ms per
+child.
+
+Reveal's hidden state is gated on `html[data-motion='on']`, set by the
+render-blocking inline `<script is:inline>` in `BaseLayout.astro`'s `<head>` —
+the same one, and for the same reason, as the pre-existing line that sets
+`data-theme` there to avoid a theme flash. It must land before first paint:
+Astro's `<script>` is `type="module"` and runs *after* paint, so gating from
+`index.astro` painted already-visible content at rest and then transitioned it
+OUT. Reduced motion (and a script that never runs at all) simply leaves the
+attribute unset, which is what keeps content from ever being stranded at
+`opacity: 0` — never write a rule that can hide `[data-reveal]` without it.
+The hero is the one section whose `in` class is authored in `index.astro`'s
+markup rather than added by script: it is on screen at load by definition,
+reveal is an on-*entry* effect, and a pre-paint gate is too early for any
+script to mark it resting in time. Removing that class makes the hero fade in
+on every load (verified: its `h1` renders at `opacity: 0.18` mid-fade) — if a
+deliberate hero load-in is ever wanted, give it its own mechanism instead.
+
+An earlier version of that gate also pre-marked, from JS, any section merely
+touching the viewport as already-entered, which disagreed with the observer's
+own 0.15 threshold and produced a bug worth recording: Home's deliberate ~10vh
+"peek" of the next section leaves bio 11.1% visible at 1920x1080 — above zero,
+so pre-marked resting, but below 0.15, so bio's reveal silently never played
+on the most common desktop resolution. Every e2e test ran at 1280x800, where
+the hero renders ~835px tall and bio does not peek: the single height at which
+the bug is invisible. The fix was not to raise the JS check to match (that
+flashes bio's visible peek from 1 to 0, the exact flash the check existed to
+prevent) but to move the gate before paint, which makes the check redundant
+and lets one threshold govern reveal everywhere. The lesson generalizes: a
+load-time "is it already on screen" check and an observer threshold are two
+definitions of "entered," and they must not be allowed to disagree.
+
+One
 real bug surfaced from the mock and had to be designed around rather than
 patched after the fact: a `--parallax-y` written by JS with no CSS rule
 consuming it produces no error and no visual difference from a value that's
@@ -398,7 +433,27 @@ merely wrong — it silently looks like a taste problem instead of a missing
 feature. The board carries `data-depth` but not `data-reveal`, so the
 shared transform rule in `global.css` must key off `[data-reveal],
 [data-depth]` together, not `[data-reveal]` alone; that selector is
-load-bearing, not decorative. Four more real issues turned up during this
+load-bearing, not decorative.
+
+The whole-branch review then found that same constraint broken in the
+*inverse* direction, which the plan never considered and no test caught: the
+consumer set was silently *larger* than the producer set. `--parallax-y` was
+left unregistered (the spec treats `@property` purely as "makes it
+transitionable," and since JS rewrites `--parallax-y` every frame it looked
+like it needed no registration), and custom properties inherit by default —
+so the value written on `.hero-copy` also reached its own `h1` and `.eyebrow`,
+which the transform rule matches too, and each re-applied that same translate
+*inside* the already-shifted parent. Measured at `scrollY` 400: the hero text
+rendered 40px off design instead of 20px, an effective depth of 0.10 rather
+than the intended 0.05 — narrowing the very board-vs-copy rate difference the
+effect exists to create (`.bio-copy` 0.03→0.06, `.teaching-inner` 0.06→0.12
+likewise). `@property`'s `inherits: false` is what scopes a custom property to
+its producer; registration here is about inheritance, not animation. Every
+test missed it for one reason worth remembering: the hardened `DOMMatrix`
+assertion ran on `#tetris-hero`, the only depth layer with no `[data-reveal]`
+descendants — the single element inheritance cannot reach.
+
+Four more real issues turned up during this
 pass, none anticipated by its own plan: (1) the plan's own literal e2e
 assertion — `getComputedStyle(html).scrollSnapType === 'y proximity'` — is
 unsatisfiable in any browser, because per CSSOM serialization `proximity`
@@ -452,8 +507,16 @@ in this sandbox (the `LD_LIBRARY_PATH`/`libnspr4` fix below is in place and
 working here, and continues to be — this doc's long-running "this sandbox
 can't run Playwright" caveat no longer applies from the Tetris hero polish
 pass onward and should not be reintroduced for future passes): 74/74 unit,
-clean production build, 40/40 e2e, all independently re-confirmed by the
-controller directly rather than only trusted from subagent reports.
+clean production build, 43/43 e2e, all independently re-confirmed by the
+controller directly rather than only trusted from subagent reports — and in
+this pass that mattered more than usual: one implementer reported its fix as
+DONE when the suite was in fact still red, and another ran with its safety
+classifier unavailable. The e2e count is 40 for the four planned tasks plus
+three regression tests added from review findings — the inheritance
+double-apply, bio's reveal at 1920x1080, and the hero not animating on load
+(the parallax-consumer check is an added assertion inside an existing test,
+not a new one). Each was proven to fail against the bug it guards, by
+reintroducing that bug, before being kept.
 
 ## Stack
 
