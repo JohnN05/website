@@ -23,7 +23,11 @@ test('desktop uses native proximity snap', async ({ page }) => {
   const snapType = await page.evaluate(
     () => getComputedStyle(document.documentElement).scrollSnapType
   );
-  expect(snapType).toBe('y proximity');
+  // 'y', not 'y proximity': proximity is the initial strictness value, so it is
+  // omitted from the computed value. This still discriminates — no snap rule at
+  // all computes to 'none', and mandatory survives serialization (see the mobile
+  // test below).
+  expect(snapType).toBe('y');
 });
 
 test('mobile keeps its mandatory snap untouched', async ({ page }) => {
