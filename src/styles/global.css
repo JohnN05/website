@@ -1,8 +1,13 @@
 * { box-sizing: border-box; }
 
 html {
-  scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  html {
+    scroll-snap-type: y mandatory;
+  }
 }
 
 body {

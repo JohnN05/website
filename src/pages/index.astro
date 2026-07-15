@@ -12,7 +12,7 @@ const featured = selectFeatured(
 );
 ---
 <BaseLayout title="John Ng">
-  <section class="hero">
+  <section class="hero" data-scroll-section>
     <div class="hero-copy">
       <button class="nameplate" id="nameplate" type="button">
         <span class="ch j-piece">J</span><span class="ch o-piece">O</span><span class="ch">H</span><span class="ch">N</span><span class="ch sp">&nbsp;</span><span class="ch">N</span><span class="ch">G</span>
@@ -25,7 +25,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--wash-bio);"></div>
 
-  <section class="bio">
+  <section class="bio" data-scroll-section>
     <div class="bio-inner">
       <div class="bio-frame">
         <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
@@ -41,7 +41,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
 
-  <section class="featured">
+  <section class="featured" data-scroll-section>
     <div class="featured-inner">
       <h2>Featured projects</h2>
       <div class="project-grid">
@@ -52,7 +52,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
 
-  <section class="teaching">
+  <section class="teaching" data-scroll-section>
     <div class="teaching-inner">
       <p class="eyebrow">Teaching</p>
       <h2>I teach as much as I build.</h2>
@@ -334,5 +334,89 @@ const featured = selectFeatured(
 
     flashNameplate();
     nameplateEl.addEventListener('click', flashNameplate);
+  }
+</script>
+
+<script>
+  import {
+    DURATION_MS,
+    WHEEL_THRESHOLD,
+    easeInOutCubic,
+    currentSectionIndex,
+    nextSectionIndex,
+  } from '../lib/scrollLock';
+
+  // One-time check, matching the nameplate-flash script's own pattern: does
+  // not re-evaluate on resize or a live prefers-reduced-motion change.
+  if (
+    matchMedia('(min-width: 769px)').matches &&
+    !matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-scroll-section]')
+    );
+    const teachingEl = sections[sections.length - 1];
+    let sectionTops: number[] = [];
+    let locked = false;
+
+    function refreshSectionTops(): void {
+      sectionTops = sections.map((el) => el.offsetTop);
+    }
+
+    function animateScrollTo(target: number): void {
+      const start = window.scrollY;
+      const distance = target - start;
+      const startTime = performance.now();
+      locked = true;
+
+      function step(now: number): void {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / DURATION_MS, 1);
+        window.scrollTo({
+          top: start + distance * easeInOutCubic(t),
+          left: 0,
+          behavior: 'instant',
+        });
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          locked = false;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    window.addEventListener(
+      'wheel',
+      (event: WheelEvent) => {
+        // Hard lock: every event during the 700ms transition, including a
+        // trackpad's momentum trail, is swallowed outright.
+        if (locked) {
+          event.preventDefault();
+          return;
+        }
+        if (Math.abs(event.deltaY) < WHEEL_THRESHOLD) return;
+
+        refreshSectionTops();
+        const current = currentSectionIndex(window.scrollY, sectionTops);
+
+        // Footer handoff (part 1): once scrolled into the seam/footer past
+        // the four locked sections, native scroll owns that zone in both
+        // directions — lets an upward flick from deep in the footer scroll
+        // normally instead of yanking the user back up into "featured."
+        const footerBoundary = teachingEl.offsetTop + teachingEl.offsetHeight;
+        if (window.scrollY >= footerBoundary) return;
+
+        const target = nextSectionIndex(current, event.deltaY, sectionTops.length);
+        // Footer handoff (part 2): already at the first/last of the four
+        // sections and still pushing further in that direction — let a
+        // downward flick from "teaching" continue into the footer.
+        if (target === current) return;
+
+        event.preventDefault();
+        animateScrollTo(sectionTops[target]);
+      },
+      { passive: false }
+    );
   }
 </script>
