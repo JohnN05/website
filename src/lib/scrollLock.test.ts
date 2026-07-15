@@ -38,7 +38,7 @@ describe('currentSectionIndex', () => {
   });
 
   it('returns the index of the last section whose top is <= scrollY', () => {
-    expect(currentSectionIndex(799, sectionTops)).toBe(0);
+    expect(currentSectionIndex(400, sectionTops)).toBe(0);
     expect(currentSectionIndex(800, sectionTops)).toBe(1);
     expect(currentSectionIndex(1600, sectionTops)).toBe(2);
   });
@@ -47,11 +47,17 @@ describe('currentSectionIndex', () => {
     expect(currentSectionIndex(3000, sectionTops)).toBe(3);
   });
 
-  it('tolerates a small epsilon below an exact section top', () => {
-    // Sub-pixel float drift between a computed scrollY and an offsetTop
-    // shouldn't misclassify the current section.
-    expect(currentSectionIndex(799.6, sectionTops)).toBe(0);
+  it('tolerates real-world scrollTo() landing drift below an exact section top', () => {
+    // Browsers don't always land window.scrollY at the exact pixel value
+    // passed to scrollTo() — observed ~0.2px drift on a real Windows
+    // display (DPI-scaling-dependent). A scroll landing within a couple
+    // px of a section's top is still that section...
+    expect(currentSectionIndex(799, sectionTops)).toBe(1);
     expect(currentSectionIndex(800, sectionTops)).toBe(1);
+    // ...but a position meaningfully short of a section's top (not just
+    // landing-precision noise) must still resolve to the section
+    // actually reached.
+    expect(currentSectionIndex(790, sectionTops)).toBe(0);
   });
 });
 
