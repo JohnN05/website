@@ -10,6 +10,17 @@ html {
   }
 }
 
+/* Desktop replacement for the removed wheel-intercept scroll lock. Proximity
+   (not mandatory) is deliberate: mandatory fires its own scroll animation on
+   every gesture, which would yank the parallax layers mid-drift and re-create
+   the exact conflict the lock had. Proximity leaves the gesture alone and only
+   settles when the visitor stops near a section. */
+@media (min-width: 769px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
