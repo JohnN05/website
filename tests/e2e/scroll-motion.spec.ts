@@ -121,6 +121,31 @@ test('the Tetris board drifts against the hero copy as the page scrolls', async 
   expect(boardTranslateY).toBeCloseTo(board, 1);
 });
 
+test('a depth layer does not drag its own revealed children along with it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  await page.evaluate(() => window.scrollTo({ top: 400, behavior: 'instant' }));
+
+  // Custom properties inherit by default, and the transform rule matches
+  // [data-reveal] children of [data-depth] elements. Unregistered, .hero-copy's
+  // --parallax-y also reached its own h1, which re-applied that translate INSIDE
+  // the already-shifted parent — rendering the hero text at double its intended
+  // depth. @property's inherits:false is what scopes the value to its producer;
+  // #tetris-hero is the one depth layer with no revealed children, so the board
+  // assertions above cannot catch this.
+  const parent = await page
+    .locator('.hero-copy')
+    .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).f);
+  expect(parent).toBeGreaterThan(0);
+
+  const child = await page
+    .locator('.hero-copy h1')
+    .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).f);
+  expect(child).toBe(0);
+});
+
 test('parallax does not attach below the mobile breakpoint', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

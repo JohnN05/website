@@ -122,6 +122,20 @@ a { color: inherit; }
   inherits: false;
   initial-value: 1;
 }
+/* --parallax-y is registered for a different reason than the two above: it is
+   never transitioned (JS rewrites it per frame), but it MUST NOT inherit.
+   Custom properties inherit by default, and the transform rule below matches
+   [data-reveal] children of [data-depth] elements — so an unregistered
+   --parallax-y written on .hero-copy also reached its own h1/eyebrow, which
+   then applied that same translate again INSIDE the already-translated
+   parent. Measured: hero copy at depth 0.05 rendered 40px off at scrollY 400
+   instead of 20px — an effective depth of 0.10, narrowing the very
+   board-vs-copy rate difference the effect exists to create. */
+@property --parallax-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
 
 /* Reveal and parallax both want translateY on the same elements; each rides
    its own custom property into one transform so neither clobbers the other.
