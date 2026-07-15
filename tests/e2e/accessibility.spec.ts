@@ -19,6 +19,29 @@ for (const path of pages) {
       undefined,
       { timeout: 5000 }
     );
+    // The class check above only proves the .revealing class was removed —
+    // it says nothing about whether the .glyph color transition it drove
+    // (transition: color 120ms steps(2, end)) has actually finished
+    // repainting. axe scores what's rendered, not what's classed, so a scan
+    // landing in that ~120ms gap can still see a knocked-out glyph and
+    // report the same contrast failure this wait exists to prevent. Same
+    // fix this repo already used for the identical shape of bug in the
+    // scroll-motion pass (see CLAUDE.md): poll the actual computed state
+    // axe measures, not the class that starts the transition toward it. At
+    // rest a .glyph inherits its .ch's color, so the two are equal; mid-
+    // reveal `.revealing .ch[data-piece] .glyph { color: var(--color-bg) }`
+    // overrides the glyph only, so they differ. Equal-again is exactly
+    // "finished repainting."
+    await page.waitForFunction(
+      () =>
+        Array.from(document.querySelectorAll('.ch[data-piece]')).every((ch) => {
+          const glyph = ch.querySelector('.glyph');
+          if (!glyph) return true;
+          return getComputedStyle(ch).color === getComputedStyle(glyph).color;
+        }),
+      undefined,
+      { timeout: 5000 }
+    );
 
     if (path === '/') {
       // axe reads one static snapshot, and Home's unentered [data-reveal]
