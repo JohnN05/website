@@ -7,6 +7,19 @@ for (const path of pages) {
   test(`no serious or critical accessibility violations on ${path}`, async ({ page }) => {
     await page.goto(path);
 
+    // The reveal knocks a letter's color to var(--color-bg) on purpose — the
+    // piece shows through where the glyph was. axe alpha-blends a foreground
+    // into its background and scores the blend, so a scan landing mid-reveal
+    // reports a real contrast failure against a state that lasts ~800ms. Scan
+    // the resting state instead: same ruling as the scroll-reveal conflict this
+    // repo already settled (see CLAUDE.md) — no exclusions, no rule disabled,
+    // just don't scan a transient frame.
+    await page.waitForFunction(
+      () => !document.querySelector('[data-piece-mark].revealing'),
+      undefined,
+      { timeout: 5000 }
+    );
+
     if (path === '/') {
       // axe reads one static snapshot, and Home's unentered [data-reveal]
       // content sits at opacity 0 by design until scrolled to — axe blends

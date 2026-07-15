@@ -37,7 +37,17 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
           "JOHNNG". Same bug this repo already fixed once on the hero
           nameplate — fix it with a space, not an aria-label duplicate. */}
       {lineIndex > 0 && <span class="sr-only">&nbsp;</span>}
-      <span class="line">
+      {/* Each letter below is its own inline-flex box (needed so the piece
+          lattice can be absolutely positioned and sized per letter), but
+          browsers insert an implicit space in accessible-name computation at
+          every non-inline box boundary — confirmed against a real Chromium
+          AX tree, not just Playwright's own approximation — so without this
+          the mark's accessible name comes out "J O H N N G" instead of
+          "JOHN NG". aria-label here isn't a maintained duplicate: it's the
+          same `line` value already driving the letters below, just used
+          directly instead of letting the browser reconstruct it from a DOM
+          shape that can't carry it losslessly. */}
+      <span class="line" aria-label={line}>
         {[...line].map((letter) => {
           const key = pieceForLetter(letter);
           return (
