@@ -57,15 +57,58 @@ test('a section reveals its contents on entry', async ({ page }) => {
     .toBe('1');
 });
 
+test('bio still reveals on a viewport where it peeks below the fold', async ({
+  page,
+}) => {
+  // 1920x1080, not the 1280x800 every other test uses: the hero renders ~835px
+  // tall, so at 1280x800 bio doesn't peek at all — the one height where this
+  // bug is invisible. Home's sections deliberately leave ~10vh of the next one
+  // showing, which puts bio ~11% visible here: above zero, but below the
+  // observer's 0.15 threshold. A load-time check that marked any section merely
+  // touching the viewport as already-entered therefore skipped bio's reveal
+  // entirely on the most common desktop resolution.
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+
+  const bio = page.locator('.bio');
+  await expect(bio).not.toHaveClass(/\bin\b/);
+  await expect
+    .poll(() => bio.locator('h2').evaluate((el) => getComputedStyle(el).opacity))
+    .not.toBe('1');
+
+  await bio.scrollIntoViewIfNeeded();
+  await expect(bio).toHaveClass(/\bin\b/);
+  await expect
+    .poll(() => bio.locator('h2').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+});
+
+test('the hero never animates in on load', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  // The hero is on screen at load by definition, and reveal is an on-ENTRY
+  // effect. The hidden state lands before first paint now, too early for any
+  // script to mark the hero resting in time — so `in` is authored in the
+  // markup. If that class is ever dropped, the hero fades in on every load.
+  await expect(page.locator('.hero')).toHaveClass(/\bin\b/);
+  const opacity = await page
+    .locator('.hero h1')
+    .evaluate((el) => getComputedStyle(el).opacity);
+  expect(opacity).toBe('1');
+});
+
 test('reduced motion renders content at rest with no reveal gating', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
 
-  // The hidden state is gated on body[data-motion='on'], which JS must not
-  // set under reduced motion — otherwise content could sit at opacity 0
-  // forever. This is the failure mode worth a test of its own.
-  const motion = await page.evaluate(() => document.body.dataset.motion);
+  // The hidden state is gated on html[data-motion='on'], which the inline head
+  // script must not set under reduced motion — otherwise content could sit at
+  // opacity 0 forever. This is the failure mode worth a test of its own.
+  const motion = await page.evaluate(
+    () => document.documentElement.dataset.motion
+  );
   expect(motion).toBeUndefined();
 
   const opacity = await page

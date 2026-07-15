@@ -148,9 +148,14 @@ a { color: inherit; }
   transform: translateY(calc(var(--reveal-y) + var(--parallax-y, 0px)));
 }
 
-/* The hidden state is gated on an attribute JS sets only when motion is
-   allowed, so content is never left invisible if the script doesn't run. */
-body[data-motion='on'] [data-reveal] {
+/* The hidden state is gated on an attribute set only when motion is allowed,
+   so content is never left invisible if the script doesn't run. It's set on
+   <html> by a render-blocking inline script in BaseLayout.astro rather than on
+   <body> by index.astro's module script: a module script runs after first
+   paint, so gating there painted already-visible content at rest and then
+   transitioned it OUT. Gating before paint is also what lets one threshold
+   govern reveal everywhere — see index.astro's observer. */
+html[data-motion='on'] [data-reveal] {
   --reveal-y: 28px;
   --reveal-o: 0;
   opacity: var(--reveal-o);
@@ -158,7 +163,7 @@ body[data-motion='on'] [data-reveal] {
     --reveal-y 620ms cubic-bezier(0.22, 1, 0.36, 1),
     --reveal-o 520ms ease-out;
 }
-body[data-motion='on'] [data-scroll-section].in [data-reveal] {
+html[data-motion='on'] [data-scroll-section].in [data-reveal] {
   --reveal-y: 0px;
   --reveal-o: 1;
 }

@@ -18,7 +18,7 @@ for (const path of pages) {
       // is already at opacity 1 and needs no reveal), and the poll below
       // would hang until timeout instead of passing trivially.
       const motionOn = await page.evaluate(
-        () => document.body.dataset.motion === 'on'
+        () => document.documentElement.dataset.motion === 'on'
       );
       if (motionOn) {
         await page.evaluate(async () => {

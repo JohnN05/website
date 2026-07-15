@@ -12,7 +12,13 @@ const featured = selectFeatured(
 );
 ---
 <BaseLayout title="John Ng">
-  <section class="hero" data-scroll-section>
+  {/* `in` is authored here, not added by script: the hero is on screen at load
+      by definition, and reveal is an on-ENTRY effect, so it must never animate
+      in. The hidden state now lands before first paint, which is too early for
+      any script to mark the hero resting in time — only markup gets there
+      first. If a deliberate hero load-in is ever wanted, it needs its own
+      mechanism; do not get it by deleting this class. */}
+  <section class="hero in" data-scroll-section>
     <div class="hero-copy" data-depth="0.05">
       <button class="nameplate" id="nameplate" type="button" data-reveal>
         <span class="ch j-piece">J</span><span class="ch o-piece">O</span><span class="ch">H</span><span class="ch">N</span><span class="ch sp">&nbsp;</span><span class="ch">N</span><span class="ch">G</span>
@@ -341,28 +347,15 @@ const featured = selectFeatured(
   const REVEAL_STAGGER_MS = 70;
   const REVEAL_THRESHOLD = 0.15;
 
-  // Same reduced-motion convention as the Tetris ambient loop: check once,
-  // and if motion is reduced simply never attach — global.css's hidden state
-  // is gated on the attribute set below, so content renders normally.
+  // Same reduced-motion convention as the Tetris ambient loop: check once, and
+  // if motion is reduced simply never attach. The hidden state is gated on
+  // data-motion, which BaseLayout.astro's inline head script sets before first
+  // paint (and never sets under reduced motion), so content renders normally
+  // here regardless.
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const sections = Array.from(
       document.querySelectorAll<HTMLElement>('[data-scroll-section]')
     );
-
-    // Astro's <script> is type="module", so it runs AFTER the DOM has painted.
-    // Setting data-motion first would apply the hidden state to already-visible
-    // content and transition it OUT before the observer brought it back in — a
-    // flash on every load. Any section on screen right now is, by definition,
-    // already entered: mark it resting synchronously, before the hidden state
-    // can ever apply to it. Off-screen sections flip to hidden invisibly.
-    sections.forEach((section) => {
-      const rect = section.getBoundingClientRect();
-      if (rect.top < window.innerHeight && rect.bottom > 0) {
-        section.classList.add('in');
-      }
-    });
-
-    document.body.dataset.motion = 'on';
 
     sections.forEach((section) => {
       const items = Array.from(
@@ -385,8 +378,13 @@ const featured = selectFeatured(
       { threshold: REVEAL_THRESHOLD }
     );
 
-    // Sections marked resting above are already done; observing them would
-    // only re-add a class they carry.
+    // The hero ships with `in` already on it (see the markup) and is done;
+    // observing it would only re-add a class it carries. Every other section
+    // is governed solely by the threshold above — an earlier version also
+    // pre-marked any section merely touching the viewport, which disagreed
+    // with that threshold: the deliberate ~10vh peek left bio 11.1% visible at
+    // 1920x1080, enough to be pre-marked but not enough to trip the observer,
+    // so bio's reveal silently never played on tall viewports.
     sections
       .filter((section) => !section.classList.contains('in'))
       .forEach((section) => observer.observe(section));
