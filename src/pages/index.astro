@@ -344,8 +344,12 @@ const featured = selectFeatured(
 </script>
 
 <script>
-  const REVEAL_STAGGER_MS = 70;
-  const REVEAL_THRESHOLD = 0.15;
+  const REVEAL_STAGGER_MS = 110;
+  // A beat after the section is judged entered, before the first child moves.
+  const REVEAL_LEAD_IN_MS = 160;
+  // How far into the section the reveal starts. Raising this delays the start
+  // in scroll distance rather than in time, which is the other half of "later".
+  const REVEAL_THRESHOLD = 0.25;
 
   // Same reduced-motion convention as the Tetris ambient loop: check once, and
   // if motion is reduced simply never attach. The hidden state is gated on
@@ -362,7 +366,7 @@ const featured = selectFeatured(
         section.querySelectorAll<HTMLElement>('[data-reveal]')
       );
       items.forEach((el, i) => {
-        el.style.transitionDelay = `${i * REVEAL_STAGGER_MS}ms`;
+        el.style.transitionDelay = `${REVEAL_LEAD_IN_MS + i * REVEAL_STAGGER_MS}ms`;
       });
     });
 

@@ -161,8 +161,8 @@ html[data-motion='on'] [data-reveal] {
   --reveal-o: 0;
   opacity: var(--reveal-o);
   transition:
-    --reveal-y 620ms cubic-bezier(0.22, 1, 0.36, 1),
-    --reveal-o 520ms ease-out;
+    --reveal-y 880ms cubic-bezier(0.22, 1, 0.36, 1),
+    --reveal-o 760ms ease-out;
 }
 html[data-motion='on'] [data-scroll-section].in [data-reveal] {
   --reveal-y: 0px;
