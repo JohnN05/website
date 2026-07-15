@@ -3,8 +3,9 @@ import { accentForTag } from '../lib/tags';
 
 interface Props {
   project: { slug: string; title: string; summary: string; date: Date; tags: string[] };
+  showCover?: boolean;
 }
-const { project } = Astro.props;
+const { project, showCover = false } = Astro.props;
 const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(project.date);
 
 const ACCENT_VAR: Record<string, string> = {
@@ -17,9 +18,11 @@ const coverAccent = ACCENT_VAR[accentForTag(project.tags[0] ?? project.title)];
 const initial = project.title.charAt(0);
 ---
 <a class="project-card" href={`/projects/${project.slug}`}>
-  <div class="cover" style={`--cover-accent: ${coverAccent};`} aria-hidden="true">
-    <span class="glyph">{initial}</span>
-  </div>
+  {showCover && (
+    <div class="cover" style={`--cover-accent: ${coverAccent};`} aria-hidden="true">
+      <span class="glyph">{initial}</span>
+    </div>
+  )}
   <div class="card-body">
     <p class="meta">{formattedDate}</p>
     <h3>{project.title}</h3>

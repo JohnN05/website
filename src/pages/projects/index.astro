@@ -19,7 +19,7 @@ const sorted = published
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--color-bg);"></div>
   <div class="grid-wrap">
     <div class="project-grid">
-      {sorted.map((p) => <ProjectCard project={p} />)}
+      {sorted.map((p) => <ProjectCard project={p} showCover={true} />)}
     </div>
   </div>
 </BaseLayout>
