@@ -100,3 +100,51 @@ a { color: inherit; }
     margin-left: var(--rail-width);
   }
 }
+
+/* ── Home scroll motion ──────────────────────────────────────────────────
+   Lives here rather than in index.astro's scoped <style> for two reasons,
+   both real Astro scoping traps: a `body[...]` selector in a component's
+   scoped block gets rewritten to body[data-astro-cid-*] and silently never
+   matches (<body> belongs to BaseLayout.astro), and the Tetris board's root
+   is authored in TetrisHero.astro under that component's own cid, out of
+   index.astro's reach. Everything below is attribute-gated, so it only
+   touches elements that opt in. */
+
+/* Registered so they can be transitioned — an unregistered custom property is
+   untyped and jumps instead of animating. */
+@property --reveal-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --reveal-o {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+/* Reveal and parallax both want translateY on the same elements; each rides
+   its own custom property into one transform so neither clobbers the other.
+   BOTH attributes must stay in this selector: the mock scoped it to
+   [data-reveal] only, and the Tetris board (data-depth, no data-reveal) had
+   --parallax-y written to it every frame with nothing consuming it — it
+   silently never moved. */
+[data-reveal],
+[data-depth] {
+  transform: translateY(calc(var(--reveal-y) + var(--parallax-y, 0px)));
+}
+
+/* The hidden state is gated on an attribute JS sets only when motion is
+   allowed, so content is never left invisible if the script doesn't run. */
+body[data-motion='on'] [data-reveal] {
+  --reveal-y: 28px;
+  --reveal-o: 0;
+  opacity: var(--reveal-o);
+  transition:
+    --reveal-y 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    --reveal-o 520ms ease-out;
+}
+body[data-motion='on'] [data-scroll-section].in [data-reveal] {
+  --reveal-y: 0px;
+  --reveal-o: 1;
+}

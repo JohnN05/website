@@ -39,3 +39,37 @@ test('mobile keeps its mandatory snap untouched', async ({ page }) => {
   );
   expect(snapType).toBe('y mandatory');
 });
+
+test('a section reveals its contents on entry', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  const bio = page.locator('.bio');
+  await expect(bio).not.toHaveClass(/\bin\b/);
+
+  await bio.scrollIntoViewIfNeeded();
+  await expect(bio).toHaveClass(/\bin\b/);
+
+  // The reveal must actually resolve to resting, not just flip a class.
+  const heading = bio.locator('h2');
+  await expect
+    .poll(async () => (await heading.evaluate((el) => getComputedStyle(el).opacity)))
+    .toBe('1');
+});
+
+test('reduced motion renders content at rest with no reveal gating', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  // The hidden state is gated on body[data-motion='on'], which JS must not
+  // set under reduced motion — otherwise content could sit at opacity 0
+  // forever. This is the failure mode worth a test of its own.
+  const motion = await page.evaluate(() => document.body.dataset.motion);
+  expect(motion).toBeUndefined();
+
+  const opacity = await page
+    .locator('.bio h2')
+    .evaluate((el) => getComputedStyle(el).opacity);
+  expect(opacity).toBe('1');
+});

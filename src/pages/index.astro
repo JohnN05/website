@@ -14,11 +14,11 @@ const featured = selectFeatured(
 <BaseLayout title="John Ng">
   <section class="hero" data-scroll-section>
     <div class="hero-copy">
-      <button class="nameplate" id="nameplate" type="button">
+      <button class="nameplate" id="nameplate" type="button" data-reveal>
         <span class="ch j-piece">J</span><span class="ch o-piece">O</span><span class="ch">H</span><span class="ch">N</span><span class="ch sp">&nbsp;</span><span class="ch">N</span><span class="ch">G</span>
       </button>
-      <p class="eyebrow">Software Engineer</p>
-      <h1>Coding practical solutions for people. That's always been the point.</h1>
+      <p class="eyebrow" data-reveal>Software Engineer</p>
+      <h1 data-reveal>Coding practical solutions for people. That's always been the point.</h1>
     </div>
     <TetrisHero />
   </section>
@@ -27,14 +27,14 @@ const featured = selectFeatured(
 
   <section class="bio" data-scroll-section>
     <div class="bio-inner">
-      <div class="bio-frame">
+      <div class="bio-frame" data-reveal>
         <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
       </div>
       <div class="bio-copy">
-        <p class="eyebrow">College Park, MD — CS + Secondary Ed @ UMD</p>
-        <h2>Hi, I'm John Ng.</h2>
-        <p class="lede">I build software people actually use, then teach the next person how to build it too.</p>
-        <p class="detail">Chrome extension UMD students use every registration cycle. A summer turning a 270M-row bottleneck into a shipped platform at Capital Technology Group.</p>
+        <p class="eyebrow" data-reveal>College Park, MD — CS + Secondary Ed @ UMD</p>
+        <h2 data-reveal>Hi, I'm John Ng.</h2>
+        <p class="lede" data-reveal>I build software people actually use, then teach the next person how to build it too.</p>
+        <p class="detail" data-reveal>Chrome extension UMD students use every registration cycle. A summer turning a 270M-row bottleneck into a shipped platform at Capital Technology Group.</p>
       </div>
     </div>
   </section>
@@ -43,7 +43,7 @@ const featured = selectFeatured(
 
   <section class="featured" data-scroll-section>
     <div class="featured-inner">
-      <h2>Featured projects</h2>
+      <h2 data-reveal>Featured projects</h2>
       <div class="project-grid">
         {featured.map((p) => <ProjectCard project={p} />)}
       </div>
@@ -54,9 +54,9 @@ const featured = selectFeatured(
 
   <section class="teaching" data-scroll-section>
     <div class="teaching-inner">
-      <p class="eyebrow">Teaching</p>
-      <h2>I teach as much as I build.</h2>
-      <p class="detail">Nobel Explorers ML/CV curriculum for 60+ students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
+      <p class="eyebrow" data-reveal>Teaching</p>
+      <h2 data-reveal>I teach as much as I build.</h2>
+      <p class="detail" data-reveal>Nobel Explorers ML/CV curriculum for 60+ students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
     </div>
   </section>
 
@@ -334,5 +334,61 @@ const featured = selectFeatured(
 
     flashNameplate();
     nameplateEl.addEventListener('click', flashNameplate);
+  }
+</script>
+
+<script>
+  const REVEAL_STAGGER_MS = 70;
+  const REVEAL_THRESHOLD = 0.15;
+
+  // Same reduced-motion convention as the Tetris ambient loop: check once,
+  // and if motion is reduced simply never attach — global.css's hidden state
+  // is gated on the attribute set below, so content renders normally.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-scroll-section]')
+    );
+
+    // Astro's <script> is type="module", so it runs AFTER the DOM has painted.
+    // Setting data-motion first would apply the hidden state to already-visible
+    // content and transition it OUT before the observer brought it back in — a
+    // flash on every load. Any section on screen right now is, by definition,
+    // already entered: mark it resting synchronously, before the hidden state
+    // can ever apply to it. Off-screen sections flip to hidden invisibly.
+    sections.forEach((section) => {
+      const rect = section.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        section.classList.add('in');
+      }
+    });
+
+    document.body.dataset.motion = 'on';
+
+    sections.forEach((section) => {
+      const items = Array.from(
+        section.querySelectorAll<HTMLElement>('[data-reveal]')
+      );
+      items.forEach((el, i) => {
+        el.style.transitionDelay = `${i * REVEAL_STAGGER_MS}ms`;
+      });
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('in');
+          // Fires once per section per page load — no replay on re-entry.
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: REVEAL_THRESHOLD }
+    );
+
+    // Sections marked resting above are already done; observing them would
+    // only re-add a class they carry.
+    sections
+      .filter((section) => !section.classList.contains('in'))
+      .forEach((section) => observer.observe(section));
   }
 </script>
