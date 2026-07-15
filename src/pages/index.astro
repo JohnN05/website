@@ -13,7 +13,7 @@ const featured = selectFeatured(
 ---
 <BaseLayout title="John Ng">
   <section class="hero" data-scroll-section>
-    <div class="hero-copy">
+    <div class="hero-copy" data-depth="0.05">
       <button class="nameplate" id="nameplate" type="button" data-reveal>
         <span class="ch j-piece">J</span><span class="ch o-piece">O</span><span class="ch">H</span><span class="ch">N</span><span class="ch sp">&nbsp;</span><span class="ch">N</span><span class="ch">G</span>
       </button>
@@ -27,10 +27,10 @@ const featured = selectFeatured(
 
   <section class="bio" data-scroll-section>
     <div class="bio-inner">
-      <div class="bio-frame" data-reveal>
+      <div class="bio-frame" data-reveal data-depth="0.1">
         <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
       </div>
-      <div class="bio-copy">
+      <div class="bio-copy" data-depth="0.03">
         <p class="eyebrow" data-reveal>College Park, MD — CS + Secondary Ed @ UMD</p>
         <h2 data-reveal>Hi, I'm John Ng.</h2>
         <p class="lede" data-reveal>I build software people actually use, then teach the next person how to build it too.</p>
@@ -44,7 +44,7 @@ const featured = selectFeatured(
   <section class="featured" data-scroll-section>
     <div class="featured-inner">
       <h2 data-reveal>Featured projects</h2>
-      <div class="project-grid">
+      <div class="project-grid" data-depth="0.08">
         {featured.map((p) => <ProjectCard project={p} />)}
       </div>
     </div>
@@ -53,7 +53,7 @@ const featured = selectFeatured(
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
 
   <section class="teaching" data-scroll-section>
-    <div class="teaching-inner">
+    <div class="teaching-inner" data-depth="0.06">
       <p class="eyebrow" data-reveal>Teaching</p>
       <h2 data-reveal>I teach as much as I build.</h2>
       <p class="detail" data-reveal>Nobel Explorers ML/CV curriculum for 60+ students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
@@ -390,5 +390,87 @@ const featured = selectFeatured(
     sections
       .filter((section) => !section.classList.contains('in'))
       .forEach((section) => observer.observe(section));
+  }
+</script>
+
+<script>
+  import { parallaxShift } from '../lib/parallax';
+
+  const PARALLAX_MIN_WIDTH_PX = 769;
+  const RESIZE_DEBOUNCE_MS = 150;
+
+  if (
+    matchMedia(`(min-width: ${PARALLAX_MIN_WIDTH_PX}px)`).matches &&
+    !matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    const layers = Array.from(document.querySelectorAll<HTMLElement>('[data-depth]'));
+    const sectionTops = new Map<HTMLElement, number>();
+    const visible = new Set<HTMLElement>();
+
+    function hostOf(el: HTMLElement): HTMLElement | null {
+      return el.closest<HTMLElement>('[data-scroll-section]');
+    }
+
+    // offsetTop forces a synchronous layout, so it is read here and on resize —
+    // never inside the scroll handler. Same reasoning as TetrisHero.astro's
+    // setupAmbientBoard().
+    function refreshTops(): void {
+      sectionTops.clear();
+      document
+        .querySelectorAll<HTMLElement>('[data-scroll-section]')
+        .forEach((section) => sectionTops.set(section, section.offsetTop));
+    }
+
+    function applyParallax(): void {
+      const scrollY = window.scrollY;
+      for (const el of layers) {
+        const host = hostOf(el);
+        if (!host || !visible.has(host)) continue;
+        const top = sectionTops.get(host);
+        if (top === undefined) continue;
+        const shift = parallaxShift(scrollY, top, Number(el.dataset.depth));
+        el.style.setProperty('--parallax-y', `${shift.toFixed(2)}px`);
+      }
+    }
+
+    // Off-screen sections cost nothing: their layers are skipped entirely
+    // rather than transformed where nobody can see them.
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const section = entry.target as HTMLElement;
+        if (entry.isIntersecting) visible.add(section);
+        else visible.delete(section);
+      });
+      applyParallax();
+    });
+    document
+      .querySelectorAll<HTMLElement>('[data-scroll-section]')
+      .forEach((section) => observer.observe(section));
+
+    let queued = false;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          applyParallax();
+        });
+      },
+      { passive: true }
+    );
+
+    let resizeTimer: number | undefined;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        refreshTops();
+        applyParallax();
+      }, RESIZE_DEBOUNCE_MS);
+    });
+
+    refreshTops();
+    applyParallax();
   }
 </script>

@@ -73,3 +73,53 @@ test('reduced motion renders content at rest with no reveal gating', async ({ pa
     .evaluate((el) => getComputedStyle(el).opacity);
   expect(opacity).toBe('1');
 });
+
+test('the Tetris board drifts against the hero copy as the page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  const readShift = (selector: string) =>
+    page
+      .locator(selector)
+      .evaluate((el) =>
+        parseFloat(getComputedStyle(el).getPropertyValue('--parallax-y')) || 0
+      );
+
+  // At rest at the top of the hero, every layer sits at its design position.
+  expect(await readShift('#tetris-hero')).toBe(0);
+
+  await page.evaluate(() => window.scrollTo({ top: 400, behavior: 'instant' }));
+  await page.waitForFunction(
+    () =>
+      parseFloat(
+        getComputedStyle(document.querySelector('#tetris-hero')!).getPropertyValue(
+          '--parallax-y'
+        )
+      ) > 0,
+    undefined,
+    { timeout: 2000 }
+  );
+
+  const board = await readShift('#tetris-hero');
+  const copy = await readShift('.hero-copy');
+
+  // The effect IS the rate difference — a board that moves identically to the
+  // copy is not parallax, so assert separation, not just movement.
+  expect(board).toBeGreaterThan(copy);
+  expect(Math.abs(board)).toBeLessThanOrEqual(200);
+});
+
+test('parallax does not attach below the mobile breakpoint', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  await page.evaluate(() => window.scrollTo({ top: 400, behavior: 'instant' }));
+  await page.waitForTimeout(300);
+
+  // The board is display:none under 769px, so its depth layer would animate
+  // almost nothing at real cost.
+  const shift = await page
+    .locator('.hero-copy')
+    .evaluate((el) => getComputedStyle(el).getPropertyValue('--parallax-y').trim());
+  expect(shift === '' || shift === '0px').toBe(true);
+});
