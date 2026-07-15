@@ -350,51 +350,110 @@ then removed the ambient demo's heuristic hole-heavy reset entirely, per
 user report that it read as a random mid-stack restart — it now resets
 only on a genuine top-out.
 
-A further pass (spec: `docs/superpowers/specs/2026-07-14-home-scroll-lock-design.md`,
-plan: `docs/superpowers/plans/2026-07-14-home-scroll-lock.md`) replaced
-Home's native `scroll-snap-type: y mandatory` (desktop) with a hand-rolled
-wheel-intercept + `requestAnimationFrame` scroll lock: a new pure module
-`src/lib/scrollLock.ts` (`DURATION_MS=700`, `WHEEL_THRESHOLD=2`,
-`easeInOutCubic`, `currentSectionIndex`, `nextSectionIndex`) backs a `wheel`
-listener in `index.astro` that animates section-to-section over 700ms with
-a cubic ease, hard-locking input (every event, including a trackpad's
-momentum trail, is swallowed via `preventDefault()`) for the full
-transition. Desktop-only (`min-width: 769px`) and reduced-motion-aware — the
-listener never attaches under either mobile width or
-`prefers-reduced-motion: reduce`, which combined with the existing
-reduced-motion CSS block falls all the way through to plain native scroll,
-same convention as the Tetris ambient loop's reduced-motion freeze. A
-"footer handoff" lets native scroll take over once the visitor scrolls
-at/past the bottom of the last locked section (teaching), or keeps pushing
-past the first/last section in that direction. Mobile keeps native
-`scroll-snap-type` unchanged, just re-scoped from unconditional to inside
-a `max-width: 768px` media query. Two real bugs were found in the plan's
-own literal code, both fixed and independently re-verified (not just
-implementer deviations): (1) Task 1's `SECTION_EPSILON = 1` broke the
-plan's own literal boundary test — right-sized to `0.01`, tight enough to
-only absorb this repo's documented sub-pixel float drift; (2) Task 2's
-`animateScrollTo` called the legacy 2-argument `window.scrollTo(0, y)` on
-every animation frame, which per the CSSOM View spec defers to CSS
-`scroll-behavior` — since `html { scroll-behavior: smooth }` stayed
-unconditional, every frame launched a competing native smooth-scroll
-toward a moving target instead of jumping there instantly, so the real
-scroll motion lagged the intended cubic curve by roughly 3x and `locked`
-released long before the page had caught up. Fixed by switching to the
-options-object form with an explicit `behavior: 'instant'`, verified
-empirically (an instrumented run showed real `scrollY` tracking the
-JS-computed curve within ~2%, reaching target by 690ms). The plan's own
-literal mid-flight-swallow e2e test also had to be corrected: same-direction
-repeated wheel events don't actually discriminate correct lock behavior
-from a missing one (a separate, unrelated code path preventDefaults the
-second event either way), so the test was rewritten to fire a synthetic
-`WheelEvent` in the opposite direction and assert on `dispatchEvent`'s own
-return value — confirmed to actually fail when the lock branch is
-temporarily removed. Known accepted limitation, unchanged from the spec:
-wheel-only, no keyboard/touch/swipe interception. Verified via a real
-Playwright run in this sandbox (the `LD_LIBRARY_PATH`/`libnspr4` fix below
-is in place and working here): 79/79 unit, clean production build, 37/37
-e2e, all independently re-confirmed by the controller directly rather than
-only trusted from subagent reports.
+A further pass (spec: `docs/superpowers/specs/2026-07-15-home-scroll-motion-design.md`,
+plan: `docs/superpowers/plans/2026-07-15-home-scroll-motion.md`) removed the
+scroll lock from the pass immediately above and replaced it with reveal-on-
+entry (section content rises into place as it arrives) plus parallax (layers
+drift at different rates on scroll). This is not a reversal of that prior
+pass but a resolved conflict between it and this one: parallax only reads as
+depth under continuous coupling to the visitor's own input — you scroll a
+little, layers separate a little, and the rate difference is legible because
+you're the one driving it — and the lock's entire purpose was severing that
+coupling, replacing it with a fixed-rate 700ms burst between two dead stops.
+Both cannot hold at once, so the lock had to go. A live-traced measurement
+settled it, and settled that it was never a performance problem: real
+`scrollLock.ts` math, real tokens/washes/blurred seams, one hero→bio travel
+per mode, locked 60fps in all four modes (16.7ms median frame, 0 frames
+>20ms, 0 long tasks). The actual finding was geometry, not framerate: the
+board drifted 131px while the lock scrolled the page 819px in the same
+700ms — parallax moving at ~16% of the page's own speed, in the same
+direction, during the only window in which anything moved at all, so the
+depth cue drowned in the very scroll it exists to read as distinct from. A
+standing hypothesis about the `filter: blur(40px)` seams and the ~168-cell
+masked board being repaint-expensive was tested in the same trace and
+disproved — they cost nothing measurable, worth recording so neither is
+re-suspected later. The first attempt at this trace was invalid and had to
+be rerun: Chromium restores scroll position across `reload()`, so each mode
+was silently measuring a *different* section pair, and the `both` run
+measured no travel at all; reruns must force `scrollY` to 0 before each
+sample. Desktop now uses `scroll-snap-type: y proximity` (in `global.css`'s
+existing `min-width: 769px` block, replacing the lock's listener entirely);
+mandatory was considered and rejected because it fires its own scroll
+animation on every gesture, which would re-create the same conflict in a
+milder form. Mobile's `scroll-snap-type: y mandatory` block is untouched.
+`src/lib/scrollLock.ts`, its test file, the wheel-intercept `<script>` in
+`index.astro`, and `tests/e2e/scroll-lock.spec.ts` are all deleted outright;
+`tests/e2e/scroll-motion.spec.ts` is new. Parallax's own pure math lives in
+a new `src/lib/parallax.ts` (`MAX_SHIFT_PX = 200`,
+`parallaxShift(scrollY, sectionTop, depth, strength = 1)`, clamped to
+±200px), wired from `index.astro` via an rAF-throttled `scroll` listener
+that writes `--parallax-y` on each intersecting `[data-depth]` element;
+reveal adds `.in` to a section on entry via a second `IntersectionObserver`
+and drives `[data-reveal]` children through registered `@property
+--reveal-y`/`--reveal-o` custom properties, staggered 70ms per child. One
+real bug surfaced from the mock and had to be designed around rather than
+patched after the fact: a `--parallax-y` written by JS with no CSS rule
+consuming it produces no error and no visual difference from a value that's
+merely wrong — it silently looks like a taste problem instead of a missing
+feature. The board carries `data-depth` but not `data-reveal`, so the
+shared transform rule in `global.css` must key off `[data-reveal],
+[data-depth]` together, not `[data-reveal]` alone; that selector is
+load-bearing, not decorative. Four more real issues turned up during this
+pass, none anticipated by its own plan: (1) the plan's own literal e2e
+assertion — `getComputedStyle(html).scrollSnapType === 'y proximity'` — is
+unsatisfiable in any browser, because per CSSOM serialization `proximity`
+is the *initial* strictness value and computed-style serialization omits
+initial values; verified empirically that desktop actually reads `'y'`,
+mobile reads `'y mandatory'` (non-initial, so it survives), and an
+unsnapped element reads `'none'` — asserting `'y'` still discriminates all
+three cases, so the fix cost no coverage. (2) axe-core's `color-contrast`
+rule alpha-blends a transparent foreground into its background and scores
+the blend; Home's not-yet-revealed sections sit at `opacity: 0` by design
+with no time bound, so a scan mid-load flagged them as real WCAG failures
+(5 elements, count varying with scan timing) — a genuine conflict between
+two of this same plan's own requirements (ship the opacity-gated reveal;
+keep the accessibility sweep green), escalated to the human rather than
+picked unilaterally. Ruling: scan Home in its revealed state, with
+`color-contrast` kept at full strength and zero exclusions; the reveal
+design itself was not the defect, axe's static-snapshot model versus
+scroll-reveal UX is the tension, and it's a known pattern for scroll-reveal
+sites generally, not a bug in this one. (3) `scroll-behavior: smooth`
+hijacked a programmatic scroll for the *second* time on this branch — the
+human's own approved test-fixture snippet failed verbatim, because both
+`scrollIntoView()` and `scrollTo(0, 0)` defer to `html { scroll-behavior:
+smooth }` and animate, cutting the last section's scroll short before its
+observer fired; fixed with an explicit `behavior: 'instant'` on both calls.
+The scroll-lock pass above hit the identical trap from a different angle
+(per-frame `window.scrollTo(0, y)` calls launching competing native
+smooth-scrolls) — this is now a repeat offender in this codebase, not a
+one-off, and any future scroll-driven code should assume `scroll-behavior:
+smooth` will intercept an unqualified scroll call. (4) polling for the
+`.in` class alone was necessary but not sufficient to know a reveal had
+actually finished: `.in` marks the fade as *started* (520ms, plus up to
+70ms per staggered child), so a test could sample mid-fade and axe would
+score whatever blended opacity it caught mid-transition — an observed
+foreground of `#757d89` (a blend of the authored `#4A5468`) scored 3.48
+contrast against the 4.5 needed. Fixed by additionally polling every
+`[data-reveal]` element to computed `opacity === '1'`, the state axe
+actually measures. A fifth issue was caught in the parallax wiring itself
+and is a reusable lesson: the plan's own literal e2e tests asserted only
+that `--parallax-y` was *set*, which proves the producer ran but nothing
+about whether any consumer exists — `getComputedStyle` returns a custom
+property's value whether or not a rule reads it. Deliberately reintroducing
+the exact regression the load-bearing-selector fix above exists to prevent
+(dropping `[data-depth]` from the transform selector) kept every existing
+assertion green: `--parallax-y` still read `64.00px` while the board's real
+`translateY` stayed `0`. Fixed by additionally asserting the consumer's own
+output via `new DOMMatrix(getComputedStyle(el).transform).f`. Asserting a
+custom property is set only tests the producer; the transform matrix is
+what proves a consumer exists. Unit count moved 79 → 74 (12 scroll-lock
+tests deleted, 7 parallax tests added). Verified via a real Playwright run
+in this sandbox (the `LD_LIBRARY_PATH`/`libnspr4` fix below is in place and
+working here, and continues to be — this doc's long-running "this sandbox
+can't run Playwright" caveat no longer applies from the Tetris hero polish
+pass onward and should not be reintroduced for future passes): 74/74 unit,
+clean production build, 40/40 e2e, all independently re-confirmed by the
+controller directly rather than only trusted from subagent reports.
 
 ## Stack
 
@@ -419,7 +478,7 @@ only trusted from subagent reports.
 
 Every interactive widget splits into two layers:
 - **Pure logic** in `src/lib/` (`theme.ts`, `projects.ts`, `contactForm.ts`,
-  `tetris/engine.ts` + `tetris/bag.ts` + `tetris/ambientDemo.ts`,
+  `parallax.ts`, `tetris/engine.ts` + `tetris/bag.ts` + `tetris/ambientDemo.ts`,
   `minesweeper/engine.ts`) — no DOM, no I/O, fully unit-tested with Vitest.
 - **DOM wiring** in the matching `.astro` component's `<script>` block —
   imports the pure module, renders/re-renders the DOM, handles events.
