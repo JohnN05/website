@@ -1,0 +1,235 @@
+---
+import {
+  NAMEPLATE_LINES,
+  PIECES,
+  latticeBlocks,
+  pieceForLetter,
+} from '../lib/nameplate';
+
+interface Props {
+  /** 'stack' = JOHN over NG (the rail, the mobile bar). 'inline' = one line
+   *  (the Home hero). */
+  layout: 'stack' | 'inline';
+  /** Whether this mark performs the reveal on this page. Exactly one mark per
+   *  page should be true — see the ownership rule in CLAUDE.md. */
+  reveals?: boolean;
+  /** 'hover' = plays on pointer/focus. 'load' = plays once on load, and again
+   *  on click. */
+  trigger?: 'hover' | 'load';
+  class?: string;
+}
+
+const { layout, reveals = false, trigger = 'hover', class: className } = Astro.props;
+
+const [first, second] = NAMEPLATE_LINES;
+const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
+---
+<span
+  class:list={['piece-mark', `layout-${layout}`, className]}
+  data-piece-mark
+  data-owns={String(reveals)}
+  data-trigger={trigger}
+>
+  {lines.map((line, lineIndex) => (
+    <Fragment>
+      {/* The stacked mark's two lines are separate elements, so without a real
+          space character between them the accessible name concatenates to
+          "JOHNNG". Same bug this repo already fixed once on the hero
+          nameplate — fix it with a space, not an aria-label duplicate. */}
+      {lineIndex > 0 && <span class="sr-only">&nbsp;</span>}
+      <span class="line">
+        {[...line].map((letter) => {
+          const key = pieceForLetter(letter);
+          return (
+            <span class:list={['ch', letter === ' ' && 'sp']} data-piece={key ?? undefined}>
+              {key && (
+                <span class="lattice" aria-hidden="true">
+                  {latticeBlocks(PIECES[key]).map((block) => (
+                    <b style={`grid-row:${block.row};grid-column:${block.col}`}></b>
+                  ))}
+                </span>
+              )}
+              <span class="glyph" set:html={letter === ' ' ? '&nbsp;' : letter}></span>
+            </span>
+          );
+        })}
+      </span>
+    </Fragment>
+  ))}
+</span>
+
+<style>
+  .piece-mark {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mark-line-gap, 2px);
+    /* The well's ceiling. Nothing here leaves the box today, but the mark is a
+       Tetris object and a piece above the top edge is out of play. */
+    overflow: hidden;
+  }
+  .layout-inline {
+    flex-direction: row;
+    letter-spacing: -0.01em;
+  }
+  .line {
+    display: flex;
+    gap: var(--mark-cell-gap, 3px);
+  }
+
+  .ch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.05em;
+    height: 1.16em;
+    color: var(--cell, var(--color-text));
+  }
+  .ch.sp {
+    min-width: 0.4em;
+  }
+  /* Only J and O — the only letters in "JOHN NG" that are also tetromino
+     letters (I/O/T/S/Z/J/L). Tokens live in tokens.css so the mark and the
+     ambient board read the literal same values. */
+  .ch[data-piece='J'] { --cell: var(--tetris-j); }
+  .ch[data-piece='O'] { --cell: var(--tetris-o); }
+
+  /* The lattice IS the letter cell: full letter width, square, bottom-aligned.
+     That's what makes the pieces line up with the word — every piece in every
+     letter shares one block size and one floor. `repeat(3, ...)` is
+     LATTICE_SIZE from src/lib/nameplate.ts, hardcoded because CSS repeat()
+     needs an integer literal; a unit test pins the two together. */
+  .lattice {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .lattice b {
+    background: var(--cell);
+    opacity: 0;
+    transition: opacity 90ms steps(1, end);
+  }
+  /* Blocks land one at a time rather than all at once — the piece assembling
+     itself. Delays key off DOM order, which the script never reorders: it
+     rewrites each block's grid placement in place. */
+  .lattice b:nth-child(1) { transition-delay: 0ms; }
+  .lattice b:nth-child(2) { transition-delay: 45ms; }
+  .lattice b:nth-child(3) { transition-delay: 90ms; }
+  .lattice b:nth-child(4) { transition-delay: 135ms; }
+
+  .glyph {
+    position: relative;
+    z-index: 1;
+  }
+  .ch[data-piece] .glyph {
+    transition: color 120ms steps(2, end);
+  }
+
+  .revealing .lattice { opacity: 1; }
+  .revealing .lattice b { opacity: 1; }
+  .revealing .ch[data-piece] .glyph { color: var(--color-bg); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lattice b,
+    .ch[data-piece] .glyph {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { PIECES, latticeBlocks, pieceForLetter } from '../lib/nameplate';
+
+  // Four blocks staggered 45ms apart, each snapping in over 90ms.
+  const FILL_MS = 225;
+  // A beat on the spawn state before the turn, and another on the turned state
+  // after it — a snap with no dwell on either side reads as a glitch.
+  const BEFORE_TURN_MS = 140;
+  const AFTER_TURN_MS = 220;
+  const BACK_MS = 220;
+
+  const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+  /**
+   * Apply a rotation state by rewriting each block's grid placement.
+   *
+   * This is the whole reason the turn is blocky: grid-row/grid-column are not
+   * transitionable, so the piece jumps between rotation states in one frame
+   * and can never be caught at an angle no tetromino occupies. It also avoids
+   * the trap this repo already hit with the ambient piece — SHAPES defines
+   * each rotation as an independently authored array, so interpolating
+   * between two of them sends every cell down its own unrelated diagonal.
+   *
+   * The positions come from the same latticeBlocks() the markup was rendered
+   * from, so there is no second formula to drift out of sync with the first.
+   */
+  function applyRotation(mark: HTMLElement, rotated: boolean): void {
+    mark.querySelectorAll<HTMLElement>('.ch[data-piece]').forEach((ch) => {
+      const key = pieceForLetter(ch.dataset.piece ?? '');
+      if (!key) return;
+      const blocks = latticeBlocks(PIECES[key], rotated);
+      const cells = ch.querySelectorAll<HTMLElement>('.lattice b');
+      blocks.forEach((block, i) => {
+        const cell = cells[i];
+        if (!cell) return;
+        cell.style.gridRow = String(block.row);
+        cell.style.gridColumn = String(block.col);
+      });
+    });
+  }
+
+  // Same convention as the Tetris ambient loop: check reduced motion once, and
+  // if it's set, never attach. The mark renders at rest with no script.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const marks = Array.from(document.querySelectorAll<HTMLElement>('[data-piece-mark]'));
+
+    for (const mark of marks) {
+      let playing = false;
+
+      const play = async (): Promise<void> => {
+        // Ownership: exactly one mark per page performs. The flag is set from
+        // the route at build time; this is the only place it's read.
+        if (playing || mark.dataset.owns !== 'true') return;
+        playing = true;
+
+        mark.classList.add('revealing');
+        await wait(FILL_MS + BEFORE_TURN_MS);
+        applyRotation(mark, true);
+        mark.dataset.turned = 'true';
+        await wait(AFTER_TURN_MS);
+        mark.classList.remove('revealing');
+        await wait(BACK_MS);
+        // Reset the rotation only once the blocks are invisible, so the turn
+        // never plays backwards on screen.
+        applyRotation(mark, false);
+        delete mark.dataset.turned;
+        // Lets an e2e test prove two reads landed on the same play, the same
+        // way TetrisHero.astro's data-cycle does for the ambient loop.
+        mark.dataset.cycle = String(Number(mark.dataset.cycle ?? '0') + 1);
+        playing = false;
+      };
+
+      const host = mark.closest('a, button') ?? mark;
+
+      if (mark.dataset.trigger === 'load') {
+        void play();
+        host.addEventListener('click', () => void play());
+      } else {
+        host.addEventListener('mouseenter', () => void play());
+        host.addEventListener('focus', () => void play());
+      }
+    }
+  }
+</script>
