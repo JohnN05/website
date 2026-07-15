@@ -91,10 +91,10 @@ a { color: inherit; }
      duplicating this formula in both places invites the two to drift apart,
      the same failure shape this codebase has already hit once with the
      Tetris ambient piece's animated vs. committed placement (see CLAUDE.md).
-     Scales from a 9rem floor at the 769px breakpoint up to the full 14rem
-     by the time the viewport reaches 1400px, holding 14rem beyond that. */
+     Scales from a 9rem floor at the 769px breakpoint up to a 12rem cap by the
+     time the viewport reaches ~1149px, holding 12rem beyond that. */
   :root {
-    --rail-width: clamp(9rem, 2.9rem + 12.68vw, 14rem);
+    --rail-width: clamp(9rem, 2.9rem + 12.68vw, 12rem);
   }
   #main-content {
     margin-left: var(--rail-width);
