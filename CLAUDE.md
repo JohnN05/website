@@ -350,6 +350,52 @@ then removed the ambient demo's heuristic hole-heavy reset entirely, per
 user report that it read as a random mid-stack restart — it now resets
 only on a genuine top-out.
 
+A further pass (spec: `docs/superpowers/specs/2026-07-14-home-scroll-lock-design.md`,
+plan: `docs/superpowers/plans/2026-07-14-home-scroll-lock.md`) replaced
+Home's native `scroll-snap-type: y mandatory` (desktop) with a hand-rolled
+wheel-intercept + `requestAnimationFrame` scroll lock: a new pure module
+`src/lib/scrollLock.ts` (`DURATION_MS=700`, `WHEEL_THRESHOLD=2`,
+`easeInOutCubic`, `currentSectionIndex`, `nextSectionIndex`) backs a `wheel`
+listener in `index.astro` that animates section-to-section over 700ms with
+a cubic ease, hard-locking input (every event, including a trackpad's
+momentum trail, is swallowed via `preventDefault()`) for the full
+transition. Desktop-only (`min-width: 769px`) and reduced-motion-aware — the
+listener never attaches under either mobile width or
+`prefers-reduced-motion: reduce`, which combined with the existing
+reduced-motion CSS block falls all the way through to plain native scroll,
+same convention as the Tetris ambient loop's reduced-motion freeze. A
+"footer handoff" lets native scroll take over once the visitor scrolls
+at/past the bottom of the last locked section (teaching), or keeps pushing
+past the first/last section in that direction. Mobile keeps native
+`scroll-snap-type` unchanged, just re-scoped from unconditional to inside
+a `max-width: 768px` media query. Two real bugs were found in the plan's
+own literal code, both fixed and independently re-verified (not just
+implementer deviations): (1) Task 1's `SECTION_EPSILON = 1` broke the
+plan's own literal boundary test — right-sized to `0.01`, tight enough to
+only absorb this repo's documented sub-pixel float drift; (2) Task 2's
+`animateScrollTo` called the legacy 2-argument `window.scrollTo(0, y)` on
+every animation frame, which per the CSSOM View spec defers to CSS
+`scroll-behavior` — since `html { scroll-behavior: smooth }` stayed
+unconditional, every frame launched a competing native smooth-scroll
+toward a moving target instead of jumping there instantly, so the real
+scroll motion lagged the intended cubic curve by roughly 3x and `locked`
+released long before the page had caught up. Fixed by switching to the
+options-object form with an explicit `behavior: 'instant'`, verified
+empirically (an instrumented run showed real `scrollY` tracking the
+JS-computed curve within ~2%, reaching target by 690ms). The plan's own
+literal mid-flight-swallow e2e test also had to be corrected: same-direction
+repeated wheel events don't actually discriminate correct lock behavior
+from a missing one (a separate, unrelated code path preventDefaults the
+second event either way), so the test was rewritten to fire a synthetic
+`WheelEvent` in the opposite direction and assert on `dispatchEvent`'s own
+return value — confirmed to actually fail when the lock branch is
+temporarily removed. Known accepted limitation, unchanged from the spec:
+wheel-only, no keyboard/touch/swipe interception. Verified via a real
+Playwright run in this sandbox (the `LD_LIBRARY_PATH`/`libnspr4` fix below
+is in place and working here): 79/79 unit, clean production build, 37/37
+e2e, all independently re-confirmed by the controller directly rather than
+only trusted from subagent reports.
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate
