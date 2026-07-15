@@ -1,9 +1,16 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
+import PieceMark from './PieceMark.astro';
+
+// The ownership rule: exactly one JOHN NG performs the reveal per page. On
+// Home the hero nameplate IS the name, so the rail stays quiet rather than
+// saying it twice; on every other route the rail is the only name on screen
+// and takes the reveal.
+const isHome = Astro.url.pathname === '/';
 ---
 <nav class="rail" id="nav-rail" aria-label="Primary">
   <a href="/" class="rail-home" aria-label="John Ng — Home">
-    <span class="rail-wordmark wordmark">JOHN NG</span>
+    <PieceMark layout="stack" reveals={!isHome} trigger="hover" class="rail-wordmark" />
   </a>
 
   <div class="rail-links">
@@ -46,7 +53,9 @@ import ThemeToggle from './ThemeToggle.astro';
     padding: 0 var(--space-4);
     text-decoration: none;
     color: var(--color-text);
-    letter-spacing: 0.05em;
+  }
+  .rail-wordmark {
+    font-size: 1.25rem;
   }
 
   .rail-links {

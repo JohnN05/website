@@ -1,9 +1,12 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
+import PieceMark from './PieceMark.astro';
 ---
 <div class="mobile-nav">
   <nav class="mobile-bar" aria-label="Primary">
-    <a href="/" class="mobile-wordmark wordmark">JOHN NG</a>
+    <a href="/" class="mobile-home">
+      <PieceMark layout="stack" reveals={false} trigger="hover" class="mobile-wordmark" />
+    </a>
     <button id="mobile-nav-toggle" class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-drawer">
       <span aria-hidden="true">&#9776;</span>
       <span class="sr-only">Open navigation menu</span>
@@ -26,10 +29,13 @@ import ThemeToggle from './ThemeToggle.astro';
     align-items: center;
     padding: var(--space-4) var(--space-5);
   }
-  .mobile-wordmark {
+  .mobile-home {
     text-decoration: none;
     color: var(--color-text);
-    letter-spacing: 0.05em;
+    display: flex;
+  }
+  .mobile-wordmark {
+    font-size: 1.05rem;
   }
   .mobile-nav-toggle {
     background: none;
