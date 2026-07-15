@@ -401,9 +401,15 @@ the same one, and for the same reason, as the pre-existing line that sets
 `data-theme` there to avoid a theme flash. It must land before first paint:
 Astro's `<script>` is `type="module"` and runs *after* paint, so gating from
 `index.astro` painted already-visible content at rest and then transitioned it
-OUT. Reduced motion (and a script that never runs at all) simply leaves the
-attribute unset, which is what keeps content from ever being stranded at
-`opacity: 0` — never write a rule that can hide `[data-reveal]` without it.
+OUT. Reduced motion — and the inline script not running at all — simply leaves
+the attribute unset, so `[data-reveal]` renders at rest with no JS; never write
+a rule that can hide it without that attribute. Pre-paint gating does open one
+narrower hole, worth knowing because it is *not* the one that constraint
+describes: the gate and the revealer are now separate scripts, so if
+`index.astro`'s reveal module 404s or throws while the inline head script still
+runs, off-screen content stays hidden with no error. Anything that sets
+`data-motion` must therefore be render-blocking and must not depend on that
+module.
 The hero is the one section whose `in` class is authored in `index.astro`'s
 markup rather than added by script: it is on screen at load by definition,
 reveal is an on-*entry* effect, and a pre-paint gate is too early for any

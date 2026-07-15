@@ -149,7 +149,8 @@ a { color: inherit; }
 }
 
 /* The hidden state is gated on an attribute set only when motion is allowed,
-   so content is never left invisible if the script doesn't run. It's set on
+   so content renders at rest under reduced motion or with no JS at all. It's
+   set on
    <html> by a render-blocking inline script in BaseLayout.astro rather than on
    <body> by index.astro's module script: a module script runs after first
    paint, so gating there painted already-visible content at rest and then
