@@ -220,6 +220,42 @@ either, per the same "footer doesn't need to know about the wash" reasoning
 as the original pass. Verified via a clean production build and unit tests
 (67/67, unaffected).
 
+A further pass (spec: `docs/superpowers/specs/2026-07-14-projects-contact-parity-design.md`,
+plan: `docs/superpowers/plans/2026-07-14-projects-contact-parity.md`) brought
+`/projects` and `/contact` up to Home's visual identity — both pages had
+been left as a bare `h1` plus a minimally-styled block while every
+refinement pass above polished Home. Mocked first in an Artifact (the
+project's established visual-work-first workflow), then implemented via
+`subagent-driven-development`, reusing existing tokens only: `/projects`
+gained an intro band (`--wash-featured`, the same clay tint Home's own
+Featured-projects section already uses, with a `.seam` fading to flat
+`--color-bg` before the grid — a smaller-scale instance of `index.astro`'s
+own seam mechanism, not a new pattern); `ProjectCard.astro` gained a
+generated cover (no project has a real `cover` image yet, so each card
+gets a `color-mix` tinted block using `accentForTag(project.tags[0] ??
+project.title)` plus the title's first letter as a low-opacity IBM Plex
+Mono glyph — the same "colored single letter as identity" move the Home
+nameplate already uses for J/O, generalized to any title); `/contact`
+became a Bio-style split two-column layout (`--wash-hero` — cobalt, the
+site's primary-action color — with one seam before the footer, mirroring
+Home's teaching→footer seam); and `ContactForm.astro` got a pure restyle
+(border-radius, `--line` borders, a real `:focus-visible` ring matching the
+nameplate button's, Inter labels) with its submit `<script>` byte-for-byte
+unchanged. The whole-branch review caught one real integration bug no
+single task's diff could see: `ProjectCard.astro` is also rendered by
+Home's own Featured-projects section, so the new cover silently leaked
+onto Home too — a page explicitly out of scope for this pass. Fixed with
+an opt-in `showCover` prop (default `false`); only `/projects` passes
+`showCover={true}`, and Home's own `<ProjectCard>` call site is untouched,
+so its Featured cards render exactly as before. Verified via unit tests
+(67/67, unaffected — no `src/lib/` logic touched) and a clean production
+build; as with every pass above, this sandbox can't run Playwright, so a
+real-environment e2e run is still needed before merging to `main` — that
+run will also surface a pre-existing, unrelated stale assertion in
+`tests/e2e/projects.spec.ts` (asserts exactly 1 project; 4 non-draft
+projects exist today, added in an earlier undocumented pass that never
+updated this test).
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
 (visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`
