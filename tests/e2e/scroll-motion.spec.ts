@@ -107,6 +107,18 @@ test('the Tetris board drifts against the hero copy as the page scrolls', async 
   // copy is not parallax, so assert separation, not just movement.
   expect(board).toBeGreaterThan(copy);
   expect(Math.abs(board)).toBeLessThanOrEqual(200);
+
+  // Everything above reads --parallax-y, which only proves the PRODUCER ran.
+  // getComputedStyle hands back a custom property whether or not any rule
+  // consumes it, so dropping [data-depth] from global.css's transform selector
+  // — the exact regression that once left this board silently motionless —
+  // would keep every assertion above green. The transform matrix is the
+  // consumer's own output: its translateY only moves if a rule really read the
+  // property. Matrix form is matrix(a, b, c, d, tx, ty).
+  const boardTranslateY = await page
+    .locator('#tetris-hero')
+    .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).f);
+  expect(boardTranslateY).toBeCloseTo(board, 1);
 });
 
 test('parallax does not attach below the mobile breakpoint', async ({ page }) => {
