@@ -157,6 +157,20 @@ Reveal: rise `28px`, stagger `70ms` per child, transform `620ms
 cubic-bezier(0.22, 1, 0.36, 1)`, opacity `520ms ease-out`. Fires once per
 section per page load (not replayed on re-entry).
 
+The hero does not animate on load. Astro's `<script>` is `type="module"` and
+runs after the DOM paints, so applying the hidden state to already-visible
+content would transition it *out* before bringing it back in — a flash on
+every load. Any section on screen when the script runs is already entered, and
+is marked resting synchronously before the hidden state can apply to it.
+Reveal is an on-entry effect; the hero has entered.
+
+The three project cards are one layer (`.project-grid`, depth `0.08`) rather
+than the mock's individual `0.05 / 0.08 / 0.11` fan. Cards are `<ProjectCard />`
+components rendered from a `.map()`, and this codebase has already been bitten
+once by adding a display prop to that component and having it leak onto Home
+(the `showCover` bug). The grid takes the fan's midpoint. If the fan proves to
+matter visually, it earns its own decision rather than a silent prop.
+
 ## Accessibility
 
 - Under `prefers-reduced-motion: reduce`, neither observer nor the scroll
