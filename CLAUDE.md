@@ -254,7 +254,10 @@ Home's own Featured-projects section, so the new cover silently leaked
 onto Home too — a page explicitly out of scope for this pass. Fixed with
 an opt-in `showCover` prop (default `false`); only `/projects` passes
 `showCover={true}`, and Home's own `<ProjectCard>` call site is untouched,
-so its Featured cards render exactly as before. Verified via unit tests
+so its Featured cards render exactly as before. (The later design-review pass
+below deliberately reversed this: Home now passes `showCover={true}` too, on
+direct user request — the prop stays opt-in, both call sites now opt in.)
+Verified via unit tests
 (67/67, unaffected — no `src/lib/` logic touched) and a clean production
 build; as with every pass above, this sandbox can't run Playwright, so a
 real-environment e2e run is still needed before merging to `main` — that
@@ -669,6 +672,71 @@ Still open and deliberately unfinished: the mark's `font-size`s and
 `PieceMark`'s four timing constants want live eyeball tuning per the
 mock-first/dev-server workflow preference below.
 
+A design-review pass (no plan doc, direct user request; source review at
+`docs/2026-07-16-design-review.md`) then addressed the review's top three
+items, mock-first in an Artifact through several rounds before any component
+was touched, per the workflow preference below. Committed as `5bb3352`.
+
+1. **Butterfly-knife toggle rebuilt as a legible balisong** (`ThemeToggle.astro`).
+   The old control was a 48×16 SVG of two flat `rect` bars that read as a
+   broken dash and gave no theme signal. It is now a shaped balisong — two
+   handles that pivot about their own centerlines (so a 180° flip keeps them
+   parallel and in-lane: together over the blade when closed, stacked on the
+   far side when open), visible pivot pins, and a Squid-Industries-Mako-style
+   clip-point blade with a swedge line. **State is CSS-driven off
+   `html[data-theme]`, not toggled by the component's script** — closed=light,
+   blade-out=dark — which is the load-bearing decision: because `BaseLayout`
+   sets `data-theme` before first paint, the knife renders in the correct
+   resting silhouette with no flash and no JS, and the click handler is reduced
+   to flipping the attribute (`persistTheme` alongside). The flip animation
+   falls out of the CSS transition on that attribute change, so both mounts
+   (rail + drawer) animate from one source with no per-button bookkeeping — the
+   old `.flipping` class and its `setTimeout` are gone. Under reduced motion the
+   transition is removed but the silhouette still swaps, so the current mode is
+   never ambiguous. A sun/moon glyph and a `Light`/`Dark` mode word were added
+   for discoverability (both `aria-hidden`; the button's accessible name stays
+   an action `aria-label`), also toggled purely by the `html[data-theme]`
+   selector. The SVG is static server-rendered markup, not a runtime
+   `createElement` grid, so ordinary Astro scoping applies and the
+   `html[data-theme='dark']` ancestor rules need `:global()` on the attribute
+   selector but no grid-style `:global()` wrapper on the whole rule.
+2. **Featured cards gained covers + an on-brand hover** (`ProjectCard.astro`,
+   `index.astro`). Home now passes `showCover={true}` — a **deliberate reversal
+   of the projects/contact parity pass's decision** (recorded above) to keep
+   Home coverless; the review explicitly wanted the `/projects` cover treatment
+   on Home, so both call sites now opt in. Cards gained a real resting hairline
+   border, an accent top-edge that wipes in on hover, and a lift/shadow. A real
+   tetromino now drops into the cover on hover and **white-flashes clear in
+   place on leave**, reusing `TetrisHero`'s `flashRows()` motion language (a
+   `setTimeout` `classList.toggle` loop, same `FLASH_CYCLES`/`FLASH_INTERVAL_MS`
+   feel, `#ffffff` flash like the nameplate's rather than a token) — no CSS
+   `@keyframes`. The piece shape is chosen deterministically from the card's own
+   accent (`PIECE_CELLS`: cobalt→J, maroon→Z, clay→L, moss→S), the same
+   determinism `accentForTag` already gives the color, so a tag always yields
+   the same piece. Motion is gated behind `prefers-reduced-motion:
+   no-preference` and the drop/flash script never wires under reduced motion, so
+   the piece simply stays hidden; the accent edge (a state change, not travel)
+   stays either way.
+3. **Teaching prose became a count-up impact row** (`index.astro`). The flattest
+   prose block is now a mono-labelled number row (`60+ / 3 / 2` — Students /
+   Countries / Programs) in Bricolage at a larger scale with `tabular-nums`,
+   the sentence kept as support beneath. The numbers count up on entry via their
+   own `IntersectionObserver`. The **final values ship in the markup**, so
+   reduced motion and no-JS both render them correct with nothing to animate;
+   only when motion is allowed does the script reset to `0` and count up, and the
+   section's reveal keeps it opacity-0 until entry so that reset is never a
+   visible flicker. A first draft used `<dl>/<dt>/<dd>` with the number as `dd`
+   before the label `dt` — reverted to plain `div`/`span` (the approved mock's
+   structure) to avoid the odd term-before-description ordering.
+
+Verified by the controller directly: typecheck clean, 92/92 unit, clean build,
+73/73 e2e + axe green in this sandbox's real browser (the axe sweep covers the
+new cover pieces, impact row, and knife on all five routes; the theme-toggle
+spec still passes because the `.theme-toggle` class and the `data-theme` flip it
+keys off are preserved). The exact knife angles/curves, the Mako blade profile
+(drawn from memory, not a reference image), and the impact-row scale remain open
+to live eyeball tuning per the workflow preference below.
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate
@@ -1032,7 +1100,10 @@ piece isn't aligned to the grid," each with a different root cause:**
 
 **Lower priority (simpler first pass is fine):** Minesweeper (the `/404`
 page, needs its context line — see spec) and the butterfly-knife-flip
-light/dark toggle.
+light/dark toggle. (The toggle has since been rebuilt into a proper balisong
+by the design-review pass in Status above — this "lower priority / simpler"
+framing describes only its original first pass; see `ThemeToggle.astro` and
+that pass for how it works now.)
 
 The capybara, Minesweeper reveal, and butterfly-knife toggle all use
 standard smooth CSS easing — a "stepped/frame-based" motion language across
