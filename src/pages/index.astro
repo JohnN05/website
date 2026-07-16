@@ -191,8 +191,15 @@ const featured = selectFeatured(
     background-image: var(--img);
     background-repeat: no-repeat;
     background-size: 100% 100%;
-    -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 100%, 50% 50%, 0 50%);
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 100%, 50% 50%, 0 50%);
+    /* The notch corner is nudged 1px into the O quarter (x 50%→50%-1px,
+       y 50%→50%+1px) so the core paints a hair *under* the four cells that
+       cover it at rest. Without the overlap, core's clipped edge and the
+       cells' edges both antialias against transparency at the exact 50%
+       seam, leaving a hairline of the wash showing through between the
+       stationary core and the moving pieces. The strip is the same photo
+       the covering cells already show, so the overlap is invisible at rest. */
+    -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, calc(50% - 1px) 100%, calc(50% - 1px) calc(50% + 1px), 0 calc(50% + 1px));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, calc(50% - 1px) 100%, calc(50% - 1px) calc(50% + 1px), 0 calc(50% + 1px));
   }
   .bio-frame .blk {
     position: absolute;
@@ -201,8 +208,13 @@ const featured = selectFeatured(
     background-image: var(--img);
     background-repeat: no-repeat;
     background-size: 400% 400%;
-    transition: transform 0.55s cubic-bezier(0.2, 0.75, 0.25, 1);
-    will-change: transform;
+    /* Break travel is set on the individual translate/rotate properties (not
+       transform) so `transform` stays free for the hover float below — the two
+       compose in the render pipeline instead of one clobbering the other. */
+    transition: translate 0.55s cubic-bezier(0.2, 0.75, 0.25, 1),
+                rotate 0.55s cubic-bezier(0.2, 0.75, 0.25, 1),
+                box-shadow 0.4s ease;
+    will-change: translate, transform;
   }
   .bio-frame .fill,
   .bio-frame .flash {
@@ -228,18 +240,38 @@ const featured = selectFeatured(
     border-radius: 2px;
     box-shadow: 0 6px 18px rgba(15, 30, 61, 0.22);
   }
-  .bio-frame.broken .o1 { transform: translate(-64%, -22%) rotate(-9deg); }
-  .bio-frame.broken .o2 { transform: translate(-30%, -46%) rotate(6deg); }
-  .bio-frame.broken .o3 { transform: translate(-72%, 30%) rotate(7deg); }
-  .bio-frame.broken .o4 { transform: translate(-26%, 40%) rotate(-6deg); }
+  .bio-frame.broken .o1 { translate: -64% -22%; rotate: -9deg; }
+  .bio-frame.broken .o2 { translate: -30% -46%; rotate: 6deg; }
+  .bio-frame.broken .o3 { translate: -72% 30%; rotate: 7deg; }
+  .bio-frame.broken .o4 { translate: -26% 40%; rotate: -6deg; }
   .bio-frame.colored .fill { opacity: 1; }
   .bio-frame.flashing .flash { opacity: 0.92; }
+  /* Hovering the broken portrait signals it's clickable (toggles back whole):
+     a white glow ring fades up on each floating piece, and they drift on a
+     slow, phase-offset float so they don't bob in unison. Hover-only and
+     hover-capable-devices-only — touch has no idle-hover state to get stuck in;
+     those visitors still tap to reassemble, just without the cue. */
+  @media (hover: hover) {
+    .bio-frame.broken:hover .blk {
+      box-shadow: 0 6px 18px rgba(15, 30, 61, 0.22),
+                  0 0 0 1px rgba(255, 255, 255, 0.55),
+                  0 0 12px 2px rgba(255, 255, 255, 0.45);
+      animation: bio-piece-float 3.4s ease-in-out infinite;
+    }
+    .bio-frame.broken:hover .o2 { animation-delay: -0.8s; }
+    .bio-frame.broken:hover .o3 { animation-delay: -1.6s; }
+    .bio-frame.broken:hover .o4 { animation-delay: -2.4s; }
+  }
+  @keyframes bio-piece-float {
+    50% { transform: translateY(-3px); }
+  }
   @media (prefers-reduced-motion: reduce) {
     /* Belt-and-suspenders: the script never attaches under reduced motion, so
        these classes are never added — but if they were, the portrait still
        stays a whole, un-coloured photo. */
-    .bio-frame .blk { transition: none; }
-    .bio-frame.broken .blk { transform: none; box-shadow: none; }
+    .bio-frame .blk { transition: none; animation: none; }
+    .bio-frame.broken .blk { translate: 0; rotate: 0; box-shadow: none; }
+    .bio-frame.broken:hover .blk { animation: none; box-shadow: none; }
     .bio-frame.colored .fill { opacity: 0; }
   }
   .bio-copy .eyebrow {
