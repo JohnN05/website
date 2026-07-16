@@ -18,6 +18,16 @@
   --tetris-t: #8B6B9E;
   --tetris-j: #5C7FA6;
 
+  /* The four pieces the Home scroll-well (TetrisWell.astro) drops, one per
+     section in reading order. Each section's --wash-* below is mixed from the
+     SAME hue the piece wears, so the piece reads as belonging to the section
+     it lands in. J uses the cobalt accent (the site's canonical "J-piece
+     blue"); the rest reuse the muted per-piece palette above. */
+  --piece-j: var(--color-accent); /* hero     · J · blue */
+  --piece-l: var(--color-accent-clay); /* bio  · L · orange */
+  --piece-o: var(--tetris-o); /* featured    · O · gold */
+  --piece-i: var(--tetris-i); /* teaching    · I · teal */
+
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -29,18 +39,19 @@
   --space-9: 6rem;
   --space-10: 9rem;
 
-  /* One wash per Home section, reusing this codebase's own ACCENT_ORDER
-     (src/lib/tags.ts: cobalt, maroon, clay, moss — the same sequence
-     already deciding tag-chip colors sitewide) 1:1 against reading order,
-     not an invented palette. Each derives from var(--color-bg), so despite
-     living only in :root, it recomputes correctly under
-     :root[data-theme='dark'] below with no separate override needed —
+  /* One wash per Home section, mixed 1:1 in reading order from the SAME
+     --piece-* hue the scroll-well drops into that section (J/L/O/I above), so
+     section and piece share a color — not an invented palette. (This replaced
+     an earlier ACCENT_ORDER mapping — cobalt/maroon/clay/moss — once the well
+     made each section's identity its tetromino.) Each derives from
+     var(--color-bg), so despite living only in :root it recomputes correctly
+     under :root[data-theme='dark'] below with no separate override —
      custom properties resolve at point of use, not point of declaration. */
-  --wash-mix: 12%;
-  --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent) var(--wash-mix));
-  --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-maroon) var(--wash-mix));
-  --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-clay) var(--wash-mix));
-  --wash-teaching: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-moss) var(--wash-mix));
+  --wash-mix: 18%;
+  --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-j) var(--wash-mix));
+  --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-l) var(--wash-mix));
+  --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-o) var(--wash-mix));
+  --wash-teaching: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-i) var(--wash-mix));
 }
 
 :root[data-theme='dark'] {

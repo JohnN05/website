@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import TetrisHero from '../components/TetrisHero.astro';
+import TetrisWell from '../components/TetrisWell.astro';
 import PieceMark from '../components/PieceMark.astro';
 import { getCollection } from 'astro:content';
 import { selectFeatured } from '../lib/projects';
@@ -19,7 +20,7 @@ const featured = selectFeatured(
       any script to mark the hero resting in time — only markup gets there
       first. If a deliberate hero load-in is ever wanted, it needs its own
       mechanism; do not get it by deleting this class. */}
-  <section class="hero in" data-scroll-section>
+  <section class="hero in" data-scroll-section data-band="j">
     <div class="hero-copy" data-depth="0.05">
       <button class="nameplate" id="nameplate" type="button" data-reveal>
         <PieceMark layout="inline" reveals={true} trigger="load" />
@@ -32,7 +33,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--wash-bio);"></div>
 
-  <section class="bio" data-scroll-section>
+  <section class="bio" data-scroll-section data-band="l">
     <div class="bio-inner">
       <div class="bio-frame" data-reveal data-depth="0.1">
         <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
@@ -48,7 +49,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
 
-  <section class="featured" data-scroll-section>
+  <section class="featured" data-scroll-section data-band="o">
     <div class="featured-inner">
       <h2 data-reveal>Featured projects</h2>
       <div class="project-grid" data-depth="0.08">
@@ -59,7 +60,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
 
-  <section class="teaching" data-scroll-section>
+  <section class="teaching" data-scroll-section data-band="i">
     <div class="teaching-inner" data-depth="0.06">
       <p class="eyebrow" data-reveal>Teaching</p>
       <h2 data-reveal>I teach as much as I build.</h2>
@@ -82,6 +83,8 @@ const featured = selectFeatured(
   </section>
 
   <div class="seam" style="--seam-from: var(--wash-teaching); --seam-to: var(--color-bg);"></div>
+
+  <TetrisWell />
 </BaseLayout>
 <style>
   .hero {

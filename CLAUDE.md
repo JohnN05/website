@@ -737,6 +737,74 @@ keys off are preserved). The exact knife angles/curves, the Mako blade profile
 (drawn from memory, not a reference image), and the impact-row scale remain open
 to live eyeball tuning per the workflow preference below.
 
+A follow-up design-review pass (no plan doc, direct user request; tracked in
+`docs/2026-07-16-design-review-next-steps.md`) then took review items 4 and 5 —
+the section through-line and the washes-commit-or-cut decision, which the
+next-steps doc had deliberately coupled (item 5 gates item 4). Mocked
+first through several rounds in an Artifact per the workflow preference below.
+The wash decision was **commit, at 18%** (up from the near-invisible 12%), and
+item 4 landed as a new **`TetrisWell.astro`** — a Home-only decorative
+scroll-well fixed at bottom-right. As the visitor scrolls the four Home
+sections, each drops its own tetromino into the well; the well fills columns 0–2
+solid and the last section (teaching) drops a vertical I-bar down the open
+column-3 channel that completes four lines at once, flashes (`#fff`, the board's
+own `flashRows()` cadence), and empties — the "leave a well, drop the bar for a
+Tetris" payoff. Scrolling back to the very top wipes the well and re-arms it so
+the build + clear replays.
+
+Several decisions here are load-bearing and were arrived at against the mock,
+not derived:
+
+- **Piece colour == section colour.** The review's real complaint was two
+  colour systems fighting: the washes ran on `ACCENT_ORDER`
+  (cobalt/maroon/clay/moss) while the pieces are *tetrominoes* with their own
+  identity colours. Resolved by binding both to the piece's own Tetris hue via
+  four new `--piece-{j,l,o,i}` tokens in `tokens.css` — J=blue (the cobalt
+  accent, the site's canonical "J-piece blue"), L=orange (clay), O=gold
+  (`--tetris-o`), I=teal (`--tetris-i`). Each section's `--wash-*` is now mixed
+  from the SAME `--piece-*` it drops, so section and piece share a colour, and
+  the well reuses the ambient hero board's palette rather than inventing a
+  second one. (This retired the earlier ACCENT_ORDER→wash mapping recorded in
+  the "more minimal and spacy" pass above.) Canonical I is cyan/teal, **not
+  green** — a green I was tried and rejected as both non-canonical and a blend
+  against the moss teaching wash.
+- **Line-clear geometry pins the shapes.** In a 4-wide well no row can complete
+  until the last piece without clearing early, so the only shape that works is a
+  vertical I dropped into an open channel — which is why the pieces are J / L /
+  O / I rather than one-per-section-accent. Fully hard-coded (final coords, no
+  generation, no gravity sim), per the user's "no fancy piece generation."
+- **The footer-fade defers to the clear.** The well is `pointer-events: none`
+  (never steals a footer click) and fades out (`.near-footer`) while
+  `.site-footer` is on screen (a footer `IntersectionObserver`), so the two
+  never overlap at the page bottom — the specific footer-collision class this
+  codebase has already paid for three times. But the clear plays at the very
+  bottom, exactly where the footer enters, so fading on footer-visibility alone
+  hid the well mid-payoff. Fixed with a `clearActive` guard: the well is "busy"
+  from the I-bar's drop until the clear finishes, and the fade is only honored
+  when it isn't busy (`updateFade()` is the single arbiter of `.near-footer`).
+- **Pieces drop in strict order.** The four section observers each fire
+  independently the moment their section is 35% visible, so a refresh whose
+  scroll position restores mid-page dropped a piece onto an empty board, out of
+  sequence (and could fire the clear on nothing). A single `nextIdx` pointer
+  turns the four independent triggers into one ordered queue — a section only
+  drops when it is the next expected piece — so nothing plays until the hero's J
+  leads off, and the board stays clear until then. Reset back to 0 on the
+  scroll-to-top replay.
+
+Decorative throughout: `aria-hidden`, hidden below the 769px desktop breakpoint
+(where the Tetris hero is hidden too) and hidden entirely under reduced motion,
+with the script gated so it never attaches there. The 20 empty board cells are
+server-rendered so ordinary Astro scoping applies; the pieces are created at
+runtime, so their selectors use `:global()` (the same `createElement` scoping
+trap as `TetrisHero`/`MinesweeperBoard`). Verified by the controller directly:
+typecheck, unit, clean build, and **76/76 e2e + axe** green in this sandbox's
+real browser — including a new `tests/e2e/tetris-well.spec.ts` (footer-fade +
+`pointer-events`, the ordered-drop guarantee proven via the `cleared` state a
+mid-page jump must never reach, and mobile-hidden) and the existing Home axe
+sweep, which now covers the well. The exact well cell size, drop timing, and the
+18% wash remain open to live eyeball tuning. Review items 6 (article header), 7
+(bio portrait frame), and 8 (typography contrast) are still open.
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate
