@@ -1474,9 +1474,16 @@ Old CRA site's commit history is preserved — useful for content reference
   reaching the real click-to-play game despite a constraint saying it
   shouldn't — ask directly rather than picking a side unilaterally.
 - `npm run test:all` (**typecheck** + unit + build + e2e) is the real CI
-  gate. Two things about that gate were themselves broken until they were
-  fixed, both of which hid real bugs rather than causing them, and both
-  worth not reintroducing:
+  gate. It now runs on GitHub Actions too — `.github/workflows/ci.yml`
+  runs the full gate on every push and every PR to `main` (Node 20,
+  `npm ci`, `npx playwright install --with-deps chromium`, then
+  `npm run test:all`; per-branch `concurrency` cancels a superseded run).
+  The workflow currently lives only on `worktree-website-revamp`; it gates
+  `main` and PRs into it once it lands there, and can then be made a
+  required status check in branch protection. Three things about that gate
+  were themselves broken until they were fixed, all of which hid real bugs
+  (or a real environment gap) rather than causing them, and all worth not
+  reintroducing:
   - `webServer.reuseExistingServer` was `!process.env.CI`. Any leftover
     `astro preview` (or a dev server) still holding port 4321 got reused,
     the `npm run build` in the webServer command never ran, and the whole
@@ -1489,6 +1496,19 @@ Old CRA site's commit history is preserved — useful for content reference
     typecheck, so a real `TS2353` sat unread in the tree — and it was the
     tell for a reduced-motion test that had never once tested reduced
     motion. `typecheck` now runs first in `test:all`.
+  - `typecheck` was `tsc --noEmit` alone, which passed locally but failed
+    the moment the GitHub Actions gate above ran for the first time:
+    `TS2307: Cannot find module 'astro:content'`. The `astro:content` (and
+    other `astro:*`) virtual-module type declarations are generated into
+    the **gitignored** `.astro/` dir by `astro sync`, which runs as a side
+    effect of `astro dev`/`astro build` but **not** of `tsc`. Every local
+    run passed only because an earlier dev/build had already generated that
+    dir; a fresh checkout (CI, or a new clone) has no `.astro/`, so
+    `typecheck` — the first step in `test:all` — bombed before unit, build,
+    or e2e ever ran. Fixed by making the script self-sufficient:
+    `typecheck` is now `astro sync && tsc --noEmit`, so the types exist
+    everywhere, not just where a build happened to run first. Don't drop
+    the `astro sync`.
 - **One worktree, one agent at a time.** `npm run build` writes `dist/`, and
   `test:e2e` builds before it runs — so two agents working in this same
   worktree clobber each other's `dist/` and each other's results. It has
