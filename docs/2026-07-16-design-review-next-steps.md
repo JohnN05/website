@@ -83,7 +83,10 @@ Review item 6, the "most neglected surface":
 
 Review item 7, the "most generic possible frame":
 
-7. **Bio portrait — L-piece dissolve.** `index.astro`'s `.bio-frame` is no longer
+7. **Bio portrait — L-piece dissolve.** _(Superseded — rebuilt as an **O**-piece
+   dissolve by the piece-swap follow-up below; bio's piece is the gold O now. The
+   L description here is the original build, kept for history.)_ `index.astro`'s
+   `.bio-frame` is no longer
    a plain rounded `<img>`. It's a 4×4-grid dissolve: an **L tetromino** (left
    column rows 1–3 + a foot cell) breaks off the bottom-left of the photo, the
    cells colour to `--piece-l` (clay, the bio section's own piece), and the notch
@@ -110,6 +113,38 @@ Review item 7, the "most generic possible frame":
      old `<img alt>` did; the click toggle is a decorative enhancement, not an AT
      control. Verified: typecheck, 92/92 unit, clean build, 76/76 e2e + axe (the
      sweep covers Home, now rendering the new frame).
+
+## Done (follow-up — scroll-well piece swap)
+
+A viewer caught the scroll-well's **bio** piece as "two J pieces, one orange":
+it wore `--piece-l` (orange) but its silhouette was a **J**, not an L. Not a
+typo — geometry. The well packs cols 0–2 and leaves col 3 for the I-bar, and
+once hero's blue J sits `X../XXX` on the floor and feat's gold O takes the
+top-left 2×2, the only cells left for bio form a J. An exhaustive search
+confirmed **only two** genuine `{J, L, O}` tilings of the 3×4 well exist, and
+neither is grounded in scroll order (hero→bio→feat) — so "bio drops a real L,
+second, without floating" is provably impossible.
+
+Fix (option "Y", mocked in Artifacts first): the one correct-silhouette,
+bottom-up-grounded tiling needs drop order **J, O, L**, so **bio drops the gold
+O and feat drops the orange L** (swapped). Propagated by the piece==section==wash
+rule:
+
+- `TetrisWell.astro` `PIECES` reordered to `j, o, l, i` with new coords — J on
+  the floor, O resting on it, L on top; nothing floats, I-bar still clears col 3.
+- `index.astro` section `data-band`s: bio `o`, feat `l`.
+- `tokens.css`: `--wash-bio` now mixes from `--piece-o` (gold), `--wash-featured`
+  from `--piece-l` (orange). The `--piece-*` values are unchanged — only which
+  section wears which. Seam gradients reference wash tokens by name, so they
+  followed automatically.
+- **Bio portrait rebuilt L→O dissolve** (supersedes item 7 above): a gold 2×2
+  block breaks off the bottom-left quarter (`clip-path` `…50% 100%, 50% 50%, 0
+  50%`, cells `o1`–`o4`, `--piece-o` fill), replacing the L's arm+foot.
+
+Verified: typecheck + unit + clean build + **76/76 e2e + axe** green. No test
+asserted piece shape or wash colour, so none needed updating (a future test
+pinning bio's well cell to `p-o` / feat's to `p-l` would guard against a silent
+re-swap). Committed `d4ec940`.
 
 ---
 
