@@ -1,9 +1,10 @@
 # Design Review — Next Steps
 
 _Working doc, 2026-07-16. Tracks the remaining items from
-`docs/2026-07-16-design-review.md`. Items 1–6 done across three passes (commits
-`5bb3352`/`7010fe9`, `fbf0898`, and the article-header pass below); 7, 8 and the
-per-page cleanups remain. Not a spec — each visual item still gets its own
+`docs/2026-07-16-design-review.md`. Items 1–7 done across four passes (commits
+`5bb3352`/`7010fe9`, `fbf0898`, the article-header pass, and the bio-portrait
+pass below); 8 and the per-page cleanups remain. Not a spec — each visual item
+still gets its own
 Artifact mock approved before any component change, per the repo's mock-first
 workflow._
 
@@ -78,19 +79,45 @@ Review item 6, the "most neglected surface":
 
 ---
 
+## Done (fourth pass — bio portrait)
+
+Review item 7, the "most generic possible frame":
+
+7. **Bio portrait — L-piece dissolve.** `index.astro`'s `.bio-frame` is no longer
+   a plain rounded `<img>`. It's a 4×4-grid dissolve: an **L tetromino** (left
+   column rows 1–3 + a foot cell) breaks off the bottom-left of the photo, the
+   cells colour to `--piece-l` (clay, the bio section's own piece), and the notch
+   reveals the section wash behind. On entry the portrait holds whole for ~650ms,
+   then breaks; **clicking toggles** whole/apart, and on reassembly the cells fly
+   home and **flash white** (the board's `flashRows()` cadence — a class-toggle
+   loop, no CSS `@keyframes`) before resolving back to the photo. The tetromino-
+   silhouette-mask direction the review suggested was rejected in mocking (a
+   jagged mask straight over a face crops the head); reshaping the *break* into a
+   piece while the face stays rectangular was the approved answer instead.
+   - **Slicing is the sprite technique, not `<img object-fit>`.** A first mock
+     used an oversized `<img object-fit:cover>` per cell and it cropped every
+     cell to the image *centre* regardless of offset — so the broken pieces all
+     showed the face. Switched to `background-image` + `background-size: 400%` +
+     per-cell `background-position`, the canonical N×N sprite formula, so each
+     cell carries its true region (the top-left foot cell shows the photo's
+     bottom-left, etc.) and the notch reveals the wash.
+   - **No runtime `createElement`.** All cells are server-rendered markup, so
+     ordinary Astro scoping applies — none of the `:global()` grid trap.
+   - **The resting whole state needs no JS.** Core (photo clipped to
+     square-minus-L) + four photo cells at home = one seamless square, so under
+     reduced motion or no-JS the portrait renders as a clean photo and the script
+     never attaches. `role="img"`/`aria-label="John Ng"` carries the identity the
+     old `<img alt>` did; the click toggle is a decorative enhancement, not an AT
+     control. Verified: typecheck, 92/92 unit, clean build, 76/76 e2e + axe (the
+     sweep covers Home, now rendering the new frame).
+
+---
+
 ## Remaining items
 
 Effort is rough (S/M/L). "Mock-first" means an approved Artifact mock before
-touching components. Every visual item here is mock-first. Items 1–6 are done
-(see the three Done sections above); **7, 8 and the per-page cleanups remain.**
-
-### 7. Bio portrait frame · S–M · mock-first
-The portrait is a plain 20px-radius rounded square — "the most generic possible
-frame." Mask it into a tetromino silhouette (S or T footprint) or seat it in a
-grid cell echoing the board.
-- CSS `mask-image` / `clip-path`; watch the mask-image gotcha this repo already
-  hit once (the capybara's `currentColor` went inert under `background-image` —
-  see the visual-refinement note). Optional micro-interaction on the frame only.
+touching components. Every visual item here is mock-first. Items 1–7 are done
+(see the Done sections above); **8 and the per-page cleanups remain.**
 
 ### 8. Typography contrast · S · partly done
 The page reads mostly in two faces at a narrow heading scale. The review wants
@@ -121,13 +148,12 @@ than eyebrows.
 
 ## Recommended sequence (remaining)
 
-Items 1–6 shipped. What's left, ordered by ratio of impact to risk:
+Items 1–7 shipped. What's left, ordered by ratio of impact to risk:
 
-1. **Item 7 (bio portrait)** — self-contained, visible, low risk.
-2. **Item 8 (typography)** — now largely closed: item 3 gave the impact row and
+1. **Item 8 (typography)** — now largely closed: item 3 gave the impact row and
    item 6 gave the bold article title. What remains is a small audit + leaning
    on IBM Plex Mono where it fits.
-3. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
+2. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
    up; none block the above.
 
 Each visual step: Artifact mock → approval → live dev-server pass → port into

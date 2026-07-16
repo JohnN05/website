@@ -35,8 +35,20 @@ const featured = selectFeatured(
 
   <section class="bio" data-scroll-section data-band="l">
     <div class="bio-inner">
-      <div class="bio-frame" data-reveal data-depth="0.1">
-        <img src="/headshot.jpg" alt="John Ng" width="759" height="759" />
+      {/* Portrait as an L-piece dissolve. Server-rendered cells (no runtime
+          createElement), so ordinary Astro scoping applies. The core is the
+          photo clipped to square-minus-L; the four .blk cells slice the same
+          photo (sprite: background-size 400% + per-cell position) and sit
+          exactly over the notch, so at rest — reduced motion, no JS — the whole
+          thing reads as one clean square. role="img"/aria-label carries the
+          identity the old <img alt> did; the click-to-toggle is a decorative
+          enhancement, not an AT control. */}
+      <div class="bio-frame" data-reveal data-depth="0.1" role="img" aria-label="John Ng">
+        <div class="core"></div>
+        <div class="blk l1"><span class="fill"></span><span class="flash"></span></div>
+        <div class="blk l2"><span class="fill"></span><span class="flash"></span></div>
+        <div class="blk l3"><span class="fill"></span><span class="flash"></span></div>
+        <div class="blk l4"><span class="fill"></span><span class="flash"></span></div>
       </div>
       <div class="bio-copy" data-depth="0.03">
         <p class="eyebrow" data-reveal>College Park, MD — CS + Secondary Ed @ UMD</p>
@@ -157,19 +169,77 @@ const featured = selectFeatured(
     gap: var(--space-8);
     align-items: center;
   }
+  /* L-piece dissolve. --img is the shared source every cell slices; the core is
+     the photo clipped to the square minus the L notch, so when the cells break
+     off the notch shows the wash behind. Cells colour to --piece-l (clay, the
+     bio section's own piece) when broken, and flash white on reassembly before
+     resolving back to the photo. */
   .bio-frame {
     position: relative;
     justify-self: start;
     width: 100%;
     max-width: 22rem;
-  }
-  .bio-frame img {
-    display: block;
-    width: 100%;
-    height: auto;
     aspect-ratio: 1 / 1;
-    object-fit: cover;
-    border-radius: 20px;
+    cursor: pointer;
+    --img: url('/headshot.jpg');
+  }
+  .bio-frame .core {
+    position: absolute;
+    inset: 0;
+    border-radius: 3px;
+    background-image: var(--img);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 100%, 50% 75%, 25% 75%, 25% 25%, 0 25%);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 100%, 50% 75%, 25% 75%, 25% 25%, 0 25%);
+  }
+  .bio-frame .blk {
+    position: absolute;
+    width: 25%;
+    height: 25%;
+    background-image: var(--img);
+    background-repeat: no-repeat;
+    background-size: 400% 400%;
+    transition: transform 0.55s cubic-bezier(0.2, 0.75, 0.25, 1);
+    will-change: transform;
+  }
+  .bio-frame .fill,
+  .bio-frame .flash {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .bio-frame .fill {
+    background: var(--piece-l);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+  }
+  .bio-frame .flash {
+    background: #fff;
+    opacity: 0;
+  }
+  /* L cells: left column rows 1-3 + a foot cell at (col1, row3). */
+  .bio-frame .l1 { left: 0; top: 25%; background-position: 0% 33.333%; }
+  .bio-frame .l2 { left: 0; top: 50%; background-position: 0% 66.667%; }
+  .bio-frame .l3 { left: 0; top: 75%; background-position: 0% 100%; }
+  .bio-frame .l4 { left: 25%; top: 75%; background-position: 33.333% 100%; }
+  .bio-frame.broken .blk {
+    border-radius: 2px;
+    box-shadow: 0 6px 18px rgba(15, 30, 61, 0.22);
+  }
+  .bio-frame.broken .l1 { transform: translate(-58%, -18%) rotate(-8deg); }
+  .bio-frame.broken .l2 { transform: translate(-72%, 8%) rotate(7deg); }
+  .bio-frame.broken .l3 { transform: translate(-60%, 34%) rotate(-7deg); }
+  .bio-frame.broken .l4 { transform: translate(-8%, 52%) rotate(9deg); }
+  .bio-frame.colored .fill { opacity: 1; }
+  .bio-frame.flashing .flash { opacity: 0.92; }
+  @media (prefers-reduced-motion: reduce) {
+    /* Belt-and-suspenders: the script never attaches under reduced motion, so
+       these classes are never added — but if they were, the portrait still
+       stays a whole, un-coloured photo. */
+    .bio-frame .blk { transition: none; }
+    .bio-frame.broken .blk { transform: none; box-shadow: none; }
+    .bio-frame.colored .fill { opacity: 0; }
   }
   .bio-copy .eyebrow {
     margin: 0 0 var(--space-4);
@@ -505,6 +575,74 @@ const featured = selectFeatured(
         { threshold: 0.4 }
       );
       observer.observe(impact);
+    }
+  }
+</script>
+
+<script>
+  // Bio portrait L-piece dissolve. On entry the photo holds whole for a beat,
+  // then an L tetromino (left column + a foot cell) breaks off, the cells colour
+  // to the section's clay, and the notch reveals the wash. Clicking toggles; on
+  // reassembly the cells fly home and flash white before resolving to the photo.
+  // Decorative — the resting whole photo needs no JS, so under reduced motion (or
+  // no JS at all) this never attaches and the portrait renders as a clean square.
+  const HOLD_MS = 650; // whole beat before the piece breaks off on entry
+  const HOME_MS = 560; // time for scattered cells to fly back home (matches CSS)
+  const FLASH_CYCLES = 3;
+  const FLASH_MS = 90;
+
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const frame = document.querySelector<HTMLElement>('.bio-frame');
+    if (frame) {
+      let busy = false;
+
+      const breakApart = () => {
+        frame.classList.add('broken');
+        // Colour in a beat after the break starts, so the cells read as photo
+        // first and clay second rather than snapping straight to solid.
+        setTimeout(() => frame.classList.add('colored'), 120);
+      };
+
+      const assemble = () => {
+        busy = true;
+        frame.classList.remove('broken'); // cells fly home, still clay
+        setTimeout(() => {
+          // Same flash cadence as the board's flashRows(): a class toggle loop,
+          // no CSS @keyframes to restart. Once done, drop the colour to reveal
+          // the photo underneath.
+          let n = 0;
+          const tick = () => {
+            frame.classList.toggle('flashing');
+            n += 1;
+            if (n < FLASH_CYCLES * 2) {
+              setTimeout(tick, FLASH_MS);
+            } else {
+              frame.classList.remove('flashing', 'colored');
+              busy = false;
+            }
+          };
+          tick();
+        }, HOME_MS);
+      };
+
+      frame.addEventListener('click', () => {
+        if (busy) return; // ignore clicks mid-reassembly
+        if (frame.classList.contains('broken')) assemble();
+        else breakApart();
+      });
+
+      // Break off once, a beat after the section is judged entered.
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            setTimeout(breakApart, HOLD_MS);
+            observer.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.4 }
+      );
+      observer.observe(frame);
     }
   }
 </script>

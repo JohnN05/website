@@ -840,11 +840,60 @@ controller directly: typecheck, 92/92 unit, clean build, and 76/76 e2e + axe
 green in this sandbox's real browser (the accessibility sweep covers
 `/projects/portfolio-site-rewrite`, which now renders the new header + fallback).
 The cover aspect (4:3), title scale, fallback stack density, and marker size
-remain open to live eyeball tuning. Review items 7 (bio portrait frame) and 8
-(residual typography — item 6 delivered the bold-title moment), plus the
-per-page cleanups, remain — **`docs/2026-07-16-design-review-next-steps.md` is
-the live tracker for what's done and what remains from this review; read it (not
-just this log) before picking up any further design-review work.**
+remain open to live eyeball tuning. Review items 8
+(residual typography — item 6 delivered the bold-title moment) and the per-page
+cleanups remain — **`docs/2026-07-16-design-review-next-steps.md` is the live
+tracker for what's done and what remains from this review; read it (not just
+this log) before picking up any further design-review work.**
+
+A fourth design-review pass (no plan doc, direct user request; tracked in
+`docs/2026-07-16-design-review-next-steps.md`) then took review item 7 — the bio
+portrait's "most generic possible frame" (a plain 20px-radius `<img>`). Mocked
+first through several Artifact rounds per the workflow preference below.
+`index.astro`'s `.bio-frame` is now an **L-piece dissolve**: a 4×4 conceptual
+grid where an L tetromino (left column rows 1–3 + a foot cell) breaks off the
+bottom-left of the photo, the four cells colour to `--piece-l` (clay, the bio
+section's own piece), and the notch reveals the section wash behind. On entry the
+portrait holds whole ~650ms, then breaks; **clicking toggles** whole/apart, and
+on reassembly the cells fly home and **flash white** before resolving to the
+photo — reusing the board's `flashRows()` motion language (a `setTimeout`
+`classList.toggle` loop, no CSS `@keyframes`), same as the Featured cover pieces.
+
+Several decisions here are load-bearing:
+
+- **The review's own suggested direction was rejected in mocking.** The review
+  proposed masking the portrait into a tetromino silhouette; a jagged mask
+  straight over a face crops the head. The approved answer reshapes the *break*
+  into a piece while the face itself stays rectangular — the photo is never
+  masked into a non-rectangular outline.
+- **Cells slice via the sprite technique, not `<img object-fit>`.** A first mock
+  gave each cell an oversized `<img object-fit:cover>` positioned by
+  `left`/`top`; `object-fit: cover` cropped every cell to the image *centre*
+  regardless of the offset, so all four broken pieces showed the face instead of
+  their own regions — the exact bug the user caught twice. Fixed with the
+  canonical N×N sprite formula: one shared `--img`, `background-size: 400% 400%`,
+  and a per-cell `background-position` (e.g. the foot cell at `33.333% 100%`), so
+  each cell carries its true slice and the notch reveals the wash. The core is
+  the photo clipped (`clip-path`) to the square minus the L notch.
+- **No runtime `createElement`; the resting state needs no JS.** All cells are
+  server-rendered markup, so ordinary Astro scoping applies — none of the
+  `:global()` grid trap that `TetrisHero`/`MinesweeperBoard`/`TetrisWell` need.
+  Core + four photo cells at home compose one seamless square, so under reduced
+  motion (or no JS) the portrait renders as a clean photo and the dissolve script
+  never attaches. `role="img"`/`aria-label="John Ng"` on `.bio-frame` carries the
+  identity the old `<img alt>` did; the click toggle is a decorative enhancement,
+  not an AT control (no `tabindex`/`role="button"`, so it adds no dead control to
+  the a11y tree). Entry-break is fired by its own `IntersectionObserver`; the
+  frame keeps its existing `data-reveal`/`data-depth`, so reveal fades it in and
+  parallax translates the whole frame while the cells animate independently
+  inside — no conflict, since the cells carry no `data-reveal`/`data-depth` and so
+  are untouched by `global.css`'s shared transform rule.
+
+Verified by the controller directly: typecheck, 92/92 unit, clean build, and
+76/76 e2e + axe green in this sandbox's real browser (the accessibility sweep
+covers Home, which now renders the new frame). The L placement, scatter
+distance/rotation, clay intensity, and hold/flash timing remain open to live
+eyeball tuning.
 
 ## Stack
 
