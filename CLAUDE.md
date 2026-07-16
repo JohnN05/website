@@ -802,11 +802,49 @@ real browser — including a new `tests/e2e/tetris-well.spec.ts` (footer-fade +
 `pointer-events`, the ordered-drop guarantee proven via the `cleared` state a
 mid-page jump must never reach, and mobile-hidden) and the existing Home axe
 sweep, which now covers the well. The exact well cell size, drop timing, and the
-18% wash remain open to live eyeball tuning. Review items 6 (article header), 7
-(bio portrait frame), and 8 (typography contrast), plus the per-page cleanups,
-are still open — **`docs/2026-07-16-design-review-next-steps.md` is the live
-tracker for what's done and what remains from this review; read it (not just
-this log) before picking up any further design-review work.**
+18% wash remain open to live eyeball tuning.
+
+A third design-review pass (no plan doc, direct user request; tracked in
+`docs/2026-07-16-design-review-next-steps.md`) then took review item 6 — the
+article header, the review's "most neglected surface." Mocked first through
+three Artifact rounds per the workflow preference below. The review's own
+suggested direction (carry the ProjectCard's cover *glyph* into the header) was
+built in the first mock and **rejected by the owner** — a big first letter read
+as thin on a low-content page, and the owner noted real cover photos are planned
+for articles. So the header was rebuilt image-led. It landed in
+`ArticleLayout.astro` as a split header echoing the site's own Bio/contact
+two-column: a mono meta line, a larger Bricolage title
+(`clamp(2.4rem, 5vw, 3.6rem)` — bigger than /projects' 2.8rem h1, which also
+delivers review item 8's one bold scale moment; Bricolage loads at weight 600
+only — see the `css2` link in `BaseLayout.astro` — so the impact is size +
+tracking, not weight, and a 700 here would only faux-bold), a Source Serif
+**dek** pulled from the project's `summary` frontmatter, and a 4:3 cover frame
+with an accent hairline + inset top-edge (the ProjectCard top-edge, wrapped).
+The cover holds a real photo when the project's optional `cover` field is set,
+and otherwise renders a **server-side generated fallback** — a shallow frozen
+tetromino stack in the article's own accent (`accentForTag(tags[0])`), rendered
+in the component frontmatter so ordinary Astro scoping applies (no runtime
+`createElement`, so none of the `:global()` grid trap). A white tetromino marker
+sits at the cover's top-right on the **fallback only** (a real photo carries its
+own identity and stays clean), reusing the same piece shape the ProjectCard
+cover already drops for that accent. To stop the card and the article from
+drifting, `ACCENT_VAR` and `PIECE_CELLS` were lifted out of `ProjectCard.astro`'s
+local consts into `lib/tags.ts`, and both components now import them — one
+source, same piece for the same tag by construction, the shape this codebase
+keeps choosing over two hand-kept copies. `[slug].astro` passes `summary` and
+`cover` through (both already in the content schema). The prose column is
+untouched (70ch Source Serif). One self-inflicted bug was caught before testing:
+a `<ul>` nested inside a `<p class="meta">` is invalid and auto-closes the `<p>`,
+spilling the tags out of the flex row — changed to a `<div>`. Verified by the
+controller directly: typecheck, 92/92 unit, clean build, and 76/76 e2e + axe
+green in this sandbox's real browser (the accessibility sweep covers
+`/projects/portfolio-site-rewrite`, which now renders the new header + fallback).
+The cover aspect (4:3), title scale, fallback stack density, and marker size
+remain open to live eyeball tuning. Review items 7 (bio portrait frame) and 8
+(residual typography — item 6 delivered the bold-title moment), plus the
+per-page cleanups, remain — **`docs/2026-07-16-design-review-next-steps.md` is
+the live tracker for what's done and what remains from this review; read it (not
+just this log) before picking up any further design-review work.**
 
 ## Stack
 

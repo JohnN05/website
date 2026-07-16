@@ -1,10 +1,11 @@
 # Design Review — Next Steps
 
 _Working doc, 2026-07-16. Tracks the remaining items from
-`docs/2026-07-16-design-review.md`. Items 1–5 done across two passes (commits
-`5bb3352`/`7010fe9` and `fbf0898`); 6, 7, 8 and the per-page cleanups remain.
-Not a spec — each visual item still gets its own Artifact mock approved before
-any component change, per the repo's mock-first workflow._
+`docs/2026-07-16-design-review.md`. Items 1–6 done across three passes (commits
+`5bb3352`/`7010fe9`, `fbf0898`, and the article-header pass below); 7, 8 and the
+per-page cleanups remain. Not a spec — each visual item still gets its own
+Artifact mock approved before any component change, per the repo's mock-first
+workflow._
 
 ---
 
@@ -51,22 +52,37 @@ Review items 4 and 5, done together because item 5 gates item 4:
 
 ---
 
+## Done (third pass — article-header)
+
+Review item 6, the "most neglected surface":
+
+6. **Article page header.** `ArticleLayout.astro` gained a split header echoing
+   the site's own Bio/contact two-column: mono meta line, a larger Bricolage
+   title (`clamp(2.4rem, 5vw, 3.6rem)` — bigger than /projects' 2.8rem, which
+   also covers item 8's one bold scale moment; Bricolage loads at 600 only, so
+   impact is size + tracking, not weight), a Source Serif **dek** from the
+   project's `summary`, and a 4:3 cover frame with an accent hairline + inset
+   top-edge. The cover shows a real photo when `cover` is set, else a
+   **server-rendered generated fallback** — a frozen tetromino stack in the
+   article's own accent — with a white piece marker at top-right (fallback
+   only; a real photo stays clean). **The first-letter-glyph direction the
+   review suggested was mocked and rejected** by the owner (too thin on a
+   low-content page); the header is image-led instead, since real cover photos
+   are planned. `ACCENT_VAR` + `PIECE_CELLS` were lifted from `ProjectCard`'s
+   local consts into `lib/tags.ts`; both components import them, so the card's
+   hover piece and the article's fallback marker are the same shape for a tag
+   by construction. `[slug].astro` passes `summary` + `cover`; prose column
+   (70ch Source Serif) untouched. Verified: typecheck, 92/92 unit, clean build,
+   76/76 e2e + axe (the sweep covers `/projects/portfolio-site-rewrite`, now
+   rendering the new header). See CLAUDE.md Status for the full rationale.
+
+---
+
 ## Remaining items
 
 Effort is rough (S/M/L). "Mock-first" means an approved Artifact mock before
-touching components. Every visual item here is mock-first. Items 1–5 are done
-(see the two Done sections above); **6, 7, 8 and the per-page cleanups remain.**
-
-### 6. Article page header · M · mock-first
-`/projects/[slug]` is the review's "most neglected surface and the one that
-matters most for a portfolio" — currently `meta → h1 → prose` at 70ch with no
-visual tie to the card the visitor clicked. Carry the card's cover accent +
-glyph into the article header so the jump from a colored card to the article
-isn't jarring.
-- Reuse what item 2 already built: `accentForTag` → accent, the cover glyph,
-  the tetromino. `ArticleLayout.astro` is the file.
-- High portfolio value; second-most-impactful remaining item after the
-  through-line.
+touching components. Every visual item here is mock-first. Items 1–6 are done
+(see the three Done sections above); **7, 8 and the per-page cleanups remain.**
 
 ### 7. Bio portrait frame · S–M · mock-first
 The portrait is a plain 20px-radius rounded square — "the most generic possible
@@ -105,12 +121,13 @@ than eyebrows.
 
 ## Recommended sequence (remaining)
 
-Items 1–5 shipped. What's left, ordered by ratio of impact to risk:
+Items 1–6 shipped. What's left, ordered by ratio of impact to risk:
 
-1. **Item 8 (typography)** — mostly a small audit; item 3 did the hard part.
-2. **Item 7 (bio portrait)** — self-contained, visible, low risk.
-3. **Item 6 (article header)** — highest remaining portfolio value.
-4. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
+1. **Item 7 (bio portrait)** — self-contained, visible, low risk.
+2. **Item 8 (typography)** — now largely closed: item 3 gave the impact row and
+   item 6 gave the bold article title. What remains is a small audit + leaning
+   on IBM Plex Mono where it fits.
+3. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
    up; none block the above.
 
 Each visual step: Artifact mock → approval → live dev-server pass → port into

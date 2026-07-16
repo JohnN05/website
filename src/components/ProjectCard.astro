@@ -1,5 +1,5 @@
 ---
-import { accentForTag } from '../lib/tags';
+import { accentForTag, ACCENT_VAR, PIECE_CELLS } from '../lib/tags';
 
 interface Props {
   project: { slug: string; title: string; summary: string; date: Date; tags: string[] };
@@ -8,23 +8,8 @@ interface Props {
 const { project, showCover = false } = Astro.props;
 const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(project.date);
 
-const ACCENT_VAR: Record<string, string> = {
-  cobalt: 'var(--color-accent)',
-  maroon: 'var(--color-accent-maroon)',
-  clay: 'var(--color-accent-clay)',
-  moss: 'var(--color-accent-moss)',
-};
-// The tetromino that drops into the cover is chosen from the card's own accent,
-// not at random: each of the four accents maps to one real piece shape, so the
-// same tag always yields the same piece everywhere the card appears — the same
-// determinism accentForTag already gives the color. Cells index a 3-wide × 2-tall
-// grid, row-major.
-const PIECE_CELLS: Record<string, number[]> = {
-  cobalt: [0, 3, 4, 5], // J
-  maroon: [0, 1, 4, 5], // Z
-  clay: [2, 3, 4, 5], // L
-  moss: [1, 2, 3, 4], // S
-};
+// Accent, its color var, and its tetromino all come from lib/tags so the card
+// and the article header render the same identity for a given tag.
 const accentName = accentForTag(project.tags[0] ?? project.title);
 const coverAccent = ACCENT_VAR[accentName];
 const pieceCells = PIECE_CELLS[accentName] ?? PIECE_CELLS.cobalt;
