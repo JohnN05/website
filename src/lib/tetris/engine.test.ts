@@ -54,13 +54,32 @@ describe('locking and line clears', () => {
   });
 
   it('hard drop locks immediately and awards points for a cleared line', () => {
-    let state = createGame('I');
-    // Fill the bottom row except a 1-wide gap using O pieces (2x2), then
-    // drop an I piece rotated vertically into the gap — property check
-    // rather than exact geometry: score increases only when a line clears.
+    // The fixture this describes was never actually built: the old version
+    // dropped an I onto an EMPTY board and asserted `score >= before` where
+    // before was 0 and score never decreases — no line could clear, and the
+    // assertion could not fail. Build the bottom row for real, leave a 1-wide
+    // gap at column 0, and drop a vertical I into it.
+    const cols = 10;
+    const rows = 20;
+    const board: Cell[][] = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null));
+    for (let x = 1; x < cols; x++) board[rows - 1][x] = 'O';
+
+    const base = createGame('I', cols, rows);
+    let state: GameState = { ...base, board };
+    state = rotate(state);
+    for (let i = 0; i < cols; i++) state = moveLeft(state);
+
     const before = state.score;
+    const beforeLines = state.linesCleared;
     state = hardDrop(state, 'I');
-    expect(state.score).toBeGreaterThanOrEqual(before);
+
+    expect(state.linesCleared).toBe(beforeLines + 1);
+    expect(state.score).toBeGreaterThan(before);
+    // The row went, and what was above it came down: the vertical I is 4 cells
+    // in column 0, one of which completed the row that cleared. The remaining 3
+    // shift down, so the bottom row holds exactly that column and nothing else.
+    expect(state.board[rows - 1].filter((c) => c !== null)).toHaveLength(1);
+    expect(state.board[rows - 1][0]).toBe('I');
     expect(state.current.type).toBe('I');
   });
 
@@ -221,9 +240,28 @@ describe('boardWithPiece', () => {
   });
 
   it('ignores cells above the top of the board (negative y)', () => {
+    // `every cell is null || 'O'` was true by construction on a board that
+    // contains only nulls and one O piece — it held however many cells got
+    // stamped, including a crash-free no-op or a wrongly-wrapped row.
+    //
+    // The O spawns at y = -2 and is 2 rows tall, so EVERY one of its cells is
+    // above the top: the right answer is that nothing is stamped at all, and
+    // in particular that a negative y never wraps onto a row at the bottom.
     const state = createGame('O', 6, 10); // spawn y = -2
     const stamped = boardWithPiece(state.board, state.current);
-    expect(stamped.every((row) => row.every((c) => c === null || c === 'O'))).toBe(true);
+    expect(stamped.flat().filter((c) => c !== null)).toHaveLength(0);
+  });
+
+  it('stamps only the cells that are on the board when a piece straddles the top', () => {
+    // The other half of the same rule, and the case that actually distinguishes
+    // "ignored" from "dropped": a piece half above the top must stamp its
+    // lower row and skip its upper one.
+    const base = createGame('O', 6, 10);
+    const straddling = { ...base.current, y: -1 };
+    const stamped = boardWithPiece(base.board, straddling);
+    const filled = stamped.flat().filter((c) => c !== null);
+    expect(filled).toHaveLength(2);
+    expect(stamped[0].filter((c) => c === 'O')).toHaveLength(2);
   });
 });
 

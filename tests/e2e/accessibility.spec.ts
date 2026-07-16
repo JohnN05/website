@@ -104,8 +104,19 @@ test('reduced motion: Tetris ambient loop shows a single static frame', async ({
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
+  // "Shows a static frame" is two claims and this test only ever made one of
+  // them. Comparing innerHTML before and after proves nothing changed — and an
+  // empty board satisfies that perfectly, since '' === ''. Proven the hard way:
+  // a review agent's deliberate break (setupAmbientBoard returning early under
+  // reduced motion, so no board rendered at all) passed this test AND the whole
+  // suite. Reduced motion asks for stillness, not for the thing to vanish.
+  const cells = page.locator('#tetris-ambient-crisp > div');
+  expect(await cells.count()).toBeGreaterThan(0);
+
   const before = await page.locator('#tetris-ambient-crisp').innerHTML();
   await page.waitForTimeout(2000);
   const after = await page.locator('#tetris-ambient-crisp').innerHTML();
   expect(after).toBe(before);
+  // And it is still a board, not an emptied one, at the end of the wait.
+  expect(await cells.count()).toBeGreaterThan(0);
 });

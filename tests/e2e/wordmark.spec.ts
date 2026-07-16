@@ -23,10 +23,18 @@ test.describe('ownership: exactly one JOHN NG performs per page', () => {
 
     const rail = page.locator('.rail-wordmark');
     await rail.hover();
-    // Long enough for a full play (130 + 150 + 70 + 130 + 150) to have finished
-    // if the ownership gate were broken. Hover triggers immediately — the load
-    // delay applies only to trigger="load" — so no allowance for it here.
+    // A full play is 590ms (90 + 150 + 70 + 130 + 150), so by t=1000 it is over
+    // either way. That is the trap this test used to fall into: `revealing` and
+    // `data-turned` are TRANSIENT states the play cleans up after itself, so
+    // asserting their absence a second later asserts that a play FINISHED, not
+    // that none happened. Proven, by deleting the ownership gate: the rail
+    // played a complete reveal and this test still passed.
+    //
+    // data-cycle is the durable evidence — set once a play completes and never
+    // cleared — so its absence is the only thing that actually means "this mark
+    // never played". Same hook capturePlay below already relies on.
     await page.waitForTimeout(1000);
+    await expect(rail).not.toHaveAttribute('data-cycle', /.*/);
     await expect(rail).not.toHaveClass(/revealing/);
     await expect(rail).not.toHaveAttribute('data-turned', 'true');
   });

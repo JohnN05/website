@@ -19,7 +19,38 @@ describe('createBoard', () => {
     // Deterministic placement: mines (0,0)-(8,8) on diagonal + (1,7) off-diagonal = 10 mines
     const rng = sequenceRng([0, 0, 0.12, 0.12, 0.24, 0.24, 0.36, 0.36, 0.48, 0.48, 0.60, 0.60, 0.72, 0.72, 0.84, 0.84, 0.96, 0.96, 0.12, 0.84]);
     const board = createBoard(rng);
-    expect(board[0][0].mine || board[0][1].mine).toBe(true);
+
+    // This test asserted `board[0][0].mine || board[0][1].mine` — mine
+    // PLACEMENT — and never read .adjacent at all, despite its name. Forcing
+    // adjacent = 0 across the whole engine left it passing.
+    //
+    // The counts below are read off the seeded layout by hand, not computed the
+    // way the engine computes them:
+    //
+    //   * . . . . . . . .      (0,1) touches (0,0) and (1,1)          -> 2
+    //   . * . . . . . * .      (1,0) touches (0,0) and (1,1)          -> 2
+    //   . . * . . . . . .      (0,3) touches nothing                  -> 0
+    //   . . . * . . . . .      (0,7) touches only (1,7)               -> 1
+    //   . . . . * . . . .      (1,6) touches only (1,7)               -> 1
+    //   . . . . . * . . .      (2,1) touches (1,1) and (2,2)          -> 2
+    //   . . . . . . * . .
+    //   . . . . . . . * .
+    //   . . . . . . . . *
+    expect(board[0][1].adjacent).toBe(2);
+    expect(board[1][0].adjacent).toBe(2);
+    expect(board[0][3].adjacent).toBe(0);
+    expect(board[0][7].adjacent).toBe(1);
+    expect(board[1][6].adjacent).toBe(1);
+    expect(board[2][1].adjacent).toBe(2);
+
+    // The layout those counts are derived from, asserted rather than assumed —
+    // otherwise a reseeded board would silently make every count above wrong
+    // instead of failing here.
+    expect(board[0][0].mine).toBe(true);
+    expect(board[1][1].mine).toBe(true);
+    expect(board[1][7].mine).toBe(true);
+    expect(board[8][8].mine).toBe(true);
+    expect(board.flat().filter((c) => c.mine)).toHaveLength(MS_MINES);
   });
 });
 

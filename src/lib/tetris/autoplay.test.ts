@@ -23,7 +23,15 @@ function applyPlacement(state: GameState, placement: { rotation: number; x: numb
   let piece = state;
   for (let i = 0; i < placement.rotation; i++) piece = rotate(piece);
   for (let i = 0; i < state.board[0].length; i++) piece = moveLeft(piece);
-  while (piece.current.x < placement.x) piece = moveRight(piece);
+  // Blocked-check for the same reason stepAmbientDemo carries one: moveRight
+  // returns the same state when blocked, so this loop hangs forever on an
+  // unreachable x rather than failing. A test that hangs takes the suite with
+  // it and reports nothing.
+  while (piece.current.x < placement.x) {
+    const moved = moveRight(piece);
+    if (moved.current.x === piece.current.x) break;
+    piece = moved;
+  }
   return hardDrop(piece, 'O');
 }
 
@@ -66,11 +74,49 @@ describe('chooseBestPlacement', () => {
     expect(result.linesCleared).toBe(state.linesCleared);
   });
 
-  it('does not create new holes on an empty board when a hole-free placement exists', () => {
-    const state = createGame('O');
+  it('avoids burying a well when a hole-free placement exists', () => {
+    // This asked an O piece to avoid making a hole on an EMPTY board — which no
+    // placement or rotation of an O can do, so it passed no matter what the
+    // heuristic did. Gutting chooseBestPlacement to `return {rotation: 0, x: 0}`
+    // failed four tests in this file and left this one green.
+    //
+    // The fixture now has a real trap: two filled bottom rows with a 1-wide,
+    // 2-deep well at column 4. A T piece laid across the well buries it and
+    // opens holes; a T laid on the flat stretch opens none. Both are available,
+    // so the choice is the thing under test.
+    const board: Cell[][] = Array.from({ length: ROWS }, () => Array<Cell>(COLS).fill(null));
+    for (let x = 0; x < COLS; x++) {
+      if (x !== 4) {
+        board[ROWS - 1][x] = 'O';
+        board[ROWS - 2][x] = 'O';
+      }
+    }
+    const base = createGame('T');
+    const state: GameState = { ...base, board };
+    // The well is open, not buried: nothing is over it yet.
+    expect(countHolesExported(board)).toBe(0);
+
+    // Vacuity guard, and the part the old test was missing: prove a
+    // hole-creating placement genuinely EXISTS here, or "chose one with no
+    // holes" means nothing again. Enumerated through the engine's own moves
+    // rather than asserted from memory of the shapes.
+    const holesByPlacement: number[] = [];
+    for (let r = 0; r < 4; r++) {
+      let probe = state;
+      for (let i = 0; i < r; i++) probe = rotate(probe);
+      for (let i = 0; i < COLS; i++) probe = moveLeft(probe);
+      while (true) {
+        holesByPlacement.push(countHolesExported(hardDrop(probe, 'O').board));
+        const next = moveRight(probe);
+        if (next.current.x === probe.current.x) break;
+        probe = next;
+      }
+    }
+    expect(Math.max(...holesByPlacement)).toBeGreaterThan(0);
+
     const placement = chooseBestPlacement(state);
     const result = applyPlacement(state, placement);
-    expect(countHoles(result.board)).toBe(0);
+    expect(countHolesExported(result.board)).toBe(0);
   });
 });
 

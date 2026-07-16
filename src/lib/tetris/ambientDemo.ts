@@ -53,7 +53,24 @@ export function stepAmbientDemo(state: GameState, stepIndex: number): AmbientSte
   let next = state;
   for (let i = 0; i < placement.rotation; i++) next = rotate(next);
   for (let i = 0; i < cols; i++) next = moveLeft(next);
-  while (next.current.x < placement.x) next = moveRight(next);
+  // Stop if the piece can't move any further, don't spin. moveRight returns the
+  // SAME state when blocked, so `while (x < placement.x) moveRight()` never
+  // terminates for an x it cannot reach — that is a frozen browser tab, not a
+  // failed assertion.
+  //
+  // It cannot happen today, and the reason is worth stating because it is not
+  // local to this file: every x chooseBestPlacement can return comes from its
+  // own walk from the left wall (autoplay.ts), so it is reachable by exactly
+  // this walk, from the same state, by construction. That is an invariant of a
+  // DIFFERENT function's return value, though — nothing here enforces it, and
+  // autoplay's own identical walk carries this same guard. A deliberate break
+  // of chooseBestPlacement during a test audit hung the suite outright, which
+  // is what a visitor would get instead of an animation.
+  while (next.current.x < placement.x) {
+    const moved = moveRight(next);
+    if (moved.current.x === next.current.x) break;
+    next = moved;
+  }
 
   const landingY = landingRow(next.board, next.current);
   const preClearBoard = boardWithPiece(next.board, { ...next.current, y: landingY });
