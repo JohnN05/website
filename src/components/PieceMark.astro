@@ -304,7 +304,22 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
     // An inline box's border box is its font's ascent+descent, so its top edge
     // is exactly one ascent above the baseline.
     const chRect = ch.getBoundingClientRect();
+    // Measure the glyph's LAYOUT box, not its painted one. getBoundingClientRect
+    // includes transforms, and by the time this runs the J is already tipped a
+    // quarter-turn (that's CSS at first paint, before any script) — so its rect
+    // comes back with width and height swapped and its left edge moved by
+    // (w - h) / 2, which silently placed the J's piece ~9px off its letter.
+    //
+    // The vertical term survived that by pure luck: rotating about the centre
+    // shifts top by (h - w) / 2 while height becomes w, and the two cancel in
+    // the baseline formula below. Nothing cancels horizontally. Suppressing the
+    // transform for the read is exact and costs one forced reflow at measure
+    // time (load and debounced resize only); no paint can happen inside this
+    // synchronous block, so nothing flickers.
+    const painted = glyph.style.transform;
+    glyph.style.transform = 'none';
     const glyphRect = glyph.getBoundingClientRect();
+    glyph.style.transform = painted;
     const baseline =
       glyphRect.top -
       chRect.top +

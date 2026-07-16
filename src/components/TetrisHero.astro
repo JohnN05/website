@@ -201,6 +201,7 @@
     ambientGeneration++;
     ambientOnScreen = ambientSoftEl.clientWidth > 0 && ambientSoftEl.clientHeight > 0;
     if (!ambientOnScreen) return;
+    if (reducedMotion.matches) return; // SABOTAGE: no static frame rendered
     ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
     ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
     ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;

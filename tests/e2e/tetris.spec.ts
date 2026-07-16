@@ -207,7 +207,14 @@ test('desktop: falling-piece overlay is cleared during a line-clear flash, not l
   // The ambient loop builds its stack up before its heuristic rewards line
   // clears, so this waits for whatever the first real clear happens to be
   // rather than assuming a fixed timing.
-  await page.waitForSelector('.tetris-ambient-crisp div.flashing', { timeout: 30000 });
+  // 60s, not 30s. The event itself is deterministic — pieceForStep is seeded
+  // and the board's dimensions are pinned by the viewport above, so the first
+  // clear always arrives on the same step — but WHEN it arrives is wall-clock,
+  // and the loop only cashes in a line once a column reaches 75% of board
+  // height, which is dozens of ~800ms cycles away. Under parallel workers this
+  // observably overran 30s and failed once; the wait is for something that is
+  // definitely coming, so the timeout should be generous rather than tight.
+  await page.waitForSelector('.tetris-ambient-crisp div.flashing', { timeout: 60000 });
 
   // The locked piece is already baked into the flashing board cells
   // themselves; the separate overlay layer must be empty during the flash,

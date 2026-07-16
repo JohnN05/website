@@ -98,17 +98,86 @@ test.describe('the pieces land on the letters', () => {
           (glyphRect.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 +
           m.fontBoundingBoxAscent;
         const boxRect = box.getBoundingClientRect();
+        const originX = glyphRect.left - chRect.left;
         return {
           letter,
           inkTop: baseline - m.actualBoundingBoxAscent,
           inkBottom: baseline + m.actualBoundingBoxDescent,
+          inkLeft: originX - m.actualBoundingBoxLeft,
+          inkRight: originX + m.actualBoundingBoxRight,
           boxTop: boxRect.top - chRect.top,
           boxBottom: boxRect.bottom - chRect.top,
+          boxLeft: boxRect.left - chRect.left,
+          boxRight: boxRect.right - chRect.left,
           boxWidth: boxRect.width,
         };
       })
     );
   }
+
+  test('the turned J covers the letter it replaces, left and right', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/');
+
+    // Horizontal placement had NO test, and that gap hid a real bug: measure()
+    // reads the glyph via getBoundingClientRect, which includes transforms, and
+    // the J is tipped a quarter-turn at first paint — so the rect came back
+    // with width/height swapped and its left edge moved by (w - h) / 2, putting
+    // the J's piece ~4px off its letter.
+    //
+    // Vertical placement cannot catch it, which is worth knowing: the baseline
+    // formula reads glyphRect.top + (glyphRect.height - S) / 2, and rotating
+    // about the centre shifts top by (h - w) / 2 while height becomes w — the
+    // two cancel exactly. Nothing cancels horizontally.
+    //
+    // What's asserted is the design's real claim — the TURNED piece lands on
+    // the letter's ink — not that the lattice box is centred on it. It isn't,
+    // deliberately: the box is 3 blocks wide and the turned J occupies 2 of
+    // them (cols 2-3), so the box sits half a block off centre by construction.
+    // Sampling the cells is what tests the claim rather than the arithmetic.
+    const mark = page.locator('#nameplate [data-piece-mark]');
+    await expect(mark).toHaveAttribute('data-cycle', '1');
+
+    const result = await page.evaluate(() => {
+      const ch = document.querySelector<HTMLElement>('#nameplate .ch[data-piece="J"]')!;
+      const glyph = ch.querySelector<HTMLElement>('.glyph')!;
+      const nameplate = document.querySelector<HTMLElement>('#nameplate')!;
+      const mark = document.querySelector<HTMLElement>('#nameplate [data-piece-mark]')!;
+
+      // Ink of the upright letter, read at rest before the replay. Layout is
+      // unaffected by the tip (transforms don't reflow), so this stays the
+      // right reference once the piece is mid-play.
+      const style = getComputedStyle(glyph);
+      const ctx = document.createElement('canvas').getContext('2d')!;
+      ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const m = ctx.measureText('J');
+      const chRect = ch.getBoundingClientRect();
+      const g = glyph.getBoundingClientRect();
+      const originX = g.left - chRect.left;
+      const inkCentre =
+        (originX - m.actualBoundingBoxLeft + (originX + m.actualBoundingBoxRight)) / 2;
+
+      return new Promise<{ inkCentre: number; cellsCentre: number }>((resolve, reject) => {
+        const observer = new MutationObserver(() => {
+          if (mark.dataset.turned !== 'true') return;
+          observer.disconnect();
+          const cells = Array.from(ch.querySelectorAll<HTMLElement>('.lattice b'));
+          const rects = cells.map((el) => el.getBoundingClientRect());
+          const left = Math.min(...rects.map((r) => r.left)) - chRect.left;
+          const right = Math.max(...rects.map((r) => r.right)) - chRect.left;
+          resolve({ inkCentre, cellsCentre: (left + right) / 2 });
+        });
+        observer.observe(mark, { attributes: true });
+        setTimeout(() => {
+          observer.disconnect();
+          reject(new Error('the mark never played'));
+        }, 5000);
+        nameplate.click();
+      });
+    });
+
+    expect(Math.abs(result.cellsCentre - result.inkCentre)).toBeLessThan(1.5);
+  });
 
   test("each piece's box is its letter's ink, top and bottom", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });

@@ -869,6 +869,20 @@ piece landed relative to its letter. It shipped that way. The rules now:
   `document.fonts.ready` (measuring the fallback face would place every piece
   wrong and never re-measure) and re-measures on resize (the hero's mark is
   sized in vw). Nothing plays before the first measurement.
+- **`measure()` suppresses the glyph's transform before reading its rect, and
+  must keep doing so.** `getBoundingClientRect()` includes transforms, and the J
+  is *already tipped a quarter-turn at first paint* — so the naive read returns
+  width and height swapped, with the left edge moved by `(w - h) / 2`. That
+  placed the J's piece ~4px off its letter. The vertical term hid it by pure
+  luck: the baseline formula reads `glyphRect.top + (glyphRect.height - S) / 2`,
+  and rotating about the centre shifts `top` by `(h - w) / 2` while `height`
+  becomes `w` — the two cancel exactly, so `baseline` is invariant under the
+  tip. Nothing cancels horizontally, and nothing asserted horizontal placement
+  until `wordmark.spec.ts`'s "the turned J covers the letter it replaces" was
+  added. That test samples the four cells mid-play rather than the resting
+  lattice box, because the box is deliberately *not* centred on the ink (it is 3
+  blocks wide and the turned J occupies 2 of them) — asserting the box's centre
+  would be asserting the arithmetic instead of the claim.
 - **The box is anchored on the *turned* state, not the spawn.** A rotation
   happens inside a box that stays put, so anchoring on the final shape is what
   lets the piece turn *into* its letter.
