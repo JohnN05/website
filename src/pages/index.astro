@@ -52,7 +52,7 @@ const featured = selectFeatured(
     <div class="featured-inner">
       <h2 data-reveal>Featured projects</h2>
       <div class="project-grid" data-depth="0.08">
-        {featured.map((p) => <ProjectCard project={p} />)}
+        {featured.map((p) => <ProjectCard project={p} showCover={true} />)}
       </div>
     </div>
   </section>
@@ -63,7 +63,21 @@ const featured = selectFeatured(
     <div class="teaching-inner" data-depth="0.06">
       <p class="eyebrow" data-reveal>Teaching</p>
       <h2 data-reveal>I teach as much as I build.</h2>
-      <p class="detail" data-reveal>Nobel Explorers ML/CV curriculum for 60+ students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
+      <div class="impact" data-reveal>
+        <div class="stat">
+          <span class="stat-n" data-count="60" data-suffix="+">60+</span>
+          <span class="stat-l">Students</span>
+        </div>
+        <div class="stat">
+          <span class="stat-n" data-count="3">3</span>
+          <span class="stat-l">Countries</span>
+        </div>
+        <div class="stat">
+          <span class="stat-n" data-count="2">2</span>
+          <span class="stat-l">Programs</span>
+        </div>
+      </div>
+      <p class="detail" data-reveal>Nobel Explorers ML/CV curriculum for students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
     </div>
   </section>
 
@@ -236,7 +250,54 @@ const featured = selectFeatured(
     line-height: 1.65;
     max-width: 56ch;
     color: var(--color-text-secondary);
-    margin: 0 0 var(--space-3);
+    margin: var(--space-6) 0 0;
+  }
+
+  /* Impact row: the real numbers as evidence, mono labels beneath — the one
+     place on the page "big number, small label" is earned, and a second
+     structural rhythm that isn't another prose block. */
+  .impact {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: clamp(var(--space-6), 6vw, var(--space-9));
+    justify-content: start;
+    align-items: end;
+    width: fit-content;
+    margin: var(--space-6) 0 0;
+    padding: var(--space-5) 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-n {
+    display: block;
+    margin: 0;
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-size: clamp(2.6rem, 7vw, 4rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat:nth-child(1) .stat-n { color: var(--color-accent); }
+  .stat:nth-child(2) .stat-n { color: var(--color-accent-clay); }
+  .stat:nth-child(3) .stat-n { color: var(--color-accent-moss); }
+  .stat-l {
+    display: block;
+    margin: var(--space-2) 0 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+  }
+  @media (max-width: 520px) {
+    .impact {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-5) var(--space-6);
+    }
   }
 
   /* Blend zone between two adjacent sections' wash colors — a flat
@@ -397,5 +458,50 @@ const featured = selectFeatured(
 
     refreshTops();
     applyParallax();
+  }
+</script>
+
+<script>
+  // Teaching impact numbers count up on entry. The markup ships the final
+  // values, so reduced motion and no-JS both render them correct with nothing
+  // to do here; only when motion is allowed do we reset to 0 and animate.
+  const COUNT_MS = 1100;
+
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const impact = document.querySelector<HTMLElement>('.impact');
+    if (impact) {
+      const nums = Array.from(impact.querySelectorAll<HTMLElement>('.stat-n'));
+      const targets = nums.map((el) => ({
+        el,
+        target: Number(el.dataset.count),
+        suffix: el.dataset.suffix ?? '',
+      }));
+      // Zero them up front. The section is reveal-hidden (opacity 0) until it
+      // enters, so this reset is never visible as a flicker from the final value.
+      targets.forEach(({ el, suffix }) => (el.textContent = `0${suffix}`));
+
+      const run = ({ el, target, suffix }: (typeof targets)[number]) => {
+        const start = performance.now();
+        const frame = (now: number) => {
+          const p = Math.min((now - start) / COUNT_MS, 1);
+          const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+          el.textContent = `${Math.round(target * eased)}${suffix}`;
+          if (p < 1) requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      };
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            targets.forEach(run);
+            observer.unobserve(entry.target); // once per load, like the reveal
+          });
+        },
+        { threshold: 0.4 }
+      );
+      observer.observe(impact);
+    }
   }
 </script>

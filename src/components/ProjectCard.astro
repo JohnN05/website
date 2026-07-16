@@ -14,13 +14,31 @@ const ACCENT_VAR: Record<string, string> = {
   clay: 'var(--color-accent-clay)',
   moss: 'var(--color-accent-moss)',
 };
-const coverAccent = ACCENT_VAR[accentForTag(project.tags[0] ?? project.title)];
+// The tetromino that drops into the cover is chosen from the card's own accent,
+// not at random: each of the four accents maps to one real piece shape, so the
+// same tag always yields the same piece everywhere the card appears — the same
+// determinism accentForTag already gives the color. Cells index a 3-wide × 2-tall
+// grid, row-major.
+const PIECE_CELLS: Record<string, number[]> = {
+  cobalt: [0, 3, 4, 5], // J
+  maroon: [0, 1, 4, 5], // Z
+  clay: [2, 3, 4, 5], // L
+  moss: [1, 2, 3, 4], // S
+};
+const accentName = accentForTag(project.tags[0] ?? project.title);
+const coverAccent = ACCENT_VAR[accentName];
+const pieceCells = PIECE_CELLS[accentName] ?? PIECE_CELLS.cobalt;
 const initial = project.title.charAt(0);
 ---
-<a class="project-card" href={`/projects/${project.slug}`}>
+<a class="project-card" style={`--cover-accent: ${coverAccent};`} href={`/projects/${project.slug}`}>
   {showCover && (
-    <div class="cover" style={`--cover-accent: ${coverAccent};`} aria-hidden="true">
+    <div class="cover" aria-hidden="true">
       <span class="glyph">{initial}</span>
+      <div class="cover-piece">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span class={pieceCells.includes(i) ? 'on' : ''}></span>
+        ))}
+      </div>
     </div>
   )}
   <div class="card-body">
@@ -34,24 +52,45 @@ const initial = project.title.charAt(0);
 </a>
 <style>
   .project-card {
+    position: relative;
     display: block;
-    border-radius: 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
     overflow: hidden;
-    border-top: 1px solid transparent;
     text-decoration: none;
     color: var(--color-text);
-    transition: border-color 0.18s ease, background-color 0.18s ease;
+    background: var(--color-bg);
+  }
+  /* On-brand top edge: dark at rest, lights to the card's own piece color on
+     hover, wiping in from the left. */
+  .project-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--cover-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    z-index: 1;
   }
   .project-card:hover,
   .project-card:focus-visible {
-    border-top-color: var(--line);
-    background-color: color-mix(in srgb, var(--color-text) 4%, var(--color-bg));
+    border-color: color-mix(in srgb, var(--cover-accent) 40%, var(--line));
   }
+  .project-card:hover::before,
+  .project-card:focus-visible::before {
+    transform: scaleX(1);
+  }
+
   .cover {
+    position: relative;
     height: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     background: color-mix(in srgb, var(--color-bg) 88%, var(--cover-accent) 12%);
   }
   .cover .glyph {
@@ -62,15 +101,112 @@ const initial = project.title.charAt(0);
     color: var(--cover-accent);
     opacity: 0.32;
   }
-  .card-body {
-    padding: var(--space-5) 0 0;
-    transition: padding 0.18s ease;
+
+  /* A real tetromino drops into the cover on hover, then flashes white a few
+     times and clears in place on leave — the board's own line-clear motion,
+     driven from the script below (see TetrisHero's flashRows pattern). */
+  .cover-piece {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-4);
+    display: grid;
+    grid-template-columns: repeat(3, 12px);
+    grid-auto-rows: 12px;
+    gap: 2px;
+    opacity: 0;
+    transform: translateY(-30px);
   }
-  .project-card:hover .card-body,
-  .project-card:focus-visible .card-body {
-    padding: var(--space-5) var(--space-4) var(--space-4);
+  .cover-piece span { border-radius: 2px; }
+  .cover-piece span.on { background: var(--cover-accent); }
+  .cover-piece.in { opacity: 1; transform: translateY(0); }
+  /* Clear in place: fade where it sits, no upward retreat. */
+  .cover-piece.cleared { opacity: 0; transform: translateY(0); }
+  .cover-piece.flash span.on { background: #ffffff; }
+
+  .card-body {
+    padding: var(--space-4);
   }
   .project-card .summary {
     color: var(--color-text-secondary);
   }
+
+  /* Motion is opt-in: the lift, shadow, and piece transitions only exist when
+     the visitor hasn't asked for reduced motion. The accent border/edge (a
+     state change, not travel) stays either way, and the script below never
+     wires the drop/flash under reduced motion, so the piece simply stays
+     hidden. */
+  @media (prefers-reduced-motion: no-preference) {
+    .project-card {
+      transition: transform 0.18s ease, box-shadow 0.22s ease, border-color 0.18s ease;
+    }
+    .project-card::before {
+      transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+    }
+    .project-card:hover,
+    .project-card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--cover-accent) 70%, transparent);
+    }
+    .cover-piece {
+      transition: transform 0.32s cubic-bezier(0.3, 1.35, 0.5, 1), opacity 0.16s ease;
+    }
+    .cover-piece span.on {
+      transition: background-color 0.05s linear;
+    }
+  }
 </style>
+<script>
+  // Mirrors TetrisHero's flashRows(): a setTimeout-driven classList toggle
+  // loop, no CSS @keyframes to restart. Constants match the board's line-clear
+  // flash so the two read as the same motion.
+  const FLASH_CYCLES = 3;
+  const FLASH_INTERVAL_MS = 90;
+  const CLEAR_FADE_MS = 200;
+
+  // Reduced motion: never wire the drop/flash. The piece stays at its hidden
+  // resting state (opacity 0), so hover shows only the static cover + accent
+  // edge — no travel, no flashing.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll<HTMLElement>('.project-card').forEach((card) => {
+      const piece = card.querySelector<HTMLElement>('.cover-piece');
+      if (!piece) return; // no cover on this card (showCover=false)
+
+      let timers: number[] = [];
+      const clearTimers = () => {
+        timers.forEach((t) => window.clearTimeout(t));
+        timers = [];
+      };
+
+      const enter = () => {
+        clearTimers();
+        piece.classList.remove('flash', 'cleared');
+        piece.classList.add('in');
+      };
+
+      const leave = () => {
+        clearTimers();
+        let n = 0;
+        const tick = () => {
+          piece.classList.toggle('flash');
+          n += 1;
+          if (n < FLASH_CYCLES * 2) {
+            timers.push(window.setTimeout(tick, FLASH_INTERVAL_MS));
+          } else {
+            // Fade out in place, then reset to the top so the next hover drops fresh.
+            piece.classList.remove('flash');
+            piece.classList.add('cleared');
+            timers.push(
+              window.setTimeout(() => piece.classList.remove('in', 'cleared'), CLEAR_FADE_MS)
+            );
+          }
+        };
+        tick();
+      };
+
+      card.addEventListener('mouseenter', enter);
+      card.addEventListener('mouseleave', leave);
+      card.addEventListener('focusin', enter);
+      card.addEventListener('focusout', leave);
+    });
+  }
+</script>
