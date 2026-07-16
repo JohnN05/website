@@ -9,8 +9,9 @@
     "preview": "astro preview",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "test:e2e": "LD_LIBRARY_PATH=\"$HOME/.local/lib/playwright-deps:$LD_LIBRARY_PATH\" playwright test",
-    "test:all": "npm run test && npm run build && npm run test:e2e"
+    "test:all": "npm run typecheck && npm run test && npm run build && npm run test:e2e"
   },
   "dependencies": {
     "astro": "^5.0.0",
