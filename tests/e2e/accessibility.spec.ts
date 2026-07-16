@@ -7,41 +7,28 @@ for (const path of pages) {
   test(`no serious or critical accessibility violations on ${path}`, async ({ page }) => {
     await page.goto(path);
 
-    // The reveal knocks a letter's color to var(--color-bg) on purpose — the
-    // piece shows through where the glyph was. This wait scans the resting
-    // state on principle, the same as every other reveal-timing wait in this
-    // suite — but for this component's single-character glyphs (J, O) axe
-    // currently files the mid-reveal contrast result under `incomplete`
-    // ("Element content is too short to determine if it is actual text
-    // content"), not `violations`, and this spec only asserts against
-    // `.violations`. So today this wait isn't load-bearing against a
-    // reported violation; it would start mattering if a glyph ever held more
-    // than one character.
+    // The reveal fades each piece letter out (opacity) while its piece shows,
+    // so there is no longer a frame where a glyph is painted its own
+    // background colour — the knock-out that used to put this scan in conflict
+    // with axe's contrast rule is gone. Scanning the resting state is still
+    // the right thing on principle, and it keeps this suite honest if the
+    // reveal ever paints rather than fades again.
     await page.waitForFunction(
       () => !document.querySelector('[data-piece-mark].revealing'),
       undefined,
       { timeout: 5000 }
     );
-    // The class check above only proves the .revealing class was removed —
-    // it says nothing about whether the .glyph color transition it drove
-    // (transition: color 120ms steps(2, end)) has actually finished
-    // repainting. axe scores what's rendered, not what's classed, so a scan
-    // landing in that ~120ms gap can still see a knocked-out glyph and
-    // report the same contrast failure this wait exists to prevent. Same
-    // fix this repo already used for the identical shape of bug in the
-    // scroll-motion pass (see CLAUDE.md): poll the actual computed state
-    // axe measures, not the class that starts the transition toward it. At
-    // rest a .glyph inherits its .ch's color, so the two are equal; mid-
-    // reveal `.revealing .ch[data-piece] .glyph { color: var(--color-bg) }`
-    // overrides the glyph only, so they differ. Equal-again is exactly
-    // "finished repainting."
+    // The class check above only proves .revealing was removed — it says
+    // nothing about whether the opacity transition it drove (120ms steps(2,
+    // end)) has finished repainting. axe scores what's rendered, not what's
+    // classed. Same fix this repo already used for the identical shape of bug
+    // in the scroll-motion pass (see CLAUDE.md): poll the actual computed
+    // state, not the class that starts the transition toward it.
     await page.waitForFunction(
       () =>
-        Array.from(document.querySelectorAll('.ch[data-piece]')).every((ch) => {
-          const glyph = ch.querySelector('.glyph');
-          if (!glyph) return true;
-          return getComputedStyle(ch).color === getComputedStyle(glyph).color;
-        }),
+        Array.from(document.querySelectorAll('.ch[data-piece] .glyph')).every(
+          (glyph) => getComputedStyle(glyph).opacity === '1'
+        ),
       undefined,
       { timeout: 5000 }
     );

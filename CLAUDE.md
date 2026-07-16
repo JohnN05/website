@@ -539,7 +539,7 @@ its flash (the `flashNameplate()` script, its `.flashing` rules, and its
 `.ch:not(.sp)::before` overlay are deleted outright — keeping both would put
 two animations on one element). Six tasks via
 `subagent-driven-development`. The piece model is pure logic in
-`src/lib/nameplate.ts` (`PIECES`, `rotateCw`, `latticeBlocks`, `LATTICE_SIZE`);
+`src/lib/nameplate.ts` (`PIECES`, `rotateCcw`, `pieceBlocks`);
 `PieceMark.astro` renders the mark from it at build time and wires the reveal
 for **every** `[data-piece-mark]` on the page from one script, so the rail, the
 mobile bar, and the hero are one implementation rather than three copies.
@@ -548,19 +548,21 @@ from the route (`Nav.astro` computes `isHome`), not branching in each
 component: on `/` the hero performs and the rail stays quiet, everywhere else
 the rail is the only name on screen and performs. The rail's cap dropped
 14rem→12rem since the stacked mark needs less width. Unit 74 → 92; e2e 43 → 53.
+A follow-up pass then rebuilt the reveal's geometry — see "Piece geometry"
+below; the counts moved to 89 unit / 56 e2e.
 
 Three things from this pass are worth carrying forward. **(1)** The design
 avoids two bug classes by construction rather than by care: the turn is applied
 by rewriting the blocks' CSS grid placement, which is not a transitionable
 property, so it *cannot* accidentally become a tween that catches a tetromino at
-30°; and the O's rotation no-op falls out of `rotateCw`'s math (a 2x2 square in
+30°; and the O's rotation no-op falls out of `rotateCcw`'s math (a 2x2 square in
 a 2x2 box maps onto itself) rather than an `if (piece === 'O')` branch. The same
-`latticeBlocks()` produces both the server-rendered markup and the client's
+`pieceBlocks()` produces both the server-rendered markup and the client's
 rotation writes — verified at review as genuinely one source of truth, so the
 animated-vs-committed divergence that hit the ambient piece cannot recur here.
 **(2)** The plan's own literal code shipped a real bug again (a pre-flight scan
 caught it before dispatch): its `the O holds still` e2e test asserted an
-*ordered* block comparison that `rotateCw` provably never produces, since the O's
+*ordered* block comparison that the rotation provably never produces, since the O's
 rotation permutes array order while preserving the cell set. Ruled: compare as a
 set, matching the unit tests' own `sorted()` convention. **(3)** The
 whole-branch review earned its keep — see the Astro-scoping paragraph below for
@@ -753,19 +755,55 @@ not self-hosted separately.
 surface, and the only one that appears on every route. Its J and O — the only
 letters in "JOHN NG" that also name real tetrominoes (I/O/T/S/Z/J/L), which is
 why H/N/N/G stay neutral and why this rule must not be widened — reveal
-themselves as those pieces: the letter's glyph knocks out to `var(--color-bg)`
-while four blocks fill in behind it, the piece turns once, then it all reverses.
-Each letter cell is a 3-block square lattice (`LATTICE_SIZE`, pinned by a unit
-test against the `repeat(3, 1fr)` its CSS must hardcode, since CSS `repeat()`
-needs an integer literal), bottom-aligned, with a piece's own rotation box
-anchored to that lattice's bottom-left — so the J's blocks and the O's blocks
-are the same size and rest on the same floor, which is what "aligned with the
-actual word" means. The turn is a snap by construction, not by discipline: it's
-applied by rewriting grid placement, which is not transitionable. Exactly one
-mark per page performs (`data-owns`, set from the route); under reduced motion
-the script checks once and never attaches, leaving the letters at rest. See the
-Status section for the accessible-name and axe findings, which are the
-non-obvious parts.
+themselves as those pieces: the letter fades out while four blocks fill in
+where it was, the piece turns once, then it all reverses.
+
+**Piece geometry — the part that is easy to get wrong, and was.** The first
+version placed each piece against its letter's *layout box*: a 3-block lattice
+pinned to the bottom of a cell wider and taller than the glyph, and lower. The
+result looked plainly broken — pieces sat low and left of the letters they were
+meant to replace — while every test passed, because nothing asserted where a
+piece landed relative to its letter. It shipped that way. The rules now:
+
+- **Each piece owns its box; there is no shared grid.** The box is sized at
+  runtime to the *ink* of the letter it replaces, and divided into `boxSize`
+  blocks. So the O's blocks come out 1.5x the J's (a 2x2 piece covering the same
+  cap height as a 3x3 one has bigger blocks). That is the deliberate trade,
+  chosen by the owner over the alternative (one block size everywhere, which
+  leaves the O piece at two-thirds the height of the O it replaces). Don't
+  "fix" it back to a shared block size — that reintroduces the misalignment.
+- **The box is measured, not derived.** CSS cannot see where a glyph's ink sits
+  inside its line box, so `measure()` in `PieceMark.astro` asks canvas
+  `measureText` and writes left/top/width/height. It therefore waits on
+  `document.fonts.ready` (measuring the fallback face would place every piece
+  wrong and never re-measure) and re-measures on resize (the hero's mark is
+  sized in vw). Nothing plays before the first measurement.
+- **The box is anchored on the *turned* state, not the spawn.** A rotation
+  happens inside a box that stays put, so anchoring on the final shape is what
+  lets the piece turn *into* its letter.
+- **The turn goes counter-clockwise.** `rotateCcw` stands the J up as
+  `..X / ..X / .XX` — the letter J. Clockwise lands on `XX. / X.. / X..`, a
+  mirrored hook; that was the shipped bug. Both are legal Tetris moves, so only
+  a test that asserts the *shape* catches this — hence the picture-drawing
+  assertion in `nameplate.test.ts`.
+- **The letter fades; it is not knocked out.** Painting the glyph in
+  `var(--color-bg)` over the piece worked only while the piece sat where the
+  letter wasn't. Now that they coincide, a knocked-out glyph hollows the piece
+  out to a fringe. Fading also removes the reveal from axe's contrast rule
+  entirely — there is no frame where a letter is painted its own background.
+
+Grid column/row counts are rendered inline from each piece's `boxSize` rather
+than hardcoded in CSS (CSS `repeat()` needs an integer literal and can't read a
+custom property), so there is nothing for a unit test to pin — the old
+`LATTICE_SIZE` and its pinning test are gone. The turn is still a snap by
+construction, not by discipline: it's applied by rewriting grid placement, which
+is not transitionable. Exactly one mark per page performs (`data-owns`, set from
+the route); under reduced motion the script checks once and never attaches,
+leaving the letters at rest. `tests/e2e/wordmark.spec.ts` re-measures the font
+and asserts each rendered box against its letter's ink — the assertion the
+original pass lacked, and the reason the bug was invisible to CI. See the Status
+section for the accessible-name and axe findings, which are the non-obvious
+parts.
 
 **Primary (most polish):** Tetris (ambient hero-background animation only —
 there is no playable overlay; hidden below mobile breakpoint). The article

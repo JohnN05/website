@@ -2,7 +2,7 @@
 import {
   NAMEPLATE_LINES,
   PIECES,
-  latticeBlocks,
+  pieceBlocks,
   pieceForLetter,
 } from '../lib/nameplate';
 
@@ -56,11 +56,22 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
       <span class="line" aria-label={line}>
         {[...line].map((letter) => {
           const key = pieceForLetter(letter);
+          const piece = key ? PIECES[key] : null;
           return (
             <span class:list={['ch', letter === ' ' && 'sp']} data-piece={key ?? undefined}>
-              {key && (
-                <span class="lattice" aria-hidden="true">
-                  {latticeBlocks(PIECES[key]).map((block) => (
+              {piece && (
+                // The grid is the piece's own box — 3x3 for the J, 2x2 for the
+                // O — not one shared size. Written here as a literal because
+                // CSS `repeat()` needs an integer and can't read a custom
+                // property; rendering it from `boxSize` is what keeps the CSS
+                // and the model from drifting apart, so there's nothing for a
+                // test to pin.
+                <span
+                  class="lattice"
+                  aria-hidden="true"
+                  style={`grid-template-columns:repeat(${piece.boxSize},1fr);grid-template-rows:repeat(${piece.boxSize},1fr)`}
+                >
+                  {pieceBlocks(piece).map((block) => (
                     <b style={`grid-row:${block.row};grid-column:${block.col}`}></b>
                   ))}
                 </span>
@@ -114,20 +125,16 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
   .ch[data-piece='J'] { --cell: var(--tetris-j); }
   .ch[data-piece='O'] { --cell: var(--tetris-o); }
 
-  /* The lattice IS the letter cell: full letter width, square, bottom-aligned.
-     That's what makes the pieces line up with the word — every piece in every
-     letter shares one block size and one floor. `repeat(3, ...)` is
-     LATTICE_SIZE from src/lib/nameplate.ts, hardcoded because CSS repeat()
-     needs an integer literal; a unit test pins the two together. */
+  /* Geometry is deliberately absent here: the box's size and position are
+     measured onto the letter's ink by the script below, because CSS cannot see
+     where a glyph's ink actually sits inside its line box. An earlier version
+     pinned the box to the letter *cell* instead — a box wider and taller than
+     the glyph, and lower — which is why the pieces never lined up with the
+     word. Nothing shows before the script runs: the box is transparent at rest.
+     Column/row counts come from the piece's own boxSize, inline above. */
   .lattice {
     position: absolute;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    aspect-ratio: 1;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
     gap: 1px;
     opacity: 0;
     pointer-events: none;
@@ -150,12 +157,19 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
     z-index: 1;
   }
   .ch[data-piece] .glyph {
-    transition: color 120ms steps(2, end);
+    transition: opacity 120ms steps(2, end);
   }
 
   .revealing .lattice { opacity: 1; }
   .revealing .lattice b { opacity: 1; }
-  .revealing .ch[data-piece] .glyph { color: var(--color-bg); }
+  /* The letter gets out of the way rather than being painted back over the
+     piece in the background colour. The knock-out only ever read as a knock-out
+     because the piece landed where the letter wasn't; now that the piece covers
+     the letter's ink exactly, a background-coloured glyph hollows the piece out
+     to a thin fringe. Fading also takes the reveal out of axe's contrast rule
+     entirely — there's no longer a frame where a letter is painted its own
+     background colour. */
+  .revealing .ch[data-piece] .glyph { opacity: 0; }
 
   @media (prefers-reduced-motion: reduce) {
     .lattice b,
@@ -163,10 +177,11 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
       transition: none;
     }
   }
+
 </style>
 
 <script>
-  import { PIECES, latticeBlocks, pieceForLetter } from '../lib/nameplate';
+  import { PIECES, pieceBlocks, pieceForLetter, type Piece } from '../lib/nameplate';
 
   // Four blocks staggered 45ms apart, each snapping in over 90ms.
   const FILL_MS = 225;
@@ -188,16 +203,13 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
    * each rotation as an independently authored array, so interpolating
    * between two of them sends every cell down its own unrelated diagonal.
    *
-   * The positions come from the same latticeBlocks() the markup was rendered
+   * The positions come from the same pieceBlocks() the markup was rendered
    * from, so there is no second formula to drift out of sync with the first.
    */
   function applyRotation(mark: HTMLElement, rotated: boolean): void {
-    mark.querySelectorAll<HTMLElement>('.ch[data-piece]').forEach((ch) => {
-      const key = pieceForLetter(ch.dataset.piece ?? '');
-      if (!key) return;
-      const blocks = latticeBlocks(PIECES[key], rotated);
+    forEachPiece(mark, (ch, piece) => {
       const cells = ch.querySelectorAll<HTMLElement>('.lattice b');
-      blocks.forEach((block, i) => {
+      pieceBlocks(piece, rotated).forEach((block, i) => {
         const cell = cells[i];
         if (!cell) return;
         cell.style.gridRow = String(block.row);
@@ -206,46 +218,132 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
     });
   }
 
+  function forEachPiece(
+    mark: HTMLElement,
+    fn: (ch: HTMLElement, piece: Piece) => void
+  ): void {
+    mark.querySelectorAll<HTMLElement>('.ch[data-piece]').forEach((ch) => {
+      const key = pieceForLetter(ch.dataset.piece ?? '');
+      if (key) fn(ch, PIECES[key]);
+    });
+  }
+
+  // Canvas is the only way to ask where a glyph's ink actually is: the DOM will
+  // report the line box, which is taller and wider than the letter and says
+  // nothing about where the letter sits inside it.
+  const measureCtx = document.createElement('canvas').getContext('2d');
+
+  /**
+   * Size and place a piece's box onto its letter's ink.
+   *
+   * Two things have to be true for the reveal to read: the piece must cover the
+   * letter it replaces, and it must still be a real tetromino. So the box is
+   * scaled to the letter's ink height and divided into boxSize blocks — which
+   * is why the O's blocks come out larger than the J's — and it is placed by
+   * where the *turned* shape has to land, not the spawn. A rotation happens
+   * inside a box that stays put, so anchoring the box on the final state is
+   * what lets the piece turn *into* the letter.
+   */
+  function measure(ch: HTMLElement, piece: Piece): void {
+    const glyph = ch.querySelector<HTMLElement>('.glyph');
+    const box = ch.querySelector<HTMLElement>('.lattice');
+    if (!glyph || !box || !measureCtx) return;
+
+    const style = getComputedStyle(glyph);
+    measureCtx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const m = measureCtx.measureText(ch.dataset.piece ?? '');
+
+    // An inline box's border box is its font's ascent+descent, so its top edge
+    // is exactly one ascent above the baseline.
+    const chRect = ch.getBoundingClientRect();
+    const glyphRect = glyph.getBoundingClientRect();
+    const baseline =
+      glyphRect.top -
+      chRect.top +
+      (glyphRect.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 +
+      m.fontBoundingBoxAscent;
+    const originX = glyphRect.left - chRect.left;
+
+    const inkLeft = originX - m.actualBoundingBoxLeft;
+    const inkRight = originX + m.actualBoundingBoxRight;
+    const inkTop = baseline - m.actualBoundingBoxAscent;
+    const inkBottom = baseline + m.actualBoundingBoxDescent;
+    const block = (inkBottom - inkTop) / piece.boxSize;
+    if (!(block > 0)) return;
+
+    const turned = pieceBlocks(piece, true);
+    const rows = turned.map((b) => b.row);
+    const cols = turned.map((b) => b.col);
+    const minRow = Math.min(...rows);
+    const minCol = Math.min(...cols);
+    const width = (Math.max(...cols) - minCol + 1) * block;
+    const height = (Math.max(...rows) - minRow + 1) * block;
+
+    // Sit the turned shape on the letter's ink and centre it there, then back
+    // out to where that puts the box's own top-left corner.
+    box.style.left = `${(inkLeft + inkRight) / 2 - width / 2 - (minCol - 1) * block}px`;
+    box.style.top = `${inkBottom - height - (minRow - 1) * block}px`;
+    box.style.width = `${piece.boxSize * block}px`;
+    box.style.height = `${piece.boxSize * block}px`;
+  }
+
   // Same convention as the Tetris ambient loop: check reduced motion once, and
   // if it's set, never attach. The mark renders at rest with no script.
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const marks = Array.from(document.querySelectorAll<HTMLElement>('[data-piece-mark]'));
+    const measureAll = () => marks.forEach((mark) => forEachPiece(mark, measure));
 
-    for (const mark of marks) {
-      let playing = false;
+    // The hero's mark is sized in vw, so a resize changes the ink each piece
+    // has to land on.
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(measureAll, 150);
+    });
 
-      const play = async (): Promise<void> => {
-        // Ownership: exactly one mark per page performs. The flag is set from
-        // the route at build time; this is the only place it's read.
-        if (playing || mark.dataset.owns !== 'true') return;
-        playing = true;
+    // Nothing may play before the geometry exists, and the geometry is measured
+    // off Unbounded — measuring against the fallback face would place every
+    // piece off its letter and then leave it there, since nothing re-measures
+    // on its own once the real face swaps in.
+    void document.fonts.ready.then(() => {
+      measureAll();
 
-        mark.classList.add('revealing');
-        await wait(FILL_MS + BEFORE_TURN_MS);
-        applyRotation(mark, true);
-        mark.dataset.turned = 'true';
-        await wait(AFTER_TURN_MS);
-        mark.classList.remove('revealing');
-        await wait(BACK_MS);
-        // Reset the rotation only once the blocks are invisible, so the turn
-        // never plays backwards on screen.
-        applyRotation(mark, false);
-        delete mark.dataset.turned;
-        // Lets an e2e test prove two reads landed on the same play, the same
-        // way TetrisHero.astro's data-cycle does for the ambient loop.
-        mark.dataset.cycle = String(Number(mark.dataset.cycle ?? '0') + 1);
-        playing = false;
-      };
+      for (const mark of marks) {
+        let playing = false;
 
-      const host = mark.closest('a, button') ?? mark;
+        const play = async (): Promise<void> => {
+          // Ownership: exactly one mark per page performs. The flag is set from
+          // the route at build time; this is the only place it's read.
+          if (playing || mark.dataset.owns !== 'true') return;
+          playing = true;
 
-      if (mark.dataset.trigger === 'load') {
-        void play();
-        host.addEventListener('click', () => void play());
-      } else {
-        host.addEventListener('mouseenter', () => void play());
-        host.addEventListener('focus', () => void play());
+          mark.classList.add('revealing');
+          await wait(FILL_MS + BEFORE_TURN_MS);
+          applyRotation(mark, true);
+          mark.dataset.turned = 'true';
+          await wait(AFTER_TURN_MS);
+          mark.classList.remove('revealing');
+          await wait(BACK_MS);
+          // Reset the rotation only once the blocks are invisible, so the turn
+          // never plays backwards on screen.
+          applyRotation(mark, false);
+          delete mark.dataset.turned;
+          // Lets an e2e test prove two reads landed on the same play, the same
+          // way TetrisHero.astro's data-cycle does for the ambient loop.
+          mark.dataset.cycle = String(Number(mark.dataset.cycle ?? '0') + 1);
+          playing = false;
+        };
+
+        const host = mark.closest('a, button') ?? mark;
+
+        if (mark.dataset.trigger === 'load') {
+          void play();
+          host.addEventListener('click', () => void play());
+        } else {
+          host.addEventListener('mouseenter', () => void play());
+          host.addEventListener('focus', () => void play());
+        }
       }
-    }
+    });
   }
 </script>

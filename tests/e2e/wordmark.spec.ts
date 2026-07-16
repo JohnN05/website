@@ -70,6 +70,82 @@ test.describe('the mark itself', () => {
   });
 });
 
+test.describe('the pieces land on the letters', () => {
+  /**
+   * Re-measures each letter's ink from the font and checks the rendered box
+   * against it. The reveal's original bug was invisible to every other test
+   * here: the pieces were placed against the letter *cell* — wider, taller and
+   * lower than the glyph — so every assertion about shape and rotation passed
+   * while the pieces sat off their letters on screen.
+   */
+  async function inkVsBox(page: import('@playwright/test').Page) {
+    await page.evaluate(() => document.fonts.ready);
+    return page.evaluate(() =>
+      ['J', 'O'].map((letter) => {
+        const ch = document.querySelector<HTMLElement>(`#nameplate .ch[data-piece="${letter}"]`)!;
+        const glyph = ch.querySelector<HTMLElement>('.glyph')!;
+        const box = ch.querySelector<HTMLElement>('.lattice')!;
+        const style = getComputedStyle(glyph);
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        const m = ctx.measureText(letter);
+        const chRect = ch.getBoundingClientRect();
+        const glyphRect = glyph.getBoundingClientRect();
+        const baseline =
+          glyphRect.top -
+          chRect.top +
+          (glyphRect.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 +
+          m.fontBoundingBoxAscent;
+        const boxRect = box.getBoundingClientRect();
+        return {
+          letter,
+          inkTop: baseline - m.actualBoundingBoxAscent,
+          inkBottom: baseline + m.actualBoundingBoxDescent,
+          boxTop: boxRect.top - chRect.top,
+          boxBottom: boxRect.bottom - chRect.top,
+          boxWidth: boxRect.width,
+        };
+      })
+    );
+  }
+
+  test("each piece's box is its letter's ink, top and bottom", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/');
+
+    for (const p of await inkVsBox(page)) {
+      expect(Math.abs(p.boxBottom - p.inkBottom), `${p.letter} sits on its ink`).toBeLessThan(1.5);
+      expect(Math.abs(p.boxTop - p.inkTop), `${p.letter} reaches its ink's top`).toBeLessThan(1.5);
+    }
+  });
+
+  test("the O's blocks are bigger than the J's — each piece is scaled to its own letter", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/');
+
+    const [j, o] = await inkVsBox(page);
+    // Both boxes cover a cap-height letter, but the J divides its into 3 and
+    // the O into 2. That difference is the deliberate trade for every letter
+    // fully becoming its piece — if these ever come out equal, the pieces are
+    // back on a shared grid and the O no longer covers its letter.
+    expect(o.boxWidth / 2).toBeGreaterThan(j.boxWidth / 3);
+  });
+
+  test('a resize re-measures, so the pieces stay on the letters', async ({ page }) => {
+    // The hero's mark is sized in vw, so its ink moves with the viewport.
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/');
+    await page.setViewportSize({ width: 900, height: 800 });
+    await page.waitForTimeout(400); // debounce is 150ms
+
+    for (const p of await inkVsBox(page)) {
+      expect(Math.abs(p.boxBottom - p.inkBottom), `${p.letter} after resize`).toBeLessThan(1.5);
+    }
+  });
+});
+
 test.describe('the turn', () => {
   test('the J snaps between rotation states and returns to spawn', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
@@ -78,21 +154,30 @@ test.describe('the turn', () => {
     const jBlocks = page.locator('#nameplate .ch[data-piece="J"] .lattice b');
     const mark = page.locator('#nameplate [data-piece-mark]');
 
-    // Replay on demand rather than racing the load-triggered play.
+    // Replay on demand rather than racing the load-triggered play — and let
+    // that play finish first, or the click lands mid-play and the component
+    // correctly ignores it.
+    await expect(mark).toHaveAttribute('data-cycle', '1');
     await page.locator('#nameplate').click();
 
     // Turned state: J's spawn (2,1)(3,1)(3,2)(3,3) rotates to
-    // (1,2)(1,1)(2,1)(3,1) — see rotateCw in src/lib/nameplate.ts. The blocks
-    // keep their DOM order, so block 0 lands at row 1, col 2.
+    // (3,2)(3,3)(2,3)(1,3) — see rotateCcw in src/lib/nameplate.ts. The blocks
+    // keep their DOM order, so block 0 lands at row 3, col 2. Those four cells
+    // draw
+    //   . . X
+    //   . . X
+    //   . X X
+    // which is the letter J. Landing on any other shape is the bug this
+    // replaced: clockwise put it on a mirrored hook.
     await expect(mark).toHaveAttribute('data-turned', 'true');
     const turned = await jBlocks.evaluateAll((els) =>
       els.map((el) => [el.style.gridRow, el.style.gridColumn])
     );
     expect(turned).toEqual([
-      ['1', '2'],
-      ['1', '1'],
-      ['2', '1'],
-      ['3', '1'],
+      ['3', '2'],
+      ['3', '3'],
+      ['2', '3'],
+      ['1', '3'],
     ]);
 
     // ...then back to spawn once the reveal finishes.
@@ -115,24 +200,25 @@ test.describe('the turn', () => {
     const oBlocks = page.locator('#nameplate .ch[data-piece="O"] .lattice b');
     const mark = page.locator('#nameplate [data-piece-mark]');
 
+    await expect(mark).toHaveAttribute('data-cycle', '1');
     await page.locator('#nameplate').click();
     await expect(mark).toHaveAttribute('data-turned', 'true');
 
     // Blocks are a set, not a sequence — the same convention the unit tests
-    // use. rotateCw permutes which block lands in which cell of the O's
+    // use. rotateCcw permutes which block lands in which cell of the O's
     // square, so an ordered comparison here would assert an implementation
     // detail of that mapping rather than the thing that actually matters.
     const turned = await oBlocks.evaluateAll((els) =>
       els.map((el) => [el.style.gridRow, el.style.gridColumn]).sort()
     );
-    // Same four cells as its spawn placement, resting on the same floor
-    // (row 3) as the J's bottom row — a rotation moves the O's blocks around
-    // within the square but leaves the square itself exactly where it was.
+    // Every cell of its own 2x2 box, exactly as it spawned. The O's box is its
+    // own — it is not packed into a corner of the J's — so a turn moves its
+    // blocks around within the square and leaves the square where it was.
     expect(turned).toEqual([
+      ['1', '1'],
+      ['1', '2'],
       ['2', '1'],
       ['2', '2'],
-      ['3', '1'],
-      ['3', '2'],
     ]);
   });
 
