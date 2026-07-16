@@ -1159,6 +1159,33 @@ Prefer the strict `Locator` API to `page.click(selector)`. The legacy
 is how a completely dead mobile theme toggle passed CI for months (see
 Navigation).
 
+**A dedicated audit then hunted the rest of this family, by deliberately
+breaking the production code each test claims to guard and seeing what stayed
+green. Six tests could not fail.** The recurring shapes, worth checking against
+any new test here:
+
+- **Asserting a transient state after it has been cleaned up.** The ownership
+  test waited 1000ms and asserted `revealing`/`data-turned` were absent — but a
+  full play is 590ms, so it asserted a play *finished*, not that none happened.
+  Deleting the ownership gate left the rail playing a full reveal, green. Assert
+  the *durable* evidence (`data-cycle`), not the transient one.
+- **An empty subject satisfying a comparison.** The reduced-motion Tetris test
+  compared the board's `innerHTML` before and after; an unrendered board
+  compares `'' === ''`. It proved "nothing changed" and never "a frame is
+  shown" — half its own claim. Assert the subject exists before comparing it.
+- **A fixture in which the failure cannot arise.** "Does not create holes" used
+  an O piece on an empty board, which cannot create a hole under any placement.
+  Where a test's point is that a choice was made well, first assert the bad
+  choice was *available*.
+- **A test that never reads what it names.** "Computes correct adjacent-mine
+  counts" asserted mine *placement* and never read `.adjacent`.
+- **A comment describing a fixture the test never builds.** "Awards points for
+  a cleared line" hard-dropped onto an empty board and asserted `score >= 0`.
+
+The rule this repo now works to: a test is finished when you can name the
+one-line production change that makes it fail — and ideally when you have made
+that change and watched it go red.
+
 ## Repo history
 
 Old CRA site's commit history is preserved — useful for content reference
@@ -1198,6 +1225,14 @@ Old CRA site's commit history is preserved — useful for content reference
     typecheck, so a real `TS2353` sat unread in the tree — and it was the
     tell for a reduced-motion test that had never once tested reduced
     motion. `typecheck` now runs first in `test:all`.
+- **One worktree, one agent at a time.** `npm run build` writes `dist/`, and
+  `test:e2e` builds before it runs — so two agents working in this same
+  worktree clobber each other's `dist/` and each other's results. It has
+  already caused two real incidents: a `git add -A` swept another agent's
+  live sabotage line into a commit (`5717a6e` removes it), and an e2e failure
+  was misdiagnosed as a code bug when it was one agent's build being scored
+  against another's source. If a review agent must run concurrently, give it
+  its own worktree, and stage by path rather than `-A`.
   This sandbox's Chromium binary previously failed to launch (missing
   `libnspr4`/`libnss3`/`libasound2`, no root for `apt install`) — now
   fixed on this machine only via a user-local lib extraction plus a
