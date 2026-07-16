@@ -1,9 +1,10 @@
 # Design Review — Next Steps
 
 _Working doc, 2026-07-16. Tracks the remaining items from
-`docs/2026-07-16-design-review.md` after the first pass. Not a spec — each
-visual item still gets its own Artifact mock approved before any component
-change, per the repo's mock-first workflow._
+`docs/2026-07-16-design-review.md`. Items 1–5 done across two passes (commits
+`5bb3352`/`7010fe9` and `fbf0898`); 6, 7, 8 and the per-page cleanups remain.
+Not a spec — each visual item still gets its own Artifact mock approved before
+any component change, per the repo's mock-first workflow._
 
 ---
 
@@ -31,7 +32,7 @@ Home) hurts more here" note is now largely addressed. What remains on
 
 ---
 
-## Done (second pass — `TetrisWell.astro`, wash tokens, commit TBD)
+## Done (second pass — commit `fbf0898`)
 
 Review items 4 and 5, done together because item 5 gates item 4:
 
@@ -53,30 +54,8 @@ Review items 4 and 5, done together because item 5 gates item 4:
 ## Remaining items
 
 Effort is rough (S/M/L). "Mock-first" means an approved Artifact mock before
-touching components. Every visual item here is mock-first. Items 4 and 5 above
-are done; 6, 7, 8 and the per-page cleanups remain.
-
-### ~~4. Section through-line — stacking grid / tetromino markers~~ · DONE (see above)
-The identity still stops at the fold: nothing structural carries the
-Tetris/grid motif down past the hero. The review's idea is a small
-tetromino/grid glyph marking each section boundary that **accumulates as you
-scroll**, so the page "stacks" like a board. Explicitly *not* `01 / 02 / 03`
-numbering — the sections aren't a sequence.
-- Highest design risk and the most likely to read as gimmick if executed
-  literally; wants the most mock iteration.
-- Touches every Home section and possibly the seam system. Decide item 5 first
-  (below) — whether the washes stay changes what the markers have to carry.
-
-### ~~5. Washes: commit or cut~~ · DONE — committed at 18% (see above)
-`--wash-mix` is `12%`, which the review calls perceptually invisible — "cost
-with no payoff." Either push the mix until the tonal drift actually reads
-(the review suggests testing 18–22%) or drop the wash/seam machinery and spend
-that budget on item 4.
-- Cheapest item here and it **gates item 4**, so do it first. Live-eyeball the
-  percentage on a dev server across light/dark; this is a token change
-  (`tokens.css` `--wash-mix`) plus a keep/cut call on `.seam`.
-- If cut: the seam blur band and the four `--wash-*` tokens come out, and the
-  through-line rests entirely on item 4's markers.
+touching components. Every visual item here is mock-first. Items 1–5 are done
+(see the two Done sections above); **6, 7, 8 and the per-page cleanups remain.**
 
 ### 6. Article page header · M · mock-first
 `/projects/[slug]` is the review's "most neglected surface and the one that
@@ -124,18 +103,14 @@ than eyebrows.
 
 ---
 
-## Recommended sequence
+## Recommended sequence (remaining)
 
-Reordered from the review's raw 4→8 to front-load the cheap decision that gates
-the expensive item, and to bank quick wins:
+Items 1–5 shipped. What's left, ordered by ratio of impact to risk:
 
-1. **Item 5 (washes)** — quick, and it decides what item 4 must carry.
-2. **Item 8 (typography)** — mostly a small audit; item 3 did the hard part.
-3. **Item 7 (bio portrait)** — self-contained, visible, low risk.
-4. **Item 6 (article header)** — highest remaining portfolio value.
-5. **Item 4 (through-line markers)** — biggest and riskiest; do it with the
-   wash decision already made.
-6. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
+1. **Item 8 (typography)** — mostly a small audit; item 3 did the hard part.
+2. **Item 7 (bio portrait)** — self-contained, visible, low risk.
+3. **Item 6 (article header)** — highest remaining portfolio value.
+4. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
    up; none block the above.
 
 Each visual step: Artifact mock → approval → live dev-server pass → port into

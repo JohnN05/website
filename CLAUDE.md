@@ -803,7 +803,10 @@ real browser — including a new `tests/e2e/tetris-well.spec.ts` (footer-fade +
 mid-page jump must never reach, and mobile-hidden) and the existing Home axe
 sweep, which now covers the well. The exact well cell size, drop timing, and the
 18% wash remain open to live eyeball tuning. Review items 6 (article header), 7
-(bio portrait frame), and 8 (typography contrast) are still open.
+(bio portrait frame), and 8 (typography contrast), plus the per-page cleanups,
+are still open — **`docs/2026-07-16-design-review-next-steps.md` is the live
+tracker for what's done and what remains from this review; read it (not just
+this log) before picking up any further design-review work.**
 
 ## Stack
 
