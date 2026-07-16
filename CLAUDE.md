@@ -56,8 +56,8 @@ percentages/fixed lengths tied to shrinking containers rather than holding
 their wide-window size as a floor. Mocked in an Artifact (rail width and
 hero-copy width sliders, tuned live against the user's own eyeballing) before
 touching `index.astro`/`Nav.astro`/`global.css`; landed as `--rail-width:
-clamp(9rem, 2.9rem + 12.68vw, 14rem)` (see Navigation below) and
-`.hero-copy`'s `max-width: max(23rem, 40%)`. This file describes the site
+clamp(9rem, 2.9rem + 12.68vw, 14rem)` (the cap has since dropped to `12rem`
+— see Navigation below) and `.hero-copy`'s `max-width: max(23rem, 40%)`. This file describes the site
 as actually built, not just as planned. Every pass has hit the same
 environment limitation in this
 particular sandbox — no root access, missing Playwright's native
@@ -131,7 +131,14 @@ no actual space character in it (width came from CSS `min-width` alone),
 so the button's accessible name would have concatenated to "JOHNNG" — an
 `&nbsp;` inside the span fixes this without needing an `aria-label`
 override, keeping the accessible name the literal visible text rather than
-a maintained duplicate of it. Verified via unit tests (71/71, unaffected —
+a maintained duplicate of it. **(That "JOHNNG" diagnosis was wrong, and was
+only disproved much later, by the wordmark pass below — it was reasoned out
+rather than read off a real AX tree, and this pass shipped with no Playwright
+spec to check it. The real failure mode of this DOM shape is per-letter
+spacing, `"J O H N N G"`: each `.ch` is a flex item, flex blockifies its
+children, and accessible-name computation inserts a space at every non-inline
+box boundary. A literal space character cannot fix that, and never was what
+made this name correct.)** Verified via unit tests (71/71, unaffected —
 this feature has no pure `src/lib/` logic, matching the architecture
 pattern's expectation that DOM-only widgets are e2e-covered, not
 unit-covered) and a clean production build confirming all 7 letter/space
@@ -524,6 +531,66 @@ double-apply, bio's reveal at 1920x1080, and the hero not animating on load
 not a new one). Each was proven to fail against the bug it guards, by
 reintroducing that bug, before being kept.
 
+A further pass (plan: `docs/superpowers/plans/2026-07-15-rail-wordmark-piece-reveal.md`;
+no separate design spec) replaced the rail's IBM Plex Mono wordmark with a
+stacked Unbounded mark (JOHN over NG) whose J and O reveal themselves as real
+tetrominoes, and gave the Home hero nameplate the same reveal **in place of**
+its flash (the `flashNameplate()` script, its `.flashing` rules, and its
+`.ch:not(.sp)::before` overlay are deleted outright — keeping both would put
+two animations on one element). Six tasks via
+`subagent-driven-development`. The piece model is pure logic in
+`src/lib/nameplate.ts` (`PIECES`, `rotateCw`, `latticeBlocks`, `LATTICE_SIZE`);
+`PieceMark.astro` renders the mark from it at build time and wires the reveal
+for **every** `[data-piece-mark]` on the page from one script, so the rail, the
+mobile bar, and the hero are one implementation rather than three copies.
+Ownership — which mark performs on a given page — is a `data-owns` flag set
+from the route (`Nav.astro` computes `isHome`), not branching in each
+component: on `/` the hero performs and the rail stays quiet, everywhere else
+the rail is the only name on screen and performs. The rail's cap dropped
+14rem→12rem since the stacked mark needs less width. Unit 74 → 92; e2e 43 → 53.
+
+Three things from this pass are worth carrying forward. **(1)** The design
+avoids two bug classes by construction rather than by care: the turn is applied
+by rewriting the blocks' CSS grid placement, which is not a transitionable
+property, so it *cannot* accidentally become a tween that catches a tetromino at
+30°; and the O's rotation no-op falls out of `rotateCw`'s math (a 2x2 square in
+a 2x2 box maps onto itself) rather than an `if (piece === 'O')` branch. The same
+`latticeBlocks()` produces both the server-rendered markup and the client's
+rotation writes — verified at review as genuinely one source of truth, so the
+animated-vs-committed divergence that hit the ambient piece cannot recur here.
+**(2)** The plan's own literal code shipped a real bug again (a pre-flight scan
+caught it before dispatch): its `the O holds still` e2e test asserted an
+*ordered* block comparison that `rotateCw` provably never produces, since the O's
+rotation permutes array order while preserving the cell set. Ruled: compare as a
+set, matching the unit tests' own `sorted()` convention. **(3)** The
+whole-branch review earned its keep — see the Astro-scoping paragraph below for
+the `.rail-wordmark` font-size rule that never matched, which five per-task
+reviews passed and which was the controller's own error (its dispatch prompt
+asserted the false claim as context).
+
+Two accessibility findings from this pass, both from real AX trees rather than
+reasoning: the mark's accessible name computes to `"J O H N N G"` without
+`.line`'s `aria-label`, because flex blockifies each letter span and accname
+inserts a space at every non-inline box boundary — so the plan's own "do not
+paper over it with an `aria-label` duplicate" constraint was **deliberately
+overridden** by the project owner. The label is not a maintained duplicate: it
+reads the same `line` variable that renders the letters beneath it, so it cannot
+drift. (This also disproved this doc's own long-standing "JOHNNG" claim — see
+the annotation above.) Second: axe files contrast on single-character content
+(the J/O glyphs) under `incomplete`, never `violations`, with the reason
+"Element content is too short to determine if it is actual text content" — and
+`accessibility.spec.ts` asserts only `.violations`, so the reveal-wait that
+plan Task 6 added to prevent a mid-reveal contrast failure guards a violation
+that cannot currently be reported for this component. Kept anyway (cheap, correct
+in principle, and it starts guarding if a glyph ever holds >1 character), with
+its comment corrected to stop claiming otherwise. Worth remembering: that wait's
+deliberate-break check proved it *waits*, not that it *guards* — weaker evidence
+than it reads as. Verified by the controller directly, not only from subagent
+reports: 92/92 unit, clean build, 53/53 e2e in this sandbox's real browser.
+Still open and deliberately unfinished: the mark's `font-size`s and
+`PieceMark`'s four timing constants want live eyeball tuning per the
+mock-first/dev-server workflow preference below.
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate
@@ -547,8 +614,9 @@ reintroducing that bug, before being kept.
 
 Every interactive widget splits into two layers:
 - **Pure logic** in `src/lib/` (`theme.ts`, `projects.ts`, `contactForm.ts`,
-  `parallax.ts`, `tetris/engine.ts` + `tetris/bag.ts` + `tetris/ambientDemo.ts`,
-  `minesweeper/engine.ts`) — no DOM, no I/O, fully unit-tested with Vitest.
+  `parallax.ts`, `nameplate.ts`, `tetris/engine.ts` + `tetris/bag.ts` +
+  `tetris/ambientDemo.ts`, `minesweeper/engine.ts`) — no DOM, no I/O, fully
+  unit-tested with Vitest.
 - **DOM wiring** in the matching `.astro` component's `<script>` block —
   imports the pure module, renders/re-renders the DOM, handles events.
   Covered by Playwright e2e, not unit tests.
@@ -561,6 +629,24 @@ elements must be wrapped in `:global()` (see `TetrisHero.astro` and
 `MinesweeperBoard.astro`) — forgetting this silently renders an unstyled
 grid, not an error.
 
+That scoping has a **second, distinct trap in the same silent-failure
+family**, found by the wordmark pass's whole-branch review after five
+per-task reviews passed it: **a class passed as a prop to a child component
+does not carry the parent's scope.** `Nav.astro` mounted
+`<PieceMark class="rail-wordmark" />` and styled `.rail-wordmark` in its own
+scoped `<style>`; Astro stamped *`PieceMark`'s* cid on the mark's root span,
+while the rule compiled against *`Nav`'s* cid, so it never matched and the
+rail rendered at the inherited 16px instead of 20px on every route. Nothing
+errored, and every e2e test still passed because they use that class only as
+a locator, which resolves fine. The fix is to style a wrapper the parent
+actually authors (`.rail-home`/`.mobile-home` carry the `font-size` and it
+inherits into the mark) rather than reaching into the child — `:global()`
+also works but leaks the selector sitewide for no benefit. The Home hero
+hid this: its `.nameplate` is authored *in* `index.astro`, so its size
+reaches the mark by ordinary inheritance and looked correct throughout.
+Note the interaction with the WSL2/HMR warning below — a rule that never
+matches and a rule that's being served stale look identical from the browser.
+
 ## Site map
 
 `/` (home, hero + featured-projects preview) · `/projects` (index) ·
@@ -572,17 +658,23 @@ grid, not an error.
 Desktop (`min-width: 769px`): `Nav.astro` renders a fixed-left icon+label
 rail (`#nav-rail`), permanently expanded — there is no collapse/expand
 toggle, no `localStorage` persistence, and no `data-rail` attribute. Its
-width is fluid rather than a flat `14rem`, though: both `.rail`'s `width`
+width is fluid rather than a flat width, though: both `.rail`'s `width`
 here and `#main-content`'s `margin-left` in `global.css` read a single
-`--rail-width` custom property (`clamp(9rem, 2.9rem + 12.68vw, 14rem)`,
+`--rail-width` custom property (`clamp(9rem, 2.9rem + 12.68vw, 12rem)`,
 defined once inside `global.css`'s own `min-width: 769px` block) rather than
-each hardcoding `14rem` independently — two call sites computing the same
+each hardcoding the value independently — two call sites computing the same
 value from independent formulas is exactly the shape of bug this codebase
 already hit once with the Tetris ambient piece's animated vs. committed
 placement (see Status above), so this uses one shared source instead. The
-rail holds its full `14rem` from a 1400px-wide viewport upward, then narrows
+rail holds its full `12rem` from a ~1148px-wide viewport upward, then narrows
 toward a `9rem` floor as the viewport shrinks toward the 769px breakpoint,
-where it disappears entirely in favor of the mobile drawer below.
+where it disappears entirely in favor of the mobile drawer below. The cap was
+`14rem` until the stacked `PieceMark` wordmark (see Status) replaced the old
+one-line mono wordmark and no longer needed the width.
+
+The rail's name is a `PieceMark` instance (`layout="stack"`), not text: see
+the Hobby details section for the mark itself and for the ownership rule
+deciding which of a page's marks performs its reveal.
 
 Mobile (`max-width: 768px`): `Nav.astro`'s rail is `display: none`;
 `MobileNav.astro` (a separate, always-mounted component) renders a top bar
@@ -647,13 +739,33 @@ and `ArticleLayout.astro` share the same rules).
 Typography: **Bricolage Grotesque** (headlines, weight 600, using the
 `opsz` optical-size axis) · **Source Serif 4** (article prose body text
 only) · **Inter** (UI/interface copy — nav, buttons, forms) · **IBM Plex
-Mono** (small labels: nav wordmark, eyebrows, article meta line). A fifth
-face, **Unbounded** (weight 800), is scoped to exactly one place — the
-Home hero's "JOHN NG" nameplate button (see Status above) — rather than a
-general role like the other four; loaded through the same Google Fonts
-`css2` link as the rest, not self-hosted separately.
+Mono** (small labels: eyebrows, article meta line — no longer the nav
+wordmark, which is now Unbounded). A fifth face, **Unbounded** (weight 800),
+carries every instance of the "JOHN NG" mark rather than a general role like
+the other four: the Home hero nameplate, the desktop rail, and the mobile
+bar, all via `PieceMark.astro`, which owns the face itself so no mount
+restates it. Loaded through the same Google Fonts `css2` link as the rest,
+not self-hosted separately.
 
 ## Hobby details — priority order
+
+**The "JOHN NG" mark (`PieceMark.astro`)** is the site's second Tetris
+surface, and the only one that appears on every route. Its J and O — the only
+letters in "JOHN NG" that also name real tetrominoes (I/O/T/S/Z/J/L), which is
+why H/N/N/G stay neutral and why this rule must not be widened — reveal
+themselves as those pieces: the letter's glyph knocks out to `var(--color-bg)`
+while four blocks fill in behind it, the piece turns once, then it all reverses.
+Each letter cell is a 3-block square lattice (`LATTICE_SIZE`, pinned by a unit
+test against the `repeat(3, 1fr)` its CSS must hardcode, since CSS `repeat()`
+needs an integer literal), bottom-aligned, with a piece's own rotation box
+anchored to that lattice's bottom-left — so the J's blocks and the O's blocks
+are the same size and rest on the same floor, which is what "aligned with the
+actual word" means. The turn is a snap by construction, not by discipline: it's
+applied by rewriting grid placement, which is not transitionable. Exactly one
+mark per page performs (`data-owns`, set from the route); under reduced motion
+the script checks once and never attaches, leaving the letters at rest. See the
+Status section for the accessible-name and axe findings, which are the
+non-obvious parts.
 
 **Primary (most polish):** Tetris (ambient hero-background animation only —
 there is no playable overlay; hidden below mobile breakpoint). The article
@@ -861,11 +973,16 @@ implementation. (Its former second reduced-motion check, for the
 now-removed reading-progress capybara, was deleted along with the
 component.)
 
-`tests/e2e/nav.spec.ts` covers the permanently-expanded desktop rail
-(renders at the full `14rem` width, both links reachable and labeled, the
-wordmark links home) and the mobile drawer (rail hidden below 769px,
-hamburger opens the drawer, links reachable) — passing, along with the
-rest of the Playwright suite, in a real browser environment.
+`tests/e2e/nav.spec.ts` covers the permanently-expanded desktop rail (pinned
+at its `12rem` cap above the ~1148px threshold, narrowing toward its `9rem`
+floor below it, both links reachable and labeled, the wordmark links home)
+and the mobile drawer (rail hidden below 769px, hamburger opens the drawer,
+links reachable). `tests/e2e/wordmark.spec.ts` covers the mark itself: the
+ownership rule on each route (including that a non-owning mark hovered for a
+full play's duration never plays), the stacked layout, that only J and O
+carry pieces, the accessible name, the J's snap between rotation states and
+back to spawn, the O holding still, that the turn never tweens, and reduced
+motion. All passing in a real browser environment.
 
 ## Repo history
 
