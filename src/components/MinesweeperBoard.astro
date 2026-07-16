@@ -1,6 +1,13 @@
 <div class="minesweeper" id="minesweeper">
   <div class="ms-header">
-    <span id="ms-status">Mines: 10</span>
+    <!-- role="status" (an implicit polite live region) because this is where
+         "You hit a mine." and "You cleared the board!" are written. Without it
+         nothing announces the end of the game: the cell labels don't convey it,
+         and every later Enter silently no-ops behind the gameOver guard, so a
+         screen-reader user is left pressing keys at a board that has already
+         finished. Polite, not assertive — it should follow the move the player
+         just made, not interrupt it. -->
+    <span id="ms-status" role="status">Mines: 10</span>
     <button id="ms-reset" type="button">Reset</button>
   </div>
   <div class="ms-grid" id="ms-grid" role="grid" aria-label="Minesweeper board"></div>
@@ -86,6 +93,17 @@
   }
 
   function render() {
+    // innerHTML = '' destroys whatever had focus, so remember whether focus was
+    // on the board before tearing it down and put it back afterwards. Doing it
+    // here rather than at each call site is what fixes the mouse path: the
+    // keyboard path used to refocus by hand after every render() and the mouse
+    // path simply never did, dropping focus to <body> on every click.
+    //
+    // Gated on the grid ACTUALLY having had focus, which is what keeps this
+    // from stealing it: the initial render at load happens with focus on
+    // <body>, and Reset renders with focus on the Reset button — neither should
+    // yank focus onto a cell.
+    const hadFocus = grid.contains(document.activeElement);
     grid.innerHTML = '';
     board.forEach((row, r) => {
       const rowEl = document.createElement('div');
@@ -99,7 +117,12 @@
         btn.dataset.revealed = String(cell.revealed);
         btn.setAttribute('aria-label', describeCell(cell));
         btn.textContent = cellLabel(cell);
-        btn.addEventListener('click', () => onReveal(r, c));
+        btn.addEventListener('click', () => {
+          // Keep the roving tabindex pointing at the cell actually played, or
+          // Tab re-enters the grid at cell 0 rather than where the player is.
+          focusIndex = index;
+          onReveal(r, c);
+        });
         btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
         btn.addEventListener('touchstart', () => {
           longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
@@ -110,6 +133,7 @@
       });
       grid.appendChild(rowEl);
     });
+    if (hadFocus) getCell(focusIndex)?.focus();
   }
 
   function onReveal(r: number, c: number) {
@@ -143,22 +167,19 @@
       const nc = Math.min(Math.max(c + dc, 0), MS_COLS - 1);
       focusIndex = nr * MS_COLS + nc;
       render();
-      getCell(focusIndex)?.focus();
     } else if (e.key === 'Enter') {
       // preventDefault stops the browser's own Enter-on-button default
       // action (a synthetic click) from firing after onReveal already
       // ran, which would otherwise call onReveal a second time.
       e.preventDefault();
       onReveal(r, c);
-      // render() inside onReveal tears down and recreates every button,
-      // so the element that had focus is gone; refocus the same logical
-      // cell (by index) or keyboard navigation dead-ends at this cell.
-      getCell(focusIndex)?.focus();
     } else if (e.key === ' ') {
       e.preventDefault();
       onFlag(r, c);
-      getCell(focusIndex)?.focus();
     }
+    // No refocusing here any more: render() restores focus itself, for the
+    // mouse as well as the keyboard. Three hand-written copies of that step
+    // were what let the mouse path quietly go without one.
   }
 
   resetBtn.addEventListener('click', () => {

@@ -316,6 +316,80 @@ differ by whole cells, not thousandths of a pixel). All of the above
 verified via a real `npm run test:all` in this sandbox: 67/67 unit tests,
 a clean production build, and all 33 Playwright/axe e2e tests green.
 
+A nameplate-timing pass (no plan doc, direct user request) then made the
+Home mark's reveal noticeable — it fired at `document.fonts.ready`, in the
+same instant as first paint, and was over in 805ms. The reveal is now
+*shorter* (630ms), with a 700ms `LOAD_DELAY_MS` holding the letters at rest
+first: being noticed is the delay's job, not the animation's. The J also
+disagreed with its own piece — `PIECES.J` spawns flat, which is the letter J
+rotated a quarter-turn clockwise, so the blocks filled in lying on their side
+under a glyph still standing up. The letter now meets the piece rather than
+the reverse (the piece's spawn and CCW turn are real Tetris moves and are
+untouched): it paints already tipped, gated in CSS on `html[data-motion='on']`
+— the same render-blocking `BaseLayout` gate the scroll reveal uses, which is
+what makes reduced motion and no-JS render an upright J with no second check
+to drift. No transform transition anywhere, so the tip is a snap by
+construction like the turn.
+
+**A full review of the revamp followed, and it was overdue — it found three
+bugs that made the site unusable for whole classes of visitor, none of which
+any test caught:**
+
+1. **Every non-Home route was completely unscrollable on a phone.**
+   `scroll-snap-type: y mandatory` applied sitewide below 769px, but only Home
+   authors section snap targets; everywhere else the only snap area was
+   `MobileNav`'s own `scroll-snap-align: start` at document position 0, so the
+   viewport was pinned there. `/contact`'s Send button — the site's *only*
+   contact channel — was unreachable, as were 3 of 4 project cards. Note the
+   irony: that MobileNav snap target was itself the fix for the earlier
+   "hamburger snapped above the fold" bug. It fixed Home and trapped every
+   other route. Both snap rules are now scoped to `html[data-snap='sections']`,
+   set by `BaseLayout` from the route. CI missed it because its one mobile test
+   visited `/` — the single route where the bug is invisible.
+2. **Dark mode was unreachable for every mobile visitor.** `ThemeToggle` is
+   mounted twice, but Astro bundles a component's `<script>` **once per page,
+   not once per instance** — a trap worth remembering in its own right. Both
+   mounts emitted `id="theme-toggle"`; the single `getElementById` bound only
+   the rail's (first in DOM order), which is `display: none` on a phone, so the
+   drawer's button had no listener at all. Now bound by class across every
+   mount, with no duplicated id.
+3. **The rail's theme toggle was unclickable at the bottom of any desktop
+   page.** `Footer` is a *sibling* of `#main-content`, so it never got the rail
+   offset and spanned the full viewport under the fixed rail. Harmless until
+   `Footer` took `z-index: 2` (added so its capybara caption paints above
+   Home's blurred `.seam`) — which also beats the rail's `z-index: auto`, so
+   the footer's transparent box won hit-testing over the toggle. Seen, clicked,
+   nothing happened; keyboard Enter still worked, which is what pinned it on
+   hit-testing rather than the handler. Fixed by giving `.site-footer` the same
+   `--rail-width` offset as `#main-content` so the two stop overlapping at all
+   — *not* by raising the rail's `z-index`, which would have re-opened the
+   caption-under-seam bug the footer's `z-index` exists to close. Two
+   deliberate stacking decisions, each locally right, silently composed into
+   this.
+
+Scoping the snap rules opened a cascade trap worth recording: the
+reduced-motion `html { scroll-snap-type: none }` disable won on **source order
+at equal specificity**. Moving the snap rules to an attribute selector (0,1,1)
+would have silently outranked it and turned snapping back on for exactly the
+visitors who asked for it off. The disable had to move to the same selector,
+and now has a test.
+
+The same review also fixed: Minesweeper never announcing its own outcome
+(`#ms-status` had no live region, so a screen-reader user got no signal the
+game had ended and every later Enter silently no-op'd behind the `gameOver`
+guard — now `role="status"`); Minesweeper dropping focus to `<body>` on every
+mouse click (`render()` rebuilds all 81 buttons, the keyboard path refocused by
+hand at three call sites, the mouse path never did — focus restoration now
+lives in `render()` itself, gated on the grid actually having had focus so the
+initial render and Reset don't steal it); the Netlify honeypot being decorative
+(the form lacked `data-netlify-honeypot`, and the JS fetch never transmitted
+`bot-field` — a honeypot nothing sends catches nothing); and the ambient Tetris
+loop running forever on mobile, where `.tetris-hero` is `display: none` (a 0x0
+container still clamped to a 4x4 board with a *negative* cell size and
+re-rendered it on a timer, burning a phone's battery for something no one can
+see — now gated on the container having a real box, derived rather than
+re-testing the 768px breakpoint in JS).
+
 Full design rationale: `docs/superpowers/specs/2026-07-11-website-revamp-design.md`
 (original rewrite), `docs/superpowers/specs/2026-07-11-website-visual-refinement-design.md`
 (visual refinement), `docs/superpowers/specs/2026-07-11-hero-and-nav-refinement-design.md`
@@ -398,7 +472,9 @@ a new `src/lib/parallax.ts` (`MAX_SHIFT_PX = 200`,
 ±200px), wired from `index.astro` via an rAF-throttled `scroll` listener
 that writes `--parallax-y` on each intersecting `[data-depth]` element;
 reveal adds `.in` to a section on entry via a second `IntersectionObserver`
-(`threshold: 0.15`) and drives `[data-reveal]` children through registered
+(`REVEAL_THRESHOLD`, `0.25` in `index.astro` — this doc said `0.15` for a
+while, which was doc drift, not a second threshold) and drives `[data-reveal]`
+children through registered
 `@property --reveal-y`/`--reveal-o` custom properties, staggered 70ms per
 child.
 
@@ -660,9 +736,9 @@ matches and a rule that's being served stale look identical from the browser.
 Desktop (`min-width: 769px`): `Nav.astro` renders a fixed-left icon+label
 rail (`#nav-rail`), permanently expanded — there is no collapse/expand
 toggle, no `localStorage` persistence, and no `data-rail` attribute. Its
-width is fluid rather than a flat width, though: both `.rail`'s `width`
-here and `#main-content`'s `margin-left` in `global.css` read a single
-`--rail-width` custom property (`clamp(9rem, 2.9rem + 12.68vw, 12rem)`,
+width is fluid rather than a flat width, though: `.rail`'s `width` here and
+`#main-content`'s **and `.site-footer`'s** `margin-left` in `global.css` all
+read a single `--rail-width` custom property (`clamp(9rem, 2.9rem + 12.68vw, 12rem)`,
 defined once inside `global.css`'s own `min-width: 769px` block) rather than
 each hardcoding the value independently — two call sites computing the same
 value from independent formulas is exactly the shape of bug this codebase
@@ -673,6 +749,21 @@ toward a `9rem` floor as the viewport shrinks toward the 769px breakpoint,
 where it disappears entirely in favor of the mobile drawer below. The cap was
 `14rem` until the stacked `PieceMark` wordmark (see Status) replaced the old
 one-line mono wordmark and no longer needed the width.
+
+`.site-footer` takes that offset because it is a **sibling** of
+`#main-content` in `BaseLayout`, not a child — so it does not inherit it, and
+without it the footer spans the full viewport straight under the fixed rail.
+That overlap made the rail's theme toggle unclickable at the bottom of every
+desktop page once the footer took `z-index: 2` (see Status). Don't remove the
+offset and reach for the rail's `z-index` instead: the footer's `z-index` is
+load-bearing for Home's `.seam`.
+
+Both `ThemeToggle` mounts (rail and drawer) are bound by **class**, never by
+id. Astro bundles a component's `<script>` once per page no matter how many
+times it is mounted, so a single-element lookup binds one button and leaves
+the rest silently dead — which is exactly what happened to the drawer's copy
+(see Status). Any component mounted more than once per page has this property;
+don't give one an id.
 
 The rail's name is a `PieceMark` instance (`layout="stack"`), not text: see
 the Hobby details section for the mark itself and for the ownership rule
@@ -870,6 +961,19 @@ animation cycle (`#tetris-piece`, `.phase-turn`/`.phase-fall` CSS
 transitions driven by `runAmbientCycle()`) instead of snapping directly
 into its landing position.
 
+None of that runs unless the board is actually on screen (`ambientOnScreen` /
+`ambientShouldRun()`). Below the mobile breakpoint `.tetris-hero` is
+`display: none`, which makes the container 0x0 — and a 0x0 container still ran
+every line of the setup: cols/rows clamped to their 4x4 floor, `cellW`/`cellH`
+came out **negative**, and the cycle chain re-rendered that invisible board and
+scheduled its successor forever, on a phone, on the site's busiest page. The
+check is derived from the container's own box rather than by re-testing
+`(max-width: 768px)` in JS, since the breakpoint already lives in this
+component's CSS and a second copy of the literal `768` is the same
+two-call-sites-drift shape this codebase keeps paying for. It is rechecked on
+every resize, not latched at load, so a visitor who widens a narrow window
+still gets the board.
+
 The hero copy sharing this section (`index.astro`'s `.hero-copy`) has the
 same fixed-vs-fluid consideration as the rail above: its desktop `max-width`
 is `max(23rem, 40%)`, not a plain percentage, so the copy column holds a
@@ -1019,8 +1123,27 @@ links reachable). `tests/e2e/wordmark.spec.ts` covers the mark itself: the
 ownership rule on each route (including that a non-owning mark hovered for a
 full play's duration never plays), the stacked layout, that only J and O
 carry pieces, the accessible name, the J's snap between rotation states and
-back to spawn, the O holding still, that the turn never tweens, and reduced
-motion. All passing in a real browser environment.
+back to spawn, the O holding still, that the turn never tweens, that the J is
+already lying down at first paint and upright again once the reveal is over,
+and reduced motion. All passing in a real browser environment.
+
+**Two testing lessons this file paid for, both worth keeping:**
+
+`test.use({ reducedMotion: 'reduce' })` does nothing in this setup — probed
+directly, the page still reported
+`matchMedia('(prefers-reduced-motion: reduce)').matches === false` and `html`
+still carried `data-motion="on"`. This spec's reduced-motion test used it and
+therefore spent its whole life asserting that a normally-animating mark
+happened not to be mid-reveal at the moment it looked. Every other spec here
+uses `page.emulateMedia({ reducedMotion: 'reduce' })`, which works; this one
+was the outlier, and now matches. The unexplained `TS2353` sitting on that line
+was the tell, unread because nothing ran `tsc` (see the Stack section: it does
+now, first in `test:all`).
+
+Prefer the strict `Locator` API to `page.click(selector)`. The legacy
+`page.*` selector API is non-strict and silently takes the first match — which
+is how a completely dead mobile theme toggle passed CI for months (see
+Navigation).
 
 ## Repo history
 
@@ -1045,8 +1168,23 @@ Old CRA site's commit history is preserved — useful for content reference
   with each other, as happened with Task 1's wall-kicks/T-spin change
   reaching the real click-to-play game despite a constraint saying it
   shouldn't — ask directly rather than picking a side unilaterally.
-- `npm run test:all` (unit + build + e2e) is the real CI gate. This
-  sandbox's Chromium binary previously failed to launch (missing
+- `npm run test:all` (**typecheck** + unit + build + e2e) is the real CI
+  gate. Two things about that gate were themselves broken until they were
+  fixed, both of which hid real bugs rather than causing them, and both
+  worth not reintroducing:
+  - `webServer.reuseExistingServer` was `!process.env.CI`. Any leftover
+    `astro preview` (or a dev server) still holding port 4321 got reused,
+    the `npm run build` in the webServer command never ran, and the whole
+    suite scored a **stale dist while reporting green** — an entire
+    evening's work once passed against a build that predated every change
+    under test. It is now `false` always: e2e fails outright if something
+    holds the port, which is the trade this repo wants. **Stop the dev
+    server before running e2e.**
+  - Nothing ran `tsc`. Despite "TypeScript strict", `astro build` does not
+    typecheck, so a real `TS2353` sat unread in the tree — and it was the
+    tell for a reduced-motion test that had never once tested reduced
+    motion. `typecheck` now runs first in `test:all`.
+  This sandbox's Chromium binary previously failed to launch (missing
   `libnspr4`/`libnss3`/`libasound2`, no root for `apt install`) — now
   fixed on this machine only via a user-local lib extraction plus a
   scoped `LD_LIBRARY_PATH` in `package.json` (see Status above), so

@@ -1,4 +1,15 @@
-<form name="contact" method="POST" data-netlify="true" id="contact-form" class="contact-form">
+<!-- data-netlify-honeypot names the field Netlify should treat as the honeypot.
+     Without it the bot-field input below is just an ordinary form field: Netlify
+     accepts it, filters nothing, and the spam protection this markup looks like
+     it has does not exist. -->
+<form
+  name="contact"
+  method="POST"
+  data-netlify="true"
+  data-netlify-honeypot="bot-field"
+  id="contact-form"
+  class="contact-form"
+>
   <input type="hidden" name="form-name" value="contact" />
   <p hidden>
     <label>Don't fill this out if you're human: <input name="bot-field" /></label>
@@ -107,6 +118,10 @@
         name: String(data.get('name')),
         email: String(data.get('email')),
         message: String(data.get('message')),
+        // Forwarded rather than dropped: this fetch is what actually reaches
+        // Netlify, so a honeypot value left behind here is a honeypot that
+        // never catches anything.
+        botField: String(data.get('bot-field') ?? ''),
       });
       if (ok) {
         form.hidden = true;
