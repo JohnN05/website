@@ -115,10 +115,17 @@ const emptyCells = Array.from({ length: 20 });
       // then the well flashes and clears. That "leave a well, drop the bar for
       // a Tetris" constraint is why the shapes are J / L / O / I. data-band on
       // each Home section (see index.astro) says which piece it drops.
+      // Drop order = scroll order (hero, bio, feat, teach). The shapes are the
+      // one {J, O, L} tiling of cols 0-2 that is BOTH genuine-silhouette and
+      // grounded in this order: J on the floor, O resting on it, L on top — so
+      // every piece lands on filled cells, none floats. (An earlier version had
+      // bio drop the orange piece, but the only cells left for it there form a
+      // J, not an L — a J wearing L's colour. Swapping bio↔feat pieces is what
+      // lets both be true tetrominoes. See CLAUDE.md.)
       const PIECES = [
         { band: 'j', cls: 'p-j', last: false, cells: [[0,0],[1,0],[2,0],[0,1]] }, // hero  · J · blue
-        { band: 'l', cls: 'p-l', last: false, cells: [[1,1],[2,1],[2,2],[2,3]] }, // bio   · L · orange
-        { band: 'o', cls: 'p-o', last: false, cells: [[0,2],[0,3],[1,2],[1,3]] }, // feat  · O · gold
+        { band: 'o', cls: 'p-o', last: false, cells: [[1,1],[2,1],[1,2],[2,2]] }, // bio   · O · gold
+        { band: 'l', cls: 'p-l', last: false, cells: [[0,2],[0,3],[1,3],[2,3]] }, // feat  · L · orange
         { band: 'i', cls: 'p-i', last: true,  cells: [[3,0],[3,1],[3,2],[3,3]] }, // teach · I · teal ← clears
       ];
 

@@ -895,6 +895,41 @@ covers Home, which now renders the new frame). The L placement, scatter
 distance/rotation, clay intensity, and hold/flash timing remain open to live
 eyeball tuning.
 
+A follow-up pass (no plan doc, direct user request) fixed a piece that lied
+about its colour: the scroll-well's **bio** piece was an orange (`--piece-l`)
+cell set whose silhouette was actually a **J**, not an L — a viewer caught it as
+"two J pieces, one orange." Root cause is geometric, not a typo: the well packs
+cols 0–2 and leaves col 3 open for the I-bar, and once hero's blue J sits
+`X../XXX` on the floor and feat's gold O takes the top-left 2×2, the only cells
+left for bio form a J. An exhaustive search (`scratchpad/solve.py`, kept out of
+the repo) confirmed **only two** genuine `{J, L, O}` tilings of that 3×4 space
+exist, and neither is grounded in the current drop order (hero→bio→feat), so
+"bio drops a real L, second, without floating" is provably impossible. The one
+tiling that is both correct-silhouette *and* bottom-up-grounded needs drop order
+**J, O, L** — i.e. **bio drops the gold O, feat drops the orange L** (swapped
+from before). Chosen (option "Y") over keeping bio orange with a one-step
+floating overhang, both mocked in Artifacts first per the workflow preference.
+
+The swap propagates by the piece==section==wash rule, so it touched three
+places in lockstep: `TetrisWell.astro`'s `PIECES` (reordered to `j, o, l, i`
+with the new coords — the well now builds J on the floor, O resting on it, L on
+top, nothing floats); the section `data-band`s in `index.astro` (bio `o`, feat
+`l`); and `tokens.css` (`--wash-bio` now mixes from `--piece-o`/gold,
+`--wash-featured` from `--piece-l`/orange — the `--piece-*` *values* are
+unchanged, only which section wears which). The seam gradients reference the
+wash tokens by section name, so they followed automatically. **The bio portrait
+`.bio-frame` was rebuilt from the L-piece dissolve (above) into an O-piece
+dissolve** to keep bio's identity single: a gold 2×2 block breaks off the
+bottom-left quarter (`clip-path` notch `…50% 100%, 50% 50%, 0 50%`, cells
+`o1`–`o4` sprite-sliced, `--piece-o` fill), replacing the L's thin arm+foot.
+This supersedes the two "L-piece dissolve" / "bio drops the orange L"
+descriptions in the passes above — bio is the O now, everywhere. Verified by the
+controller directly: typecheck, unit, clean build, and **76/76 e2e + axe** green
+in this sandbox's real browser (no test asserted piece shape or wash colour, so
+none needed updating; the ordered-drop and axe sweeps still cover the well).
+Scatter distances, the O notch corner, and the gold wash remain open to live
+eyeball tuning.
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate

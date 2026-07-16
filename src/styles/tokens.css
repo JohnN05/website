@@ -24,8 +24,8 @@
      it lands in. J uses the cobalt accent (the site's canonical "J-piece
      blue"); the rest reuse the muted per-piece palette above. */
   --piece-j: var(--color-accent); /* hero     · J · blue */
-  --piece-l: var(--color-accent-clay); /* bio  · L · orange */
-  --piece-o: var(--tetris-o); /* featured    · O · gold */
+  --piece-o: var(--tetris-o); /* bio         · O · gold */
+  --piece-l: var(--color-accent-clay); /* featured · L · orange */
   --piece-i: var(--tetris-i); /* teaching    · I · teal */
 
   --space-1: 0.25rem;
@@ -49,8 +49,8 @@
      custom properties resolve at point of use, not point of declaration. */
   --wash-mix: 18%;
   --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-j) var(--wash-mix));
-  --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-l) var(--wash-mix));
-  --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-o) var(--wash-mix));
+  --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-o) var(--wash-mix));
+  --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-l) var(--wash-mix));
   --wash-teaching: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-i) var(--wash-mix));
 }
 
