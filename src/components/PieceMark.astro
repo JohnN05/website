@@ -142,22 +142,59 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
   .lattice b {
     background: var(--cell);
     opacity: 0;
-    transition: opacity 90ms steps(1, end);
+    transition: opacity 60ms steps(1, end);
   }
   /* Blocks land one at a time rather than all at once — the piece assembling
      itself. Delays key off DOM order, which the script never reorders: it
      rewrites each block's grid placement in place. */
   .lattice b:nth-child(1) { transition-delay: 0ms; }
-  .lattice b:nth-child(2) { transition-delay: 45ms; }
-  .lattice b:nth-child(3) { transition-delay: 90ms; }
-  .lattice b:nth-child(4) { transition-delay: 135ms; }
+  .lattice b:nth-child(2) { transition-delay: 30ms; }
+  .lattice b:nth-child(3) { transition-delay: 60ms; }
+  .lattice b:nth-child(4) { transition-delay: 90ms; }
 
   .glyph {
     position: relative;
     z-index: 1;
   }
+  /* No transform transition, deliberately: the tip is never something to watch
+     happen. On load the letter is already lying down (see below) and on a
+     replay it snaps — so, like the turn, the J can never be caught at an angle
+     no tetromino occupies. */
   .ch[data-piece] .glyph {
-    transition: opacity 120ms steps(2, end);
+    transition: opacity 90ms steps(2, end);
+  }
+
+  /* The letter lies down to meet the piece where it actually spawns.
+     PIECES.J spawns flat (`... / X.. / XXX`), which is the letter J rotated a
+     quarter-turn clockwise — so the blocks would otherwise fill in on their
+     side underneath a glyph still standing up. The piece is not what's wrong
+     there: its spawn and its counter-clockwise turn are real Tetris moves and
+     are untouched. The letter is what meets it, and the turn stands both up.
+
+     J only, and not by special-casing: the O is its own rotation's fixed point
+     (a 2x2 square in a 2x2 box maps onto itself), so its spawn already is its
+     letter's orientation and there is nothing for it to lie down to.
+
+     Two selectors, because "before the first play" and "during a replay" are
+     genuinely different states:
+
+     1. The load-triggered mark paints tipped, before any script runs. This has
+        to be CSS gated on html[data-motion='on'] — the render-blocking inline
+        script in BaseLayout.astro's <head> — and not a class this component's
+        own module adds: a module script runs after paint, so tipping from
+        there is precisely the "loads upright, then visibly rotates" the gate
+        exists to avoid. Reduced motion leaves data-motion unset, as does JS not
+        running at all, so both render the J plainly upright and never tip it —
+        the same one gate the scroll reveal already depends on, rather than a
+        second reduced-motion check here that could drift away from it.
+     2. [data-tipped] is the script's own flag, for a replay: by then the letter
+        is upright and data-played is set, so rule 1 no longer applies. */
+  :global(html[data-motion='on'])
+    .piece-mark[data-trigger='load'][data-owns='true']:not([data-played])
+    .ch[data-piece='J']
+    .glyph,
+  .piece-mark[data-tipped] .ch[data-piece='J'] .glyph {
+    transform: rotate(90deg);
   }
 
   .revealing .lattice { opacity: 1; }
@@ -183,13 +220,24 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
 <script>
   import { PIECES, pieceBlocks, pieceForLetter, type Piece } from '../lib/nameplate';
 
-  // Four blocks staggered 45ms apart, each snapping in over 90ms.
-  const FILL_MS = 225;
+  // On the Home hero the reveal fires at document.fonts.ready, which lands in
+  // the same instant as first paint — the whole play was over before a visitor
+  // had looked at the word. Hold the letters first so there is a "before" to
+  // notice the change against.
+  const LOAD_DELAY_MS = 700;
+  // A beat on the tipped letter before the blocks arrive. On load the letter is
+  // already lying down and has been for LOAD_DELAY_MS, so this only really
+  // buys anything on a replay, where the tip snaps in at play start.
+  const TIP_HOLD_MS = 90;
+  // Four blocks staggered 30ms apart, each snapping in over 60ms.
+  const FILL_MS = 150;
   // A beat on the spawn state before the turn, and another on the turned state
-  // after it — a snap with no dwell on either side reads as a glitch.
-  const BEFORE_TURN_MS = 140;
-  const AFTER_TURN_MS = 220;
-  const BACK_MS = 220;
+  // after it — a snap with no dwell on either side reads as a glitch. Kept
+  // short on purpose: long dwells were tried and read as the piece stalling,
+  // not as a piece. Being noticeable is the load delay's job, not theirs.
+  const BEFORE_TURN_MS = 70;
+  const AFTER_TURN_MS = 130;
+  const BACK_MS = 150;
 
   const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
@@ -317,11 +365,23 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
           if (playing || mark.dataset.owns !== 'true') return;
           playing = true;
 
+          // On the first load this is already true in CSS and changes nothing —
+          // the letter has been lying down since first paint. It's a replay
+          // that needs it: by then data-played is set and the letter is back
+          // upright, so this is what lays it down again.
+          mark.dataset.tipped = 'true';
+          await wait(TIP_HOLD_MS);
           mark.classList.add('revealing');
           await wait(FILL_MS + BEFORE_TURN_MS);
           applyRotation(mark, true);
           mark.dataset.turned = 'true';
           await wait(AFTER_TURN_MS);
+          // Stand the letter back up while it is still faded out, so the
+          // upright J is simply what fades back in. data-played retires the
+          // CSS load rule for good: the tip is a loan for the reveal, not a new
+          // resting state, and the name reads normally from here on.
+          delete mark.dataset.tipped;
+          mark.dataset.played = 'true';
           mark.classList.remove('revealing');
           await wait(BACK_MS);
           // Reset the rotation only once the blocks are invisible, so the turn
@@ -337,7 +397,9 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
         const host = mark.closest('a, button') ?? mark;
 
         if (mark.dataset.trigger === 'load') {
-          void play();
+          // Delay the load play only. A click is the visitor already watching,
+          // so a replay starts on the beat they asked for it.
+          void wait(LOAD_DELAY_MS).then(play);
           host.addEventListener('click', () => void play());
         } else {
           host.addEventListener('mouseenter', () => void play());

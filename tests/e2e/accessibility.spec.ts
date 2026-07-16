@@ -13,6 +13,16 @@ for (const path of pages) {
     // with axe's contrast rule is gone. Scanning the resting state is still
     // the right thing on principle, and it keeps this suite honest if the
     // reveal ever paints rather than fades again.
+    // A load-triggered mark now holds its letters for LOAD_DELAY_MS before it
+    // plays, so "nothing is .revealing" is true at goto() and would wave this
+    // through *ahead* of the reveal rather than after it. Wait for the play to
+    // have actually happened first: data-cycle is only bumped once a play has
+    // run to completion.
+    await page.waitForFunction(
+      () => !document.querySelector('[data-piece-mark][data-trigger="load"][data-owns="true"]:not([data-cycle])'),
+      undefined,
+      { timeout: 5000 }
+    );
     await page.waitForFunction(
       () => !document.querySelector('[data-piece-mark].revealing'),
       undefined,
