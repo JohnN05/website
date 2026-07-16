@@ -182,8 +182,25 @@
   // chain once real page-load/IPC latency is in play.
   let pieceCycle = 0;
 
+  // Whether the board is actually on screen. Below the mobile breakpoint
+  // .tetris-hero is display: none, which makes this container 0x0 — and a 0x0
+  // container still runs every line below it: cols/rows clamp to their 4x4
+  // floor, cellW/cellH come out NEGATIVE ((0 - 3 * GAP) / 4), and the cycle
+  // chain re-renders that invisible board and schedules its successor forever.
+  // A decorative background loop burning a phone's battery for something no
+  // one can see is the whole bug.
+  //
+  // Derived from the box rather than by re-testing (max-width: 768px) in JS:
+  // the breakpoint already lives in this component's own CSS, and a second
+  // copy of the literal 768 here is exactly the two-call-sites-drift shape
+  // this codebase keeps paying for (see CLAUDE.md). "Is it on screen" is also
+  // the thing actually meant, so it stays correct if the breakpoint moves.
+  let ambientOnScreen = false;
+
   function setupAmbientBoard() {
     ambientGeneration++;
+    ambientOnScreen = ambientSoftEl.clientWidth > 0 && ambientSoftEl.clientHeight > 0;
+    if (!ambientOnScreen) return;
     ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
     ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
     ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
@@ -373,7 +390,11 @@
     });
   }
 
-  if (!reducedMotion.matches) {
+  function ambientShouldRun() {
+    return ambientOnScreen && !reducedMotion.matches;
+  }
+
+  if (ambientShouldRun()) {
     runAmbientCycle();
   }
 
@@ -386,7 +407,11 @@
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       setupAmbientBoard();
-      if (!reducedMotion.matches) runAmbientCycle();
+      // Rechecked per resize, not latched at load: a visitor who widens a
+      // narrow window brings the board on screen, and one who narrows it takes
+      // it off. setupAmbientBoard() has already bumped the generation, so any
+      // cycle still in flight from the previous size bails on its own.
+      if (ambientShouldRun()) runAmbientCycle();
     }, 200);
   });
 </script>

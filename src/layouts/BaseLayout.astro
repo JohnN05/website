@@ -12,9 +12,13 @@ interface Props {
   description?: string;
 }
 const { title, description = 'John Ng — software engineer portfolio' } = Astro.props;
+// Home is the only page built out of full-height scroll-snap sections, so it is
+// the only page that may be a snap container. Derived from the route here, the
+// same way Nav.astro derives its own isHome, rather than each page opting in.
+const isHome = Astro.url.pathname === '/';
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-snap={isHome ? 'sections' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

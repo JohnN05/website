@@ -115,6 +115,40 @@ test('reduced motion renders content at rest with no reveal gating', async ({ pa
     .locator('.bio h2')
     .evaluate((el) => getComputedStyle(el).opacity);
   expect(opacity).toBe('1');
+
+  // Snapping must be off too, and this is more fragile than it looks: the
+  // disable rule beats the snap rules on source order at equal specificity, so
+  // scoping the snap rules to an attribute selector (as the mobile scroll-trap
+  // fix did) silently outranks a bare `html` disable and turns snapping back on
+  // for exactly the visitors who asked for it off. Nothing asserted this until
+  // that fix nearly shipped the regression.
+  const snap = await page.evaluate(
+    () => getComputedStyle(document.documentElement).scrollSnapType
+  );
+  expect(snap).toBe('none');
+});
+
+test('Home is still a snap container; nothing else is', async ({ page }) => {
+  // Per CSSOM serialization, computed scroll-snap-type omits the initial
+  // strictness value — so desktop's `y proximity` reads back as plain 'y'.
+  // Asserting 'y' still discriminates all three cases that matter here
+  // (snapped desktop / snapped mobile / not a snap container at all).
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  expect(
+    await page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType)
+  ).toBe('y');
+
+  await page.goto('/contact');
+  expect(
+    await page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType)
+  ).toBe('none');
+
+  await page.setViewportSize({ width: 390, height: 664 });
+  await page.goto('/');
+  expect(
+    await page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType)
+  ).toBe('y mandatory');
 });
 
 test('the Tetris board drifts against the hero copy as the page scrolls', async ({ page }) => {

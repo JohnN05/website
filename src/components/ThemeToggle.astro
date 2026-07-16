@@ -1,4 +1,11 @@
-<button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" type="button">
+<!-- No id. This component is mounted twice on every page (the desktop rail and
+     the mobile drawer), and an id would therefore be duplicated — which is not
+     a validity nitpick here but the actual bug that shipped: the script below
+     bound document.getElementById('theme-toggle'), which silently returned only
+     the first in DOM order (the rail's), leaving the drawer's button inert and
+     dark mode unreachable for every mobile visitor. The class is the hook, and
+     it works for any number of mounts. -->
+<button class="theme-toggle" aria-label="Toggle dark mode" type="button">
   <svg viewBox="0 0 48 16" width="48" height="16" aria-hidden="true">
     <rect class="handle handle-a" x="0" y="6" width="20" height="4" rx="2" fill="currentColor" />
     <rect class="handle handle-b" x="28" y="6" width="20" height="4" rx="2" fill="currentColor" />
@@ -17,28 +24,37 @@
 <script>
   import { getInitialTheme, toggleTheme, persistTheme } from '../lib/theme';
 
-  const button = document.getElementById('theme-toggle')!;
+  // Every mount, not one id. Astro bundles this <script> once per page however
+  // many times the component is mounted, so a single-element lookup here binds
+  // one button and silently leaves the rest dead — which is exactly what
+  // happened to the mobile drawer's copy.
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.theme-toggle');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function applyTheme(theme: 'light' | 'dark') {
     document.documentElement.dataset.theme = theme;
   }
 
-  button.addEventListener('click', () => {
-    const current =
-      (document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ??
-      getInitialTheme(localStorage, (q) => window.matchMedia(q));
-    const next = toggleTheme(current);
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const current =
+        (document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ??
+        getInitialTheme(localStorage, (q) => window.matchMedia(q));
+      const next = toggleTheme(current);
 
-    if (reducedMotion.matches) {
-      applyTheme(next);
-    } else {
-      button.classList.add('flipping');
-      window.setTimeout(() => {
+      if (reducedMotion.matches) {
         applyTheme(next);
-        button.classList.remove('flipping');
-      }, 350);
-    }
-    persistTheme(localStorage, next);
-  });
+      } else {
+        // Only the clicked button flips. The other mount is display: none at
+        // this breakpoint by definition — the rail and the drawer never share
+        // a viewport — so there is nothing to keep in sync.
+        button.classList.add('flipping');
+        window.setTimeout(() => {
+          applyTheme(next);
+          button.classList.remove('flipping');
+        }, 350);
+      }
+      persistTheme(localStorage, next);
+    });
+  }
 </script>

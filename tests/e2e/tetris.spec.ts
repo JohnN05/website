@@ -6,6 +6,33 @@ test('mobile: the hero widget is hidden entirely', async ({ page }) => {
   await expect(page.locator('.tetris-hero')).toBeHidden();
 });
 
+test('mobile: hidden means stopped, not merely invisible', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 700 });
+  await page.goto('/');
+
+  // display: none makes the container 0x0, so the loop was animating a 4x4
+  // board (the Math.max floor) with a NEGATIVE cell size, re-rendering every
+  // cell and scheduling the next cycle forever — on a phone, on the site's
+  // busiest page, for something no one can see. data-cycle is the loop's own
+  // per-spawn counter: if it never appears, no cycle ever ran.
+  await page.waitForTimeout(1500);
+  await expect(page.locator('#tetris-piece')).not.toHaveAttribute('data-cycle', /.*/);
+  await expect(page.locator('#tetris-ambient-crisp > div')).toHaveCount(0);
+});
+
+test('a board that starts hidden still runs once the window grows', async ({ page }) => {
+  // The guard must key off "is it on screen", not "was it on screen at load" —
+  // otherwise a visitor who widens a narrow window gets a permanently dead
+  // board, trading one silent bug for another.
+  await page.setViewportSize({ width: 375, height: 700 });
+  await page.goto('/');
+  await expect(page.locator('#tetris-piece')).not.toHaveAttribute('data-cycle', /.*/);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.locator('#tetris-piece')).toHaveAttribute('data-cycle', /\d+/, { timeout: 5000 });
+  await expect(page.locator('#tetris-ambient-crisp > div').first()).toBeVisible();
+});
+
 test('desktop: tetris ambient background occupies ~70% of the hero, flush to its right edge', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');

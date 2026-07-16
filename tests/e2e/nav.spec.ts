@@ -51,3 +51,89 @@ test('mobile: rail is hidden, top bar + drawer are used instead', async ({ page 
   await expect(drawer).toBeVisible();
   await expect(page.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
 });
+
+test.describe('mobile: every route scrolls', () => {
+  // html { scroll-snap-type: y mandatory } applied sitewide below 769px, but
+  // only Home authors section snap targets. On every other route the sole snap
+  // area was .mobile-nav's own scroll-snap-align: start at document position 0
+  // — so mandatory snapping pinned the viewport there and the page could not be
+  // scrolled at all. /contact's Send button was unreachable, which is the site's
+  // only contact channel; 3 of 4 project cards were unreachable.
+  //
+  // The suite missed it because its one mobile test visited '/', the single
+  // route with real snap targets and therefore the only one where this is
+  // invisible.
+  for (const path of ['/contact', '/projects', '/projects/terp-rater', '/this-page-does-not-exist']) {
+    test(`${path} scrolls on a phone`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 664 });
+      await page.goto(path);
+
+      const scrollable = await page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight
+      );
+      expect(scrollable).toBeGreaterThan(50);
+
+      // behavior: 'instant' — scroll-behavior: smooth is a repeat offender in
+      // this codebase and will animate (and lose) an unqualified scroll call.
+      await page.evaluate(() => window.scrollTo({ top: 400, behavior: 'instant' }));
+      await page.waitForTimeout(300);
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    });
+  }
+});
+
+test.describe('desktop: the rail is not buried by the footer', () => {
+  // Footer.astro carries position: relative; z-index: 2 so its own content
+  // paints above index.astro's blurred .seam band. But BaseLayout renders
+  // <Footer> as a SIBLING of #main-content, so unlike main it gets no
+  // margin-left and spans the full viewport width — straight under the fixed
+  // rail. z-index: 2 then beats the rail's z-index: auto, so at the bottom of
+  // any page the footer's own (transparent) box wins hit-testing over the
+  // rail's controls: a visitor sees the theme toggle, clicks it, nothing
+  // happens. Keyboard Enter still worked, which is what pins this on hit
+  // testing rather than the handler.
+  test('the rail theme toggle is clickable at the bottom of the page', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/contact');
+    await page.evaluate(() =>
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' })
+    );
+    await page.waitForTimeout(200);
+
+    const toggle = page.locator('#nav-rail .theme-toggle');
+    const box = await toggle.boundingBox();
+    expect(box).not.toBeNull();
+
+    // What is actually on top at the toggle's own centre point? Asked as
+    // "is this the toggle, or inside it" rather than by reading className:
+    // the hit at that point is the button's inner <svg>, whose className is an
+    // SVGAnimatedString, not a string.
+    const hit = await page.evaluate(
+      ([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        if (!el) return 'nothing';
+        return el.closest('.theme-toggle') ? 'the toggle' : `${el.tagName}.${String((el as HTMLElement).className)}`;
+      },
+      [box!.x + box!.width / 2, box!.y + box!.height / 2]
+    );
+    expect(hit).toBe('the toggle');
+
+    // And a real click must land on it.
+    await toggle.click();
+    await page.waitForTimeout(400);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  });
+
+  test('the footer does not draw underneath the rail', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/contact');
+
+    const rail = await page.locator('#nav-rail').boundingBox();
+    const footer = await page.locator('.site-footer').boundingBox();
+    expect(rail).not.toBeNull();
+    expect(footer).not.toBeNull();
+    // The footer's border-top drew a hairline straight across the rail column,
+    // and the copyright line rendered inside it.
+    expect(footer!.x).toBeGreaterThanOrEqual(rail!.width - 1);
+  });
+});

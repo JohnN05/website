@@ -4,8 +4,24 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Both snap rules are scoped to [data-snap='sections'] — set by BaseLayout on
+   Home alone, because Home is the only page built out of snap targets.
+
+   Unscoped, `mandatory` made every other route completely unscrollable on a
+   phone, and not subtly: with no section targets anywhere, the only snap area
+   on those pages was MobileNav's own `scroll-snap-align: start` sitting at
+   document position 0, so mandatory snapping pinned the viewport there and
+   refused to move. /contact's Send button — the site's only contact channel —
+   was unreachable, as were 3 of the 4 project cards. Wheel, scrollBy,
+   scrollTo, and the skip link all returned to 0.
+
+   That MobileNav snap target is not the culprit and must stay: it exists so
+   position 0 is itself a valid snap point, which is what keeps the hamburger
+   from being force-snapped above the fold on Home. It only became a trap
+   because it was the sole target on pages that were never snap containers to
+   begin with. */
 @media (max-width: 768px) {
-  html {
+  html[data-snap='sections'] {
     scroll-snap-type: y mandatory;
   }
 }
@@ -16,7 +32,7 @@ html {
    the exact conflict the lock had. Proximity leaves the gesture alone and only
    settles when the visitor stops near a section. */
 @media (min-width: 769px) {
-  html {
+  html[data-snap='sections'] {
     scroll-snap-type: y proximity;
   }
 }
@@ -46,8 +62,16 @@ a { color: inherit; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  html {
+  /* Must carry the same [data-snap='sections'] as the snap rules above, not a
+     bare `html`. This used to win on source order alone at equal specificity;
+     once those rules were scoped to an attribute (0,1,1) a bare html selector
+     here (0,0,1) would lose to them no matter where it sits in the file, and
+     snapping would quietly come back on for precisely the visitors who asked
+     for it off. */
+  html[data-snap='sections'] {
     scroll-snap-type: none;
+  }
+  html {
     scroll-behavior: auto;
   }
 }
@@ -96,7 +120,24 @@ a { color: inherit; }
   :root {
     --rail-width: clamp(9rem, 2.9rem + 12.68vw, 12rem);
   }
-  #main-content {
+  /* The footer is a SIBLING of #main-content in BaseLayout, not a child, so it
+     never inherited this offset and spanned the full viewport — straight under
+     the fixed rail. That was invisible until Footer.astro took z-index: 2 (so
+     its capybara caption could paint above Home's blurred .seam), because
+     z-index: 2 also beats the rail's z-index: auto: the footer's own
+     transparent box then won hit-testing over the rail's controls, and a
+     visitor at the bottom of any desktop page could see the theme toggle,
+     click it, and have nothing happen.
+
+     Offsetting the footer fixes the dead click at its cause — the two elements
+     simply stop overlapping — rather than by escalating the rail's z-index,
+     which would only re-open the caption-under-seam bug the footer's z-index
+     was added to close. It also fixes what that overlap looked like: the
+     footer's border-top drew a hairline across the rail column and the
+     copyright line rendered inside it. Same var as #main-content, not a second
+     copy of the formula. */
+  #main-content,
+  .site-footer {
     margin-left: var(--rail-width);
   }
 }
