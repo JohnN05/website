@@ -77,21 +77,8 @@ import ContactForm from '../components/ContactForm.astro';
   .well :global(div.on) {
     background: color-mix(in srgb, var(--tetris-t) 62%, var(--color-bg));
   }
-  /* The gap only a real send ever fills — a slow breathing pulse rather than
-     a static outline, foreshadowing the T-Spin instead of just sitting
-     empty. */
-  .well :global(div.notch) {
-    background: transparent;
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tetris-t) 55%, var(--color-bg));
-    animation: contact-notch-pulse 3.2s ease-in-out infinite;
-  }
-  @keyframes contact-notch-pulse {
-    0%, 100% { opacity: 0.45; }
-    50% { opacity: 1; }
-  }
   @media (prefers-reduced-motion: reduce) {
     .well :global(div) { transition: none; }
-    .well :global(div.notch) { animation: none; opacity: 0.7; }
   }
 
   /* Plain centered two-column layout — the content deliberately does NOT try
@@ -213,8 +200,7 @@ import ContactForm from '../components/ContactForm.astro';
   // one-shot transient overlay that's fine to skip entirely), this well is
   // persistent background chrome — same category as TetrisHero's ambient
   // board, which still shows a static frame under reduced motion rather than
-  // nothing. So the well always builds; only the notch's breathing pulse is
-  // gated off under reduced motion, via the CSS media query above.
+  // nothing. So the well always builds.
   {
     const band = document.getElementById('contact-band') as HTMLElement;
     const well = document.getElementById('contact-well') as HTMLElement;
@@ -224,14 +210,11 @@ import ContactForm from '../components/ContactForm.astro';
     // Cumulative share of the pool lit at each stage. Stage 0 (no fields
     // filled) is deliberately empty — the well starts blank and fills only as
     // the form does, so the backdrop reads as a direct response to typing.
-    // Stage 3 (all fields filled) fills the entire pool: the only gap left is
-    // the notch, so a completed form reads as a well one piece short, ready
-    // for the send to finish and clear it.
+    // Stage 3 (all fields filled) fills the entire pool, then the send clears it.
     const STAGE_FRACTIONS = [0, 0.4, 0.72, 1];
 
     let pool: HTMLElement[] = [];
     let cells: HTMLElement[] = [];
-    let notchCellEls: HTMLElement[] = [];
     // Cells sitting behind the copy or the card. They're never lit — they stay
     // the resting grey — so the content greys out exactly the blocks it covers,
     // by the content's real box shape. Recomputed on resize (cheap) so it stays
@@ -251,13 +234,9 @@ import ContactForm from '../components/ContactForm.astro';
       if (gen !== generation) return;
       const count = stageCounts[stage] ?? 0;
       // A pooled cell lights only if it's within the current fill count AND not
-      // occluded by the copy/card — so blocks behind the content read as greyed
-      // out no matter how full the well is.
+      // occluded by the copy — so blocks behind the text read as greyed out no
+      // matter how full the well is.
       pool.forEach((cell, i) => cell.classList.toggle('on', i < count && !occluded.has(cell)));
-      // The notch is the gap the fill leaves behind, so it only makes sense
-      // once there's a stack around it — hidden entirely at stage 0 so an
-      // empty well is truly empty, not a lone outline floating in nothing.
-      notchCellEls.forEach((cell) => (cell.style.visibility = stage > 0 ? 'visible' : 'hidden'));
     }
 
     function gridDims() {
@@ -318,27 +297,15 @@ import ContactForm from '../components/ContactForm.astro';
       well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
       well.innerHTML = '';
 
-      // A 2x2 gap sitting in the well's most-visible zone (matching the mask
-      // center below) so the one spot only a real send ever fills is actually
-      // seen waiting — placed in the lower-middle, reading as a gap in the
-      // stack rather than a hole at the very floor.
-      const notchCol = Math.max(1, Math.floor(cols * 0.44));
-      const notchRow = Math.max(1, Math.floor(rows * 0.66));
-      const notchCells = new Set([
-        notchRow * cols + notchCol, notchRow * cols + notchCol + 1,
-        (notchRow + 1) * cols + notchCol, (notchRow + 1) * cols + notchCol + 1,
-      ]);
-
       // Fill from the second row down, leaving a single empty row of margin
       // along the very top so the well doesn't run flush to the section's top
-      // edge. Occlusion (copy/card) is applied at render time in applyStage, not
+      // edge. Occlusion (the copy) is applied at render time in applyStage, not
       // baked into the pool, so a resize can re-occlude without a rebuild.
       const candidates: number[] = [];
       const startRow = 1;
       for (let y = startRow; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-          const i = y * cols + x;
-          if (!notchCells.has(i)) candidates.push(i);
+          candidates.push(y * cols + x);
         }
       }
       for (let i = candidates.length - 1; i > 0; i--) {
@@ -349,13 +316,9 @@ import ContactForm from '../components/ContactForm.astro';
 
       cells = [];
       for (let i = 0; i < cols * rows; i++) {
-        const cell = document.createElement('div');
-        if (notchCells.has(i)) cell.className = 'notch';
-        well.appendChild(cell);
-        cells.push(cell);
+        well.appendChild((cells[i] = document.createElement('div')));
       }
       pool = candidates.map((i) => cells[i]);
-      notchCellEls = [...notchCells].map((i) => cells[i]);
       computeOcclusion(cols, rows);
       applyStage(currentStage, gen);
     }
