@@ -330,7 +330,28 @@
   }
 
   setupGrid();
-  if (shouldRun()) start();
+
+  // Freeze when the hero scrolls out of view — a decorative loop must not run
+  // (rebuild + reblur on lock) for something off screen.
+  const io = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) start();
+      else stop();
+    }
+  });
+  io.observe(heroEl);
+
+  // Freeze when the tab is backgrounded; resume on return.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stop();
+    else if (shouldRun()) start();
+  });
+
+  // Reduced-motion may be toggled after load: freeze on a static first frame.
+  reducedMotion.addEventListener('change', () => {
+    if (reducedMotion.matches) stop();
+    else if (shouldRun()) start();
+  });
 
   // Resize: fixed grid means only cell pixel size changes. Recompute sizing,
   // re-render the settled board (cells auto-scale via 1fr, but cellW/cellH for
