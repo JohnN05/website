@@ -386,6 +386,16 @@ Old CRA site's commit history is preserved — useful for content reference
 
 ## Workflow preferences
 
+- **Keep this file concise.** When a pass changes behavior documented here,
+  update the relevant section in place rather than appending a new
+  narrative paragraph — this file describes the site *as built*, not a
+  changelog. Bug war-stories, "verified X/X tests" reports, and per-pass
+  play-by-play belong in the pass's plan doc (`docs/superpowers/plans/`) and
+  git history, not here; only promote a finding to CLAUDE.md if it's a
+  durable rule future work needs (a gotcha, a constraint, an architectural
+  decision) — not the story of how it was found. If a section starts
+  reading like a log instead of a reference, condense it before adding to
+  it.
 - Execute multi-task implementation plans with
   `superpowers:subagent-driven-development`: a fresh implementer subagent per
   task, a task-scoped reviewer after each, and one broad whole-branch review
