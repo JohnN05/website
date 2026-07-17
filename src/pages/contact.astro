@@ -49,8 +49,8 @@ import ContactForm from '../components/ContactForm.astro';
      and only feathering off at the outermost edges. Centered near the middle
      (50% / 52%) with a wide radius so the top rows read as filled rather than
      fading out early — an earlier tighter ellipse centered low left the top
-     ~5 rows perpetually dim. The copy and card carve their own regions out
-     separately, so a fuller mask doesn't put cells behind text. */
+     ~5 rows perpetually dim. The script analytically greys out cells behind the copy,
+     and the card's frosted panel already covers whatever's behind it, so a fuller mask doesn't put blocks behind text. */
   .well {
     position: absolute;
     inset: 0;
