@@ -14,6 +14,14 @@
     bottom: 0;
     width: 70%;
     overflow: hidden;
+    /* Home's parallax writes --parallax-y to this element every scroll frame
+       (see index.astro), and [data-depth] turns that into a translateY. This
+       subtree carries two filter: blur(4px) layers; without promoting the
+       element to its own compositor layer, each scroll-frame transform forces
+       the browser to repaint and re-blur a 70%-viewport-wide surface. The hint
+       makes the board rasterize once so scroll is a pure compositor move; the
+       ambient loop only repaints it ~1x/sec, not per scroll frame. */
+    will-change: transform;
     /* --tetris-i/o/t/j now live in tokens.css :root (shared with the home
        hero's nameplate) rather than being redeclared here. */
     /* Depth-of-field via two stacked copies of the same board: a blurred
