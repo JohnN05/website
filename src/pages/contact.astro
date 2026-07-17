@@ -32,6 +32,9 @@ import ContactForm from '../components/ContactForm.astro';
     font-size: 0.85rem;
     margin: 0 0 var(--space-3);
   }
+  /* Mobile-first: a plain stacked band. The desktop grid-aligned layout
+     (where the copy and card snap to the well's own cell columns) lives in
+     the min-width: 861px block near the bottom. */
   .contact-band {
     position: relative;
     overflow: hidden;
@@ -39,7 +42,7 @@ import ContactForm from '../components/ContactForm.astro';
     align-items: center;
     min-height: 90vh;
     background: var(--wash-contact);
-    padding: var(--space-10) var(--space-5);
+    padding: var(--space-9) var(--space-5);
   }
   /* The waiting well. Cell on/off state is driven entirely by the script
      below (contact-progress / contact-sent) — nothing here reads form
@@ -98,12 +101,10 @@ import ContactForm from '../components/ContactForm.astro';
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 68rem;
+    max-width: 34rem;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 0.9fr 1.1fr;
-    gap: var(--space-8);
-    align-items: start;
+    gap: var(--space-6);
   }
   .contact-copy h1 {
     font-size: clamp(2rem, 4vw, 2.8rem);
@@ -185,9 +186,40 @@ import ContactForm from '../components/ContactForm.astro';
     filter: blur(32px);
     pointer-events: none;
   }
-  @media (max-width: 860px) {
+  /* Desktop: the content overlays the well and shares its exact box (same
+     inset:0 + var(--space-6) padding) and column tracks (repeat(--cols, 1fr)
+     with the same 4px gap), so the copy and card land on real cell
+     boundaries. --cols / --copy-span / --card-span / --row-pitch are set from
+     the well-building script so they always match the grid actually drawn.
+     Placement leaves one empty cell as padding on the left, top, and right,
+     and one empty cell as the gap between the copy and the card. */
+  @media (min-width: 861px) {
+    .contact-band {
+      display: block;
+      padding: 0;
+    }
     .contact-inner {
-      grid-template-columns: 1fr;
+      position: absolute;
+      inset: 0;
+      max-width: none;
+      margin: 0;
+      padding: var(--space-6);
+      padding-top: calc(var(--space-6) + var(--row-pitch, 44px));
+      grid-template-columns: repeat(var(--cols, 27), 1fr);
+      column-gap: 4px;
+      align-content: start;
+      gap: 0;
+    }
+    /* col 0 is the left padding; copy starts on the second line. */
+    .contact-copy {
+      grid-column: 2 / span var(--copy-span, 10);
+      align-self: start;
+    }
+    /* ends at line -2 so the final cell column stays empty as right padding;
+       the empty column between copy's end and the card's start is the gap. */
+    .contact-card {
+      grid-column: span var(--card-span, 14) / -2;
+      align-self: start;
     }
   }
 </style>
@@ -255,6 +287,21 @@ import ContactForm from '../components/ContactForm.astro';
       well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
       well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
       well.innerHTML = '';
+
+      // Publish the grid the well actually drew to the band, so the content
+      // overlay (.contact-inner, desktop only) can place the copy and card on
+      // the same cell columns: one empty cell of padding on the left, top, and
+      // right, and one empty cell of gap between the two. Set before the
+      // copy-carve below so the carve measures the copy in its final grid spot.
+      const PAD_PX = parseFloat(getComputedStyle(well).paddingTop) || 32;
+      const cellHpx = (h - 2 * PAD_PX - (rows - 1) * GAP) / rows;
+      const usable = cols - 2; // one padding cell on each side
+      const copySpan = Math.max(6, Math.round(usable * 0.4));
+      const cardSpan = usable - 1 - copySpan; // the -1 is the gap cell
+      band.style.setProperty('--cols', String(cols));
+      band.style.setProperty('--copy-span', String(copySpan));
+      band.style.setProperty('--card-span', String(cardSpan));
+      band.style.setProperty('--row-pitch', `${(cellHpx + GAP).toFixed(2)}px`);
 
       // A 2x2 gap sitting in the well's most-visible zone (matching the mask
       // center below) so the one spot only a real send ever fills is actually
