@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
-import { encodeForNetlify, submitContactForm } from './contactForm';
+import { encodeForNetlify, submitContactForm, formProgressStage } from './contactForm';
 
 describe('encodeForNetlify', () => {
   it('url-encodes the form-name and payload fields together', () => {
@@ -29,6 +29,23 @@ describe('encodeForNetlify', () => {
     expect(body).toContain('bot-field=i+am+a+robot');
     // ...under Netlify's wire name, not the JS-side spelling.
     expect(body).not.toContain('botField');
+  });
+});
+
+describe('formProgressStage', () => {
+  it('is 0 when every field is empty', () => {
+    expect(formProgressStage('', '', '')).toBe(0);
+  });
+
+  it('counts whitespace-only fields as empty', () => {
+    expect(formProgressStage('  ', '\t', '')).toBe(0);
+  });
+
+  it('counts up one per non-empty field, independent of which one', () => {
+    expect(formProgressStage('Ada', '', '')).toBe(1);
+    expect(formProgressStage('', 'ada@example.com', '')).toBe(1);
+    expect(formProgressStage('Ada', 'ada@example.com', '')).toBe(2);
+    expect(formProgressStage('Ada', 'ada@example.com', 'Hi')).toBe(3);
   });
 });
 

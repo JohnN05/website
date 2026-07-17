@@ -231,10 +231,13 @@
   }
 </style>
 <script>
-  import { submitContactForm } from '../lib/contactForm';
+  import { submitContactForm, formProgressStage } from '../lib/contactForm';
 
   const form = document.getElementById('contact-form') as HTMLFormElement;
   const shell = document.getElementById('contact-shell') as HTMLElement;
+  const nameField = document.getElementById('name') as HTMLInputElement;
+  const emailField = document.getElementById('email') as HTMLInputElement;
+  const messageField = document.getElementById('message') as HTMLTextAreaElement;
   const stage = document.getElementById('tspin-stage') as HTMLElement;
   const board = document.getElementById('tspin-board') as HTMLElement;
   const success = document.getElementById('contact-success') as HTMLElement;
@@ -361,6 +364,10 @@
     ghosts.forEach((g) => g.remove());
     for (const [col, row] of FINAL) addGridCell('tcell cell', col, row, true);
 
+    // Fired the instant the foreground rows start flashing, so the
+    // background well's own clear plays in the same beat rather than
+    // trailing it once revealSuccess() finishes.
+    form.dispatchEvent(new CustomEvent('contact-sent', { bubbles: true }));
     await flashRows();
     await wait(110);
     // clear the two full bottom rows
@@ -398,6 +405,16 @@
     void success.offsetWidth;              // reflow so the entrance transition runs
     success.classList.add('in');
   }
+
+  // Tells contact.astro's background well how many fields are filled, so the
+  // form and its backdrop share one number instead of the well reading the
+  // fields' values itself. bubbles: true — the well lives outside this
+  // component entirely, so a plain DOM event is the whole contract between
+  // the two rather than a direct reference either way.
+  form.addEventListener('input', () => {
+    const stage = formProgressStage(nameField.value, emailField.value, messageField.value);
+    form.dispatchEvent(new CustomEvent('contact-progress', { detail: { stage }, bubbles: true }));
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

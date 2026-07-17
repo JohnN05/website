@@ -70,31 +70,62 @@ const featured = selectFeatured(
     </div>
   </section>
 
-  <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
+  <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-education);"></div>
 
-  <section class="teaching" data-scroll-section>
-    <div class="teaching-inner" data-depth="0.06">
-      <p class="eyebrow" data-reveal>Teaching</p>
-      <h2 data-reveal>I teach as much as I build.</h2>
-      <div class="impact" data-reveal>
-        <div class="stat">
-          <span class="stat-n" data-count="60" data-suffix="+">60+</span>
-          <span class="stat-l">Students</span>
+  {/* Two instances of the same instinct rather than one "Teaching" block:
+      a classroom (Nobel Explorers, now UMD's CSA) and a Chrome extension
+      (Terp Rater) are both "build it, then hand someone else the ability to
+      use it" — the panel split makes that structure legible instead of
+      burying Terp Rater as a stat-less aside under a teaching-only headline. */}
+  <section class="education" data-scroll-section>
+    <div class="education-inner" data-depth="0.06">
+      <p class="eyebrow" data-reveal>Education</p>
+      <h2 data-reveal>Two ways to teach: a classroom, and a Chrome extension.</h2>
+      <div class="panels">
+        <div class="panel" data-reveal>
+          <p class="panel-label">Classroom</p>
+          <div class="stats" data-count-group>
+            <div class="stat">
+              <span class="stat-n" data-count="60" data-suffix="+">60+</span>
+              <span class="stat-l">Students</span>
+            </div>
+            <div class="stat">
+              <span class="stat-n" data-count="3">3</span>
+              <span class="stat-l">Countries</span>
+            </div>
+            <div class="stat">
+              <span class="stat-n" data-count="2">2</span>
+              <span class="stat-l">Programs</span>
+            </div>
+          </div>
+          <p class="detail">Nobel Explorers ML/CV curriculum for students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
         </div>
-        <div class="stat">
-          <span class="stat-n" data-count="3">3</span>
-          <span class="stat-l">Countries</span>
-        </div>
-        <div class="stat">
-          <span class="stat-n" data-count="2">2</span>
-          <span class="stat-l">Programs</span>
+        <div class="panel" data-reveal>
+          <p class="panel-label">Built</p>
+          <div class="stats" data-count-group>
+            <div class="stat">
+              <span class="stat-n-row">
+                <span class="stat-n" data-count="50" data-suffix="+">50+</span>
+                <span class="stat-chip" data-chip>climbs every registration cycle</span>
+              </span>
+              <span class="stat-l">Users</span>
+            </div>
+            <div class="stat">
+              <span class="stat-n" data-count="5" data-suffix="&#9733;">5&#9733;</span>
+              <span class="stat-l">Chrome store</span>
+            </div>
+            <div class="stat">
+              <span class="stat-n">&rsquo;24</span>
+              <span class="stat-l">Live since</span>
+            </div>
+          </div>
+          <p class="detail">Terp Rater teaches Testudo something it never learned on its own &mdash; professor ratings and real seat counts, live in the listing, every registration cycle.</p>
         </div>
       </div>
-      <p class="detail" data-reveal>Nobel Explorers ML/CV curriculum for students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
     </div>
   </section>
 
-  <div class="seam" style="--seam-from: var(--wash-teaching); --seam-to: var(--color-bg);"></div>
+  <div class="seam" style="--seam-from: var(--wash-education); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
   .hero {
@@ -339,49 +370,82 @@ const featured = selectFeatured(
     gap: 1.5rem;
   }
 
-  .teaching {
+  .education {
     display: flex;
     align-items: center;
     min-height: 90vh;
     padding: var(--space-10) var(--space-5);
-    background: var(--wash-teaching);
+    background: var(--wash-education);
     scroll-snap-align: start;
   }
-  .teaching-inner {
+  .education-inner {
     max-width: 72rem;
     margin: 0 auto;
   }
-  .teaching .eyebrow {
+  .education .eyebrow {
     margin: 0 0 var(--space-4);
   }
-  .teaching h2 {
+  .education h2 {
     font-size: clamp(2rem, 3.6vw, 2.6rem);
     line-height: 1.1;
     letter-spacing: -0.01em;
-    margin: 0 0 var(--space-5);
-    max-width: 20ch;
-  }
-  .teaching .detail {
-    font-size: 1.05rem;
-    line-height: 1.65;
-    max-width: 56ch;
-    color: var(--color-text-secondary);
-    margin: var(--space-6) 0 0;
+    margin: 0 0 var(--space-6);
+    max-width: 28ch;
   }
 
-  /* Impact row: the real numbers as evidence, mono labels beneath — the one
-     place on the page "big number, small label" is earned, and a second
-     structural rhythm that isn't another prose block. */
-  .impact {
+  /* Two panels, not a decorative 01/02 — order here carries no meaning
+     (classroom didn't come "before" the extension), so there's no numbering,
+     just two labeled instances of one idea, separated by a hairline divider
+     rather than a per-panel tinted background: an earlier version tinted
+     each panel toward its own piece hue (gold/purple), but that shifted the
+     effective backdrop enough that the shared clay/moss stat colors cleared
+     WCAG AA's 3:1 large-text floor against one tint (2.32/2.30) while
+     passing against the other — a second background to keep in sync for a
+     tint that barely read as different in practice anyway. */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+  }
+  .panel {
+    padding: var(--space-6);
+  }
+  .panel + .panel {
+    border-left: 1px solid var(--line);
+  }
+  /* Secondary text color, same as every other eyebrow/label sitewide — NOT
+     the raw piece hue. --tetris-o/--tetris-t are decorative fill colors
+     tuned for board cells, not for text this small: at 11.5px they clear
+     only 1.74:1 (gold) / 3.32:1 (purple) against this wash, both short of
+     WCAG AA's 4.5:1 floor for regular-size text. The big stat-n numbers
+     below use the same hues safely because bold ~35px+ text only needs
+     3:1 — this label doesn't get that break. */
+  .panel-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-5);
+  }
+  .panel .detail {
+    font-size: 1rem;
+    line-height: 1.65;
+    max-width: 38ch;
+    color: var(--color-text-secondary);
+    margin: var(--space-5) 0 0;
+  }
+
+  /* Stat row: the real numbers as evidence, mono labels beneath — the one
+     place on the page "big number, small label" is earned, and a structural
+     rhythm that isn't another prose block. */
+  .stats {
     display: grid;
     grid-template-columns: repeat(3, auto);
-    gap: clamp(var(--space-6), 6vw, var(--space-9));
+    gap: clamp(var(--space-5), 4vw, var(--space-7));
     justify-content: start;
     align-items: end;
     width: fit-content;
-    margin: var(--space-6) 0 0;
-    padding: var(--space-5) 0 0;
-    border-top: 1px solid var(--line);
   }
   .stat {
     display: flex;
@@ -394,12 +458,27 @@ const featured = selectFeatured(
     font-weight: 600;
     line-height: 1;
     letter-spacing: -0.02em;
-    font-size: clamp(2.6rem, 7vw, 4rem);
+    font-size: clamp(2.2rem, 5.5vw, 3.2rem);
     font-variant-numeric: tabular-nums;
   }
-  .stat:nth-child(1) .stat-n { color: var(--color-accent); }
-  .stat:nth-child(2) .stat-n { color: var(--color-accent-clay); }
-  .stat:nth-child(3) .stat-n { color: var(--color-accent-moss); }
+  /* Same three-color rhythm in both panels, not the panel's own piece hue —
+     a flat single tetris-t purple across all three "Built" numbers read as
+     monotone rather than as evidence. The piece-hue identity stays on the
+     panel background tint and the eyebrow; these are just numbers. */
+  /* Mixed toward --color-text (70/30), not the raw accent tokens — this is
+     a real, pre-existing WCAG gap this pattern always had, just never
+     verified in both themes: the raw tokens against this wash's own
+     backgrounds measure clay 2.47:1 and moss 2.45:1 in light mode, and
+     accent (cobalt) 2.00:1 in dark mode, all short of the 3:1 large-text
+     floor (confirmed by computing the actual WCAG relative-luminance ratio,
+     not just an axe run — axe's scan under-reported duplicate-signature
+     nodes here, catching only 2 of the 4 affected elements). Mixing toward
+     --color-text darkens in light mode / lightens in dark mode — exactly
+     the direction each theme needs — while keeping each number's hue
+     distinguishable from the other two. */
+  .stat:nth-child(1) .stat-n { color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text)); }
+  .stat:nth-child(2) .stat-n { color: color-mix(in srgb, var(--color-accent-clay) 70%, var(--color-text)); }
+  .stat:nth-child(3) .stat-n { color: color-mix(in srgb, var(--color-accent-moss) 70%, var(--color-text)); }
   .stat-l {
     display: block;
     margin: var(--space-2) 0 0;
@@ -409,8 +488,42 @@ const featured = selectFeatured(
     text-transform: uppercase;
     color: var(--color-text-secondary);
   }
+  .stat-n-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+  /* Second beat after the count finishes — honest about this being a
+     durable claim, not a live counter: the number itself only ever counts
+     to the real, rounded-down floor. */
+  .stat-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .stat-chip.in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (max-width: 800px) {
+    .panels {
+      grid-template-columns: 1fr;
+    }
+    .panel {
+      padding: var(--space-6) 0;
+    }
+    .panel + .panel {
+      border-left: none;
+      border-top: 1px solid var(--line);
+    }
+  }
   @media (max-width: 520px) {
-    .impact {
+    .stats {
       grid-template-columns: 1fr 1fr;
       gap: var(--space-5) var(--space-6);
     }
@@ -423,7 +536,7 @@ const featured = selectFeatured(
      neighboring sections despite sitting between them in source order —
      sections themselves stay position:static (flex doesn't change that),
      which always paints below positioned+z-index content regardless of DOM
-     order. The last instance (teaching → --color-bg) fades the wash back
+     order. The last instance (education → --color-bg) fades the wash back
      out before Footer.astro, which stays plain on every route and has no
      idea this wash system exists. */
   .seam {
@@ -437,7 +550,7 @@ const featured = selectFeatured(
     pointer-events: none;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .hero, .bio, .featured, .teaching {
+    .hero, .bio, .featured, .education {
       transition: background-color 0.15s ease;
     }
   }
@@ -578,15 +691,19 @@ const featured = selectFeatured(
 </script>
 
 <script>
-  // Teaching impact numbers count up on entry. The markup ships the final
-  // values, so reduced motion and no-JS both render them correct with nothing
-  // to do here; only when motion is allowed do we reset to 0 and animate.
+  // Education stat numbers count up on entry, one observer per panel's
+  // `.stats` group (Classroom and Built reveal independently rather than
+  // sharing a single trigger). The markup ships the final values, so reduced
+  // motion and no-JS both render them correct with nothing to do here; only
+  // when motion is allowed do we reset to 0 and animate. Only `.stat-n`
+  // elements carrying `data-count` participate — a plain label like the
+  // "Built" panel's `'24` "Live since" stat has no count to animate and is
+  // left untouched, rather than being coerced through Number(undefined).
   const COUNT_MS = 1100;
 
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const impact = document.querySelector<HTMLElement>('.impact');
-    if (impact) {
-      const nums = Array.from(impact.querySelectorAll<HTMLElement>('.stat-n'));
+    document.querySelectorAll<HTMLElement>('[data-count-group]').forEach((group) => {
+      const nums = Array.from(group.querySelectorAll<HTMLElement>('.stat-n[data-count]'));
       const targets = nums.map((el) => ({
         el,
         target: Number(el.dataset.count),
@@ -603,6 +720,12 @@ const featured = selectFeatured(
           const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
           el.textContent = `${Math.round(target * eased)}${suffix}`;
           if (p < 1) requestAnimationFrame(frame);
+          else {
+            // A second, honest beat: a qualitative chip (not another number)
+            // fades in once the count settles, only where the markup has one.
+            const chip = el.closest('.stat-n-row')?.querySelector<HTMLElement>('[data-chip]');
+            if (chip) window.setTimeout(() => chip.classList.add('in'), 200);
+          }
         };
         requestAnimationFrame(frame);
       };
@@ -617,8 +740,8 @@ const featured = selectFeatured(
         },
         { threshold: 0.4 }
       );
-      observer.observe(impact);
-    }
+      observer.observe(group);
+    });
   }
 </script>
 

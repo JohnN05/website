@@ -3,7 +3,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ContactForm from '../components/ContactForm.astro';
 ---
 <BaseLayout title="Contact — John Ng">
-  <div class="contact-band">
+  <div class="contact-band" id="contact-band">
+    {/* Ambient backdrop: a Tetris well that fills as the form does — one
+        field filled reveals more of it, all three nearly completes it, and
+        a successful send (ContactForm's own `contact-sent` event) clears it,
+        in the same beat as the real T-Spin playing over the card. Purely
+        decorative (aria-hidden, never the source of truth for form state),
+        so it renders as an inert static scatter with no JS/reduced motion. */}
+    <div class="well" id="contact-well" aria-hidden="true" role="presentation"></div>
     <div class="contact-inner">
       <div class="contact-copy">
         <p class="eyebrow">Get in touch</p>
@@ -15,7 +22,7 @@ import ContactForm from '../components/ContactForm.astro';
       </div>
     </div>
   </div>
-  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--color-bg);"></div>
+  <div class="seam" style="--seam-from: var(--wash-contact); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
   .eyebrow {
@@ -26,13 +33,71 @@ import ContactForm from '../components/ContactForm.astro';
     margin: 0 0 var(--space-3);
   }
   .contact-band {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     min-height: 90vh;
-    background: var(--wash-hero);
+    background: var(--wash-contact);
     padding: var(--space-10) var(--space-5);
   }
+  /* The waiting well. Cell on/off state is driven entirely by the script
+     below (contact-progress / contact-sent) — nothing here reads form
+     values directly, so the well stays inert if JS never runs. */
+  /* The mask keeps the well strongest in the open band left of and below the
+     form card, fading out before the far edges — NOT centered behind the
+     card (an earlier 76%-across center put the densest region squarely under
+     the opaque card, where it couldn't be seen, so the whole effect read as
+     faint stray texture). Centered at 46% across / 66% down: the cells only
+     exist below ~35% of the height, so 66% is the vertical midpoint of the
+     cell region itself, which keeps the top and bottom of the well fading at
+     the same rate rather than the top dropping out sooner. */
+  .well {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    gap: 4px;
+    padding: var(--space-6);
+    opacity: 0.85;
+    filter: blur(0.4px);
+    mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
+    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
+  }
+  /* Off cells stay nearly invisible — a faint hint of grid structure, not a
+     checkerboard — so only the lit blocks (the form-progress pool) read as
+     shapes against the wash. */
+  .well :global(div) {
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--color-text) 4%, transparent);
+    transition: background-color 0.45s ease, opacity 0.45s ease, box-shadow 0.3s ease;
+  }
+  /* Lit cells carry enough of the T-piece hue to read as solid blocks against
+     the wash rather than blending into it, but stay light enough not to shout
+     — they sit in open space (never behind the card's text), so the fill is a
+     legibility call, not a contrast one. */
+  .well :global(div.on) {
+    background: color-mix(in srgb, var(--tetris-t) 62%, var(--color-bg));
+  }
+  /* The gap only a real send ever fills — a slow breathing pulse rather than
+     a static outline, foreshadowing the T-Spin instead of just sitting
+     empty. */
+  .well :global(div.notch) {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tetris-t) 55%, var(--color-bg));
+    animation: contact-notch-pulse 3.2s ease-in-out infinite;
+  }
+  @keyframes contact-notch-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .well :global(div) { transition: none; }
+    .well :global(div.notch) { animation: none; opacity: 0.7; }
+  }
+
   .contact-inner {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 68rem;
     margin: 0 auto;
@@ -54,10 +119,57 @@ import ContactForm from '../components/ContactForm.astro';
     color: var(--color-text-secondary);
     margin: 0;
   }
+  /* The frosted-glass fill lives on ::before, one layer behind the card's
+     real content, rather than directly on .contact-card. Chromium's
+     backdrop-filter measurably bleeds into fully-opaque descendants'
+     rendered color when it sits on an ancestor of them (confirmed: the Send
+     button's computed style is exactly rgb(52,84,209)/white/opacity 1 with
+     no filter of its own, yet axe's color-contrast check sampled a lighter
+     blend once backdrop-filter lived here) — axe-core failed the button on
+     contrast as a result. Moving backdrop-filter to a pseudo-element keeps
+     it out of the button's ancestor chain entirely. */
   .contact-card {
-    background: color-mix(in srgb, var(--color-text) 4%, var(--color-bg));
+    position: relative;
+    z-index: 0;
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: var(--space-6);
+    transition: border-color 0.3s ease;
+  }
+  .contact-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  /* Pure-CSS "the board notices you're writing" cue — :has() reads the
+     card's own focus-within state, no script involved, same
+     attribute/state-driven spirit as ThemeToggle. Keys to --tetris-t, the
+     same hue the send animation plays, so focusing previews the color that
+     eventually completes it. */
+  .contact-band:has(.contact-card:focus-within) .well { opacity: 0.85; }
+  .contact-band:has(.contact-card:focus-within) .contact-card {
+    border-color: color-mix(in srgb, var(--tetris-t) 45%, var(--line));
+  }
+  /* Page-wake entrance. This section is ~fully in view at load, the same as
+     Home's hero — a scroll-triggered reveal would never fire, so this plays
+     once on load instead (copy first, then the card). */
+  .contact-copy, .contact-card {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: contact-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .contact-copy { animation-delay: 0.05s; }
+  .contact-card { animation-delay: 0.2s; }
+  @keyframes contact-in {
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .contact-copy, .contact-card { animation: none; opacity: 1; transform: none; }
   }
   /* Same mechanism as index.astro's own seams; only one is needed here
      (fading wash-hero back to flat before the Footer), matching how
@@ -80,3 +192,140 @@ import ContactForm from '../components/ContactForm.astro';
     }
   }
 </style>
+
+<script>
+  // The waiting well. Genuinely random scatter each load (same spirit as the
+  // ambient Tetris board's real 7-bag randomness elsewhere on the site, not
+  // a fixed pattern) — a fixed `baseline` set of cells that never changes
+  // once built, plus a `pool` of additional cells revealed cumulatively as
+  // ContactForm.astro's `contact-progress` events report more fields filled.
+  // `contact-sent` (dispatched the instant the real T-Spin's rows start
+  // flashing) drops the pool back to empty, so the backdrop clears in the
+  // same beat as the card's own line clear.
+  //
+  // Purely decorative (aria-hidden on the container) and never the source of
+  // truth for anything. Unlike ContactForm.astro's own tspin-stage (a
+  // one-shot transient overlay that's fine to skip entirely), this well is
+  // persistent background chrome — same category as TetrisHero's ambient
+  // board, which still shows a static frame under reduced motion rather than
+  // nothing. So the well always builds; only the notch's breathing pulse is
+  // gated off under reduced motion, via the CSS media query above.
+  {
+    const band = document.getElementById('contact-band') as HTMLElement;
+    const well = document.getElementById('contact-well') as HTMLElement;
+
+    const CELL_SIZE = 42;
+    const GAP = 4;
+    // Cumulative share of the pool lit at each stage. Stage 0 (no fields
+    // filled) is deliberately empty — the well starts blank and fills only as
+    // the form does, so the backdrop reads as a direct response to typing.
+    // Stage 3 (all fields filled) fills the entire pool: the only gap left is
+    // the notch, so a completed form reads as a well one piece short, ready
+    // for the send to finish and clear it.
+    const STAGE_FRACTIONS = [0, 0.4, 0.72, 1];
+
+    let pool: HTMLElement[] = [];
+    let notchCellEls: HTMLElement[] = [];
+    let stageCounts: number[] = [0, 0, 0, 0];
+    let currentStage = 0;
+    // Bumped on every rebuild so a resize mid-animation can't have a stale
+    // closure keep writing to cells that no longer exist — same guard
+    // TetrisHero.astro uses for its own ambientGeneration.
+    let generation = 0;
+
+    function applyStage(stage: number, gen: number) {
+      currentStage = stage;
+      if (gen !== generation) return;
+      const count = stageCounts[stage] ?? 0;
+      pool.forEach((cell, i) => cell.classList.toggle('on', i < count));
+      // The notch is the gap the fill leaves behind, so it only makes sense
+      // once there's a stack around it — hidden entirely at stage 0 so an
+      // empty well is truly empty, not a lone outline floating in nothing.
+      notchCellEls.forEach((cell) => (cell.style.visibility = stage > 0 ? 'visible' : 'hidden'));
+    }
+
+    function buildWell() {
+      generation++;
+      const gen = generation;
+      const w = well.clientWidth;
+      const h = well.clientHeight;
+      if (w === 0 || h === 0) return;
+
+      const cols = Math.max(6, Math.floor((w + GAP) / (CELL_SIZE + GAP)));
+      const rows = Math.max(4, Math.floor((h + GAP) / (CELL_SIZE + GAP)));
+      well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      well.innerHTML = '';
+
+      // A 2x2 gap sitting in the well's most-visible zone (matching the mask
+      // center below) so the one spot only a real send ever fills is actually
+      // seen waiting — placed in the lower-middle, reading as a gap in the
+      // stack rather than a hole at the very floor.
+      const notchCol = Math.max(1, Math.floor(cols * 0.44));
+      const notchRow = Math.max(1, Math.floor(rows * 0.66));
+      const notchCells = new Set([
+        notchRow * cols + notchCol, notchRow * cols + notchCol + 1,
+        (notchRow + 1) * cols + notchCol, (notchRow + 1) * cols + notchCol + 1,
+      ]);
+
+      // Cells that would land behind the copy column are excluded so the
+      // heading/lede never sit on lit blocks (the card's own region needs no
+      // such treatment — it's opaque and hides whatever's behind it). Measured
+      // from the copy's real box rather than a hardcoded fraction, so it stays
+      // correct if the layout changes; a small margin pads it out.
+      const copyEl = band.querySelector<HTMLElement>('.contact-copy');
+      const wellRect = well.getBoundingClientRect();
+      const inCopyZone = (col: number, row: number) => {
+        if (!copyEl || wellRect.width === 0 || wellRect.height === 0) return false;
+        const c = copyEl.getBoundingClientRect();
+        const M = 0.03;
+        const fx = col / cols, fy = row / rows;
+        return (
+          fx >= (c.left - wellRect.left) / wellRect.width - M &&
+          fx <= (c.right - wellRect.left) / wellRect.width + M &&
+          fy >= (c.top - wellRect.top) / wellRect.height - M &&
+          fy <= (c.bottom - wellRect.top) / wellRect.height + M
+        );
+      };
+
+      const candidates: number[] = [];
+      const startRow = Math.floor(rows * 0.35);
+      for (let y = startRow; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const i = y * cols + x;
+          if (!notchCells.has(i) && !inCopyZone(x, y)) candidates.push(i);
+        }
+      }
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+      // Every candidate is now part of the fill pool — no always-on baseline,
+      // so the stage-0 count of 0 leaves the well genuinely blank.
+      stageCounts = STAGE_FRACTIONS.map((f) => Math.floor(candidates.length * f));
+
+      const cells: HTMLElement[] = [];
+      for (let i = 0; i < cols * rows; i++) {
+        const cell = document.createElement('div');
+        if (notchCells.has(i)) cell.className = 'notch';
+        well.appendChild(cell);
+        cells.push(cell);
+      }
+      pool = candidates.map((i) => cells[i]);
+      notchCellEls = [...notchCells].map((i) => cells[i]);
+      applyStage(currentStage, gen);
+    }
+
+    band.addEventListener('contact-progress', (e) => {
+      applyStage((e as CustomEvent<{ stage: number }>).detail.stage, generation);
+    });
+    band.addEventListener('contact-sent', () => applyStage(0, generation));
+
+    buildWell();
+    let resizeTimer: number | undefined;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(buildWell, 150);
+    });
+  }
+</script>
