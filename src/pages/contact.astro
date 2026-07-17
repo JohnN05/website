@@ -44,14 +44,13 @@ import ContactForm from '../components/ContactForm.astro';
   /* The waiting well. Cell on/off state is driven entirely by the script
      below (contact-progress / contact-sent) — nothing here reads form
      values directly, so the well stays inert if JS never runs. */
-  /* The mask keeps the well strongest in the open band left of and below the
-     form card, fading out before the far edges — NOT centered behind the
-     card (an earlier 76%-across center put the densest region squarely under
-     the opaque card, where it couldn't be seen, so the whole effect read as
-     faint stray texture). Centered at 46% across / 66% down: the cells only
-     exist below ~35% of the height, so 66% is the vertical midpoint of the
-     cell region itself, which keeps the top and bottom of the well fading at
-     the same rate rather than the top dropping out sooner. */
+  /* Soft vignette: the well fills nearly the whole section (cells run from
+     the second row down to the bottom now), staying solid through the middle
+     and only feathering off at the outermost edges. Centered near the middle
+     (50% / 52%) with a wide radius so the top rows read as filled rather than
+     fading out early — an earlier tighter ellipse centered low left the top
+     ~5 rows perpetually dim. The copy and card carve their own regions out
+     separately, so a fuller mask doesn't put cells behind text. */
   .well {
     position: absolute;
     inset: 0;
@@ -60,8 +59,8 @@ import ContactForm from '../components/ContactForm.astro';
     padding: var(--space-6);
     opacity: 0.85;
     filter: blur(0.4px);
-    mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
-    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
+    mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
   }
   /* Off cells stay nearly invisible — a faint hint of grid structure, not a
      checkerboard — so only the lit blocks (the form-progress pool) read as
@@ -289,7 +288,11 @@ import ContactForm from '../components/ContactForm.astro';
       };
 
       const candidates: number[] = [];
-      const startRow = Math.floor(rows * 0.35);
+      // Fill from the second row down, leaving a single empty row of margin
+      // along the very top so the well doesn't run flush to the section's top
+      // edge (the copy zone carve-out below still keeps the heading/lede
+      // clear separately).
+      const startRow = 1;
       for (let y = startRow; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const i = y * cols + x;
