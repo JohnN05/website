@@ -48,8 +48,10 @@ import ContactForm from '../components/ContactForm.astro';
      form card, fading out before the far edges — NOT centered behind the
      card (an earlier 76%-across center put the densest region squarely under
      the opaque card, where it couldn't be seen, so the whole effect read as
-     faint stray texture). Centered at 46% across / 62% down instead, so the
-     visible density lands in empty space. */
+     faint stray texture). Centered at 46% across / 66% down: the cells only
+     exist below ~35% of the height, so 66% is the vertical midpoint of the
+     cell region itself, which keeps the top and bottom of the well fading at
+     the same rate rather than the top dropping out sooner. */
   .well {
     position: absolute;
     inset: 0;
@@ -58,25 +60,25 @@ import ContactForm from '../components/ContactForm.astro';
     padding: var(--space-6);
     opacity: 0.85;
     filter: blur(0.4px);
-    mask-image: radial-gradient(ellipse 78% 68% at 46% 62%, black 0%, black 34%, transparent 80%);
-    -webkit-mask-image: radial-gradient(ellipse 78% 68% at 46% 62%, black 0%, black 34%, transparent 80%);
+    mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
+    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
     translate: var(--well-mx, 0px) var(--well-my, 0px);
     transition: translate 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
   /* Off cells stay nearly invisible — a faint hint of grid structure, not a
-     checkerboard — so only the lit blocks (baseline scatter + form-progress
-     pool) read as shapes against the wash. */
+     checkerboard — so only the lit blocks (the form-progress pool) read as
+     shapes against the wash. */
   .well :global(div) {
     border-radius: 2px;
     background: color-mix(in srgb, var(--color-text) 4%, transparent);
     transition: background-color 0.45s ease, opacity 0.45s ease, box-shadow 0.3s ease;
   }
   /* Lit cells carry enough of the T-piece hue to read as solid blocks against
-     the wash rather than blending into it — the whole point is that the well
-     is legible at rest. They sit in open space (never behind the card's text),
-     so a stronger fill costs no legibility elsewhere. */
+     the wash rather than blending into it, but stay light enough not to shout
+     — they sit in open space (never behind the card's text), so the fill is a
+     legibility call, not a contrast one. */
   .well :global(div.on) {
-    background: color-mix(in srgb, var(--tetris-t) 80%, var(--color-bg));
+    background: color-mix(in srgb, var(--tetris-t) 62%, var(--color-bg));
   }
   /* The gap only a real send ever fills — a slow breathing pulse rather than
      a static outline, foreshadowing the T-Spin instead of just sitting
@@ -222,11 +224,14 @@ import ContactForm from '../components/ContactForm.astro';
 
     const CELL_SIZE = 42;
     const GAP = 4;
-    const BASELINE_FRACTION = 0.22;
-    // Cumulative share of the (non-baseline) pool revealed at stage 0-3.
-    const STAGE_FRACTIONS = [0, 0.35, 0.65, 0.9];
+    // Cumulative share of the pool lit at each stage. Stage 0 (no fields
+    // filled) is deliberately empty — the well starts blank and fills only as
+    // the form does, so the backdrop reads as a direct response to typing
+    // rather than ambient decoration that happens to also react.
+    const STAGE_FRACTIONS = [0, 0.34, 0.64, 0.88];
 
     let pool: HTMLElement[] = [];
+    let notchCellEls: HTMLElement[] = [];
     let stageCounts: number[] = [0, 0, 0, 0];
     let currentStage = 0;
     // Bumped on every rebuild so a resize mid-animation can't have a stale
@@ -239,6 +244,10 @@ import ContactForm from '../components/ContactForm.astro';
       if (gen !== generation) return;
       const count = stageCounts[stage] ?? 0;
       pool.forEach((cell, i) => cell.classList.toggle('on', i < count));
+      // The notch is the gap the fill leaves behind, so it only makes sense
+      // once there's a stack around it — hidden entirely at stage 0 so an
+      // empty well is truly empty, not a lone outline floating in nothing.
+      notchCellEls.forEach((cell) => (cell.style.visibility = stage > 0 ? 'visible' : 'hidden'));
     }
 
     function buildWell() {
@@ -265,32 +274,51 @@ import ContactForm from '../components/ContactForm.astro';
         (notchRow + 1) * cols + notchCol, (notchRow + 1) * cols + notchCol + 1,
       ]);
 
+      // Cells that would land behind the copy column are excluded so the
+      // heading/lede never sit on lit blocks (the card's own region needs no
+      // such treatment — it's opaque and hides whatever's behind it). Measured
+      // from the copy's real box rather than a hardcoded fraction, so it stays
+      // correct if the layout changes; a small margin pads it out.
+      const copyEl = band.querySelector<HTMLElement>('.contact-copy');
+      const wellRect = well.getBoundingClientRect();
+      const inCopyZone = (col: number, row: number) => {
+        if (!copyEl || wellRect.width === 0 || wellRect.height === 0) return false;
+        const c = copyEl.getBoundingClientRect();
+        const M = 0.03;
+        const fx = col / cols, fy = row / rows;
+        return (
+          fx >= (c.left - wellRect.left) / wellRect.width - M &&
+          fx <= (c.right - wellRect.left) / wellRect.width + M &&
+          fy >= (c.top - wellRect.top) / wellRect.height - M &&
+          fy <= (c.bottom - wellRect.top) / wellRect.height + M
+        );
+      };
+
       const candidates: number[] = [];
       const startRow = Math.floor(rows * 0.35);
       for (let y = startRow; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const i = y * cols + x;
-          if (!notchCells.has(i)) candidates.push(i);
+          if (!notchCells.has(i) && !inCopyZone(x, y)) candidates.push(i);
         }
       }
       for (let i = candidates.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
       }
-      const baselineCount = Math.floor(candidates.length * BASELINE_FRACTION);
-      const baseline = new Set(candidates.slice(0, baselineCount));
-      const poolIndices = candidates.slice(baselineCount);
-      stageCounts = STAGE_FRACTIONS.map((f) => Math.floor(poolIndices.length * f));
+      // Every candidate is now part of the fill pool — no always-on baseline,
+      // so the stage-0 count of 0 leaves the well genuinely blank.
+      stageCounts = STAGE_FRACTIONS.map((f) => Math.floor(candidates.length * f));
 
       const cells: HTMLElement[] = [];
       for (let i = 0; i < cols * rows; i++) {
         const cell = document.createElement('div');
         if (notchCells.has(i)) cell.className = 'notch';
-        else if (baseline.has(i)) cell.className = 'on';
         well.appendChild(cell);
         cells.push(cell);
       }
-      pool = poolIndices.map((i) => cells[i]);
+      pool = candidates.map((i) => cells[i]);
+      notchCellEls = [...notchCells].map((i) => cells[i]);
       applyStage(currentStage, gen);
     }
 
