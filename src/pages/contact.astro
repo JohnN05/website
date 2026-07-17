@@ -270,10 +270,12 @@ import ContactForm from '../components/ContactForm.astro';
       };
     }
 
-    // Which cells the copy and card cover, computed analytically from each
-    // cell's pixel rect (no per-cell getBoundingClientRect — that was the whole
-    // reason the grid took ~2s to appear). Only the two content boxes are
-    // measured, once each.
+    // Which cells the copy covers, computed analytically from each cell's pixel
+    // rect (no per-cell getBoundingClientRect — that was the whole reason the
+    // grid took ~2s to appear). Only the copy is greyed out: it's bare text
+    // with no background, so lit blocks behind it would clash. The card is left
+    // out on purpose — its own frosted panel already covers whatever's behind
+    // it, so greying those cells too would just be a redundant hidden rectangle.
     function computeOcclusion(cols: number, rows: number) {
       occluded = new Set();
       const wellRect = well.getBoundingClientRect();
@@ -282,7 +284,7 @@ import ContactForm from '../components/ContactForm.astro';
       const cw = (wellRect.width - 2 * PAD - (cols - 1) * GAP) / cols;
       const ch = (wellRect.height - 2 * PAD - (rows - 1) * GAP) / rows;
       const M = 2; // px slack so a block peeking at a content edge still greys
-      const boxes = ['.contact-copy', '.contact-card']
+      const boxes = ['.contact-copy']
         .map((s) => band.querySelector<HTMLElement>(s))
         .filter((el): el is HTMLElement => el !== null)
         .map((el) => el.getBoundingClientRect());
