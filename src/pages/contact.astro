@@ -58,7 +58,6 @@ import ContactForm from '../components/ContactForm.astro';
     gap: 4px;
     padding: var(--space-6);
     opacity: 0.85;
-    filter: blur(0.4px);
     mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
     -webkit-mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
   }
@@ -295,7 +294,6 @@ import ContactForm from '../components/ContactForm.astro';
       lastRows = rows;
       well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
       well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-      well.innerHTML = '';
 
       // Fill from the second row down, leaving a single empty row of margin
       // along the very top so the well doesn't run flush to the section's top
@@ -314,10 +312,15 @@ import ContactForm from '../components/ContactForm.astro';
       }
       stageCounts = STAGE_FRACTIONS.map((f) => Math.floor(candidates.length * f));
 
-      cells = [];
+      // Build every cell into one fragment and insert it in a single DOM write
+      // rather than appending in a loop, so the whole grid lands in one paint.
+      cells = new Array(cols * rows);
+      const frag = document.createDocumentFragment();
       for (let i = 0; i < cols * rows; i++) {
-        well.appendChild((cells[i] = document.createElement('div')));
+        frag.appendChild((cells[i] = document.createElement('div')));
       }
+      well.innerHTML = '';
+      well.appendChild(frag);
       pool = candidates.map((i) => cells[i]);
       computeOcclusion(cols, rows);
       applyStage(currentStage, gen);
