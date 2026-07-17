@@ -193,7 +193,10 @@ import ContactForm from '../components/ContactForm.astro';
      the well-building script so they always match the grid actually drawn.
      Placement leaves one empty cell as padding on the left, top, and right,
      and one empty cell as the gap between the copy and the card. */
-  @media (min-width: 861px) {
+  /* Side-by-side grid only once there's room for two comfortable columns;
+     below this the mobile-first stacked column takes over, which has no
+     absolute overlay and so can't bump on resize at all. */
+  @media (min-width: 1080px) {
     .contact-band {
       display: block;
       padding: 0;
@@ -275,33 +278,55 @@ import ContactForm from '../components/ContactForm.astro';
       notchCellEls.forEach((cell) => (cell.style.visibility = stage > 0 ? 'visible' : 'hidden'));
     }
 
-    function buildWell() {
-      generation++;
-      const gen = generation;
+    // The column/row count the well grid resolves to at the current size.
+    // Kept so a resize can tell whether the cell grid actually changed (needs a
+    // rebuild) or only the pixel size did (content re-align only).
+    let lastCols = 0;
+    let lastRows = 0;
+
+    function gridDims() {
       const w = well.clientWidth;
       const h = well.clientHeight;
-      if (w === 0 || h === 0) return;
+      if (w === 0 || h === 0) return null;
+      return {
+        h,
+        cols: Math.max(6, Math.floor((w + GAP) / (CELL_SIZE + GAP))),
+        rows: Math.max(4, Math.floor((h + GAP) / (CELL_SIZE + GAP))),
+      };
+    }
 
-      const cols = Math.max(6, Math.floor((w + GAP) / (CELL_SIZE + GAP)));
-      const rows = Math.max(4, Math.floor((h + GAP) / (CELL_SIZE + GAP)));
-      well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-      well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-      well.innerHTML = '';
-
-      // Publish the grid the well actually drew to the band, so the content
-      // overlay (.contact-inner, desktop only) can place the copy and card on
-      // the same cell columns: one empty cell of padding on the left, top, and
-      // right, and one empty cell of gap between the two. Set before the
-      // copy-carve below so the carve measures the copy in its final grid spot.
+    // Publish the grid the well draws to the band so the desktop content
+    // overlay can place the copy and card on the same cell columns: one empty
+    // cell of padding on the left, top, and right, and one empty cell of gap
+    // between the two (the card gets priority on width; the copy takes what's
+    // left). Runs on every resize frame — cheap, no DOM rebuild — so the
+    // content tracks the window continuously and the two never bump.
+    function setContentVars({ h, cols, rows }: { h: number; cols: number; rows: number }) {
       const PAD_PX = parseFloat(getComputedStyle(well).paddingTop) || 32;
       const cellHpx = (h - 2 * PAD_PX - (rows - 1) * GAP) / rows;
       const usable = cols - 2; // one padding cell on each side
-      const copySpan = Math.max(6, Math.round(usable * 0.4));
-      const cardSpan = usable - 1 - copySpan; // the -1 is the gap cell
+      const cardSpan = Math.max(8, Math.round(usable * 0.55));
+      const copySpan = Math.max(1, usable - 1 - cardSpan); // the -1 is the gap cell
       band.style.setProperty('--cols', String(cols));
       band.style.setProperty('--copy-span', String(copySpan));
       band.style.setProperty('--card-span', String(cardSpan));
       band.style.setProperty('--row-pitch', `${(cellHpx + GAP).toFixed(2)}px`);
+    }
+
+    function buildWell() {
+      generation++;
+      const gen = generation;
+      const dims = gridDims();
+      if (!dims) return;
+      const { cols, rows } = dims;
+      lastCols = cols;
+      lastRows = rows;
+      // Set the content vars before the copy-carve below so the carve measures
+      // the copy in its final grid spot.
+      setContentVars(dims);
+      well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      well.innerHTML = '';
 
       // A 2x2 gap sitting in the well's most-visible zone (matching the mask
       // center below) so the one spot only a real send ever fills is actually
@@ -372,10 +397,20 @@ import ContactForm from '../components/ContactForm.astro';
     band.addEventListener('contact-sent', () => applyStage(0, generation));
 
     buildWell();
-    let resizeTimer: number | undefined;
+    // On resize, re-align the content every animation frame (cheap) so it
+    // never lags the window, but only rebuild the well's cells when the
+    // column/row count actually changes — restretching the existing 1fr tracks
+    // already covers every in-between size with no flicker or gap.
+    let rafId = 0;
     window.addEventListener('resize', () => {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(buildWell, 150);
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        const dims = gridDims();
+        if (!dims) return;
+        setContentVars(dims);
+        if (dims.cols !== lastCols || dims.rows !== lastRows) buildWell();
+      });
     });
   }
 </script>
