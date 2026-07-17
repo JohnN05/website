@@ -50,7 +50,7 @@ import ContactForm from '../components/ContactForm.astro';
     display: grid;
     gap: 4px;
     padding: var(--space-6);
-    opacity: 0.6;
+    opacity: 0.7;
     filter: blur(0.5px);
     mask-image: radial-gradient(ellipse 80% 65% at 76% 58%, black 0%, black 30%, transparent 74%);
     -webkit-mask-image: radial-gradient(ellipse 80% 65% at 76% 58%, black 0%, black 30%, transparent 74%);
@@ -196,19 +196,23 @@ import ContactForm from '../components/ContactForm.astro';
   // same beat as the card's own line clear.
   //
   // Purely decorative (aria-hidden on the container) and never the source of
-  // truth for anything — under reduced motion this whole block never runs,
-  // same convention as ContactForm.astro's own tspin-stage, and the well
-  // renders as a plain empty backdrop instead.
+  // truth for anything. Unlike ContactForm.astro's own tspin-stage (a
+  // one-shot transient overlay that's fine to skip entirely), this well is
+  // persistent background chrome — same category as TetrisHero's ambient
+  // board, which still shows a static frame under reduced motion rather than
+  // nothing. So the well always builds; only the CONTINUOUS animations
+  // (notch breathing, cursor-parallax) are gated off, via the CSS media
+  // query above and the pointer check below respectively.
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarsePointer = matchMedia('(pointer: coarse)').matches;
 
-  if (!reducedMotion) {
+  {
     const band = document.getElementById('contact-band') as HTMLElement;
     const well = document.getElementById('contact-well') as HTMLElement;
 
     const CELL_SIZE = 42;
     const GAP = 4;
-    const BASELINE_FRACTION = 0.16;
+    const BASELINE_FRACTION = 0.22;
     // Cumulative share of the (non-baseline) pool revealed at stage 0-3.
     const STAGE_FRACTIONS = [0, 0.35, 0.65, 0.9];
 
@@ -291,9 +295,10 @@ import ContactForm from '../components/ContactForm.astro';
       resizeTimer = window.setTimeout(buildWell, 150);
     });
 
-    // Cursor-parallax on the well, fine-pointer only — a touch scroll has no
-    // persistent cursor position for this to read.
-    if (!coarsePointer) {
+    // Cursor-parallax on the well: fine-pointer only (a touch scroll has no
+    // persistent cursor position to read) and motion-allowed only (this one
+    // IS continuous motion, unlike the static grid above).
+    if (!coarsePointer && !reducedMotion) {
       const MAX_PX = 14;
       band.addEventListener('mousemove', (e) => {
         const r = band.getBoundingClientRect();
