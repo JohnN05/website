@@ -8,12 +8,12 @@ space for project write-ups and a few subtle hobby-inspired interactive
 details (Tetris, Minesweeper, butterfly-knife-flip toggle, capybara easter
 egg). This file describes the site as actually built, not just as planned.
 
-**Status:** feature-complete through a full design-review pass; only review
-item 8 (a small residual typography-contrast audit — see
-`docs/2026-07-16-design-review-next-steps.md`) is still open. Verified via
+**Status:** feature-complete through a full design-review pass, including
+item 8's typography-contrast audit (see
+`docs/2026-07-16-design-review-next-steps.md`) — nothing open. Verified via
 `npm run test:all` (typecheck + unit + build + e2e/axe) in a real browser;
-CI (`.github/workflows/ci.yml`) runs the same gate on every push/PR. All work
-lives on `worktree-website-revamp`, not yet merged to `main`.
+CI (`.github/workflows/ci.yml`) runs the same gate on every push/PR.
+`worktree-website-revamp` is merged to `main`.
 
 Major passes, each building on the last (full task-by-task detail and bugs
 found live in `docs/superpowers/plans/*.md`; smaller passes ran directly off

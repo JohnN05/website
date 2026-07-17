@@ -62,6 +62,7 @@ const featured = selectFeatured(
 
   <section class="featured" data-scroll-section>
     <div class="featured-inner">
+      <p class="eyebrow" data-reveal>Selected work</p>
       <h2 data-reveal>Featured projects</h2>
       <div class="project-grid" data-depth="0.08">
         {featured.map((p) => <ProjectCard project={p} showCover={true} />)}
@@ -318,6 +319,19 @@ const featured = selectFeatured(
   }
   .featured-inner {
     width: 100%;
+  }
+  .featured-inner .eyebrow {
+    margin: 0 0 var(--space-4);
+  }
+  /* Matches teaching's h2 scale (both are section headers introducing a grid
+     of content, not bio's smaller conversational greeting) — previously
+     unsized, so this h2 fell back to the browser default (~1.5em) and read
+     noticeably smaller than every sibling Home section heading. */
+  .featured-inner h2 {
+    font-size: clamp(2rem, 3.6vw, 2.6rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-6);
   }
   .project-grid {
     display: grid;

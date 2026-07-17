@@ -198,14 +198,24 @@ Effort is rough (S/M/L). "Mock-first" means an approved Artifact mock before
 touching components. Every visual item here is mock-first. Items 1–7 are done
 (see the Done sections above); **8 and the per-page cleanups remain.**
 
-### 8. Typography contrast · S · partly done
+### 8. Typography contrast · S · DONE
 The page reads mostly in two faces at a narrow heading scale. The review wants
 one genuinely bold scale moment against small mono labels, and mono doing more
 than eyebrows.
 - **Item 3's impact row already delivered the bold-number-vs-mono-label
-  moment.** What's left is smaller: audit whether any other heading wants the
-  contrast, and lean on IBM Plex Mono for project meta / section markers (which
-  overlaps item 4). Largely a cleanup, not a build.
+  moment.** What remained was the audit: **Home's "Featured projects" `<h2>`
+  turned out to have no `font-size` rule at all**, falling back to the browser
+  default (~1.5em) — every sibling Home section (hero, bio, teaching) pairs a
+  sized heading with a mono eyebrow above it; featured had neither. Fixed by
+  giving it the same scale as teaching's `<h2>`
+  (`clamp(2rem, 3.6vw, 2.6rem)`, since both are section headers introducing a
+  content grid — bio's smaller scale is a deliberate, different tier, a
+  conversational greeting next to a portrait) and adding a `Selected work`
+  mono eyebrow above it (same copy `/projects` already uses for the same
+  section, so the two pages agree). No other heading sitewide was missing a
+  size — this was the one real gap. Verified: full `test:all` green
+  (typecheck, unit, build, 73/73 e2e + axe), plus a live dev-server pass in
+  both themes confirming the heading now matches teaching's scale exactly.
 
 ---
 
@@ -239,14 +249,8 @@ card spans full width on desktop and stacks to one column on mobile.
 
 ## Recommended sequence (remaining)
 
-Items 1–7 shipped. What's left, ordered by ratio of impact to risk:
-
-1. **Item 8 (typography)** — now largely closed: item 3 gave the impact row and
-   item 6 gave the bold article title. What remains is a small audit + leaning
-   on IBM Plex Mono where it fits. The only item still open.
-
-All three per-page cleanups (`/404`, `/contact`, `/projects` hierarchy) are
-now done.
+Items 1–8 and all three per-page cleanups are done. Nothing left in this
+review pass.
 
 Each visual step: Artifact mock → approval → live dev-server pass → port into
 `.astro` → run the `test:all` gate before commit.
