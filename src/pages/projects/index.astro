@@ -8,6 +8,7 @@ const published = await getCollection('projects', ({ data }) => !data.draft);
 const projects = published
   .map((entry) => ({ slug: entry.slug, ...entry.data }))
   .sort(byDateDesc);
+const [newestProject, ...restProjects] = projects;
 ---
 <BaseLayout title="Projects — John Ng">
   <div class="intro-band">
@@ -19,9 +20,16 @@ const projects = published
   </div>
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--color-bg);"></div>
   <div class="grid-wrap">
-    <div class="project-grid">
-      {projects.map((project) => <ProjectCard project={project} showCover={true} />)}
-    </div>
+    {newestProject && (
+      <div class="featured-row">
+        <ProjectCard project={newestProject} showCover={true} featured={true} />
+      </div>
+    )}
+    {restProjects.length > 0 && (
+      <div class="project-grid">
+        {restProjects.map((project) => <ProjectCard project={project} showCover={true} />)}
+      </div>
+    )}
   </div>
 </BaseLayout>
 <style>
@@ -69,6 +77,9 @@ const projects = published
     max-width: 72rem;
     margin: 0 auto;
     padding: var(--space-7) var(--space-5) var(--space-8);
+  }
+  .featured-row {
+    margin-bottom: var(--space-6);
   }
   .project-grid {
     display: grid;

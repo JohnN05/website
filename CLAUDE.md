@@ -1006,6 +1006,34 @@ the dev server (Playwright, both themes) to confirm the board scales, the reply
 fades, and the revealed numbers/home-link read in dark mode. T-spin timing/scale
 and the exact wash/panel values remain open to live eyeball tuning.
 
+A sixth pass (no plan doc, direct user request; tracked in
+`docs/2026-07-16-design-review-next-steps.md`) closed the last remaining
+per-page cleanup, `/projects` hierarchy: as the project count grows, the flat
+`auto-fit` grid reads as a spreadsheet, with nothing telling the eye where to
+start. Mock-first in an Artifact (a before/after of the flat grid vs. a
+featured-row treatment) before touching components. `ProjectCard.astro` gained
+a `featured` prop: `projects/index.astro` now splits `projects[0]` (already
+sorted `byDateDesc`, so the newest by date, not a manually-flagged field —
+distinct from the unrelated `featured: true` frontmatter flag Home's preview
+reads) off into its own full-width `.featured-row`, with the rest in the same
+`.project-grid` as before. The featured card is a horizontal split (cover
+left ~38%, copy right) with a bigger glyph, a Bricolage headline at
+`clamp(1.5rem, 2.6vw, 2.1rem)`, and a `Latest →` label in the card's own
+`--cover-accent`, colored via real DOM text rather than a `::before` content
+trick — decided deliberately, since generated content's screen-reader
+announcement is inconsistent and this label conveys real information (which
+project is newest), not decoration. Its background reuses `--wash-featured`
+(the same clay-mixed tint Home's featured section already wears) rather than
+an invented color, keeping "hierarchy by size and position" the only new
+idea instead of a new palette too. Below the 700px breakpoint the featured
+card collapses to a single column, same as the rest of the grid always has.
+Verified by the controller directly: full `test:all` — typecheck, 92 unit,
+clean build, and **76/76 e2e + axe** green in this sandbox's real browser
+(the axe sweep covers the redesigned `/projects`); also driven live against
+the dev server in both themes and at a 400px viewport to confirm the
+featured card spans the full row on desktop, stacks on mobile, and the rest
+grid is untouched (3 cards).
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate

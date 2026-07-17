@@ -3,7 +3,8 @@
 _Working doc, 2026-07-16. Tracks the remaining items from
 `docs/2026-07-16-design-review.md`. Items 1–7 done across four passes (commits
 `5bb3352`/`7010fe9`, `fbf0898`, the article-header pass, and the bio-portrait
-pass below); 8 and the per-page cleanups remain. Not a spec — each visual item
+pass below); all three per-page cleanups done across a fifth and sixth pass;
+only item 8's small remaining audit is open. Not a spec — each visual item
 still gets its own
 Artifact mock approved before any component change, per the repo's mock-first
 workflow._
@@ -216,10 +217,23 @@ than eyebrows.
 - ~~**`/contact` on-brand touch · S**~~ — **DONE** (fifth pass). Landed as the
   send-is-a-T-spin animation rather than a resting-card ornament — the motif is
   tied to the real completion, not bolted on.
-- **`/projects` hierarchy · M** — as the project count grows, the flat
-  `auto-fit` grid will read as a spreadsheet. Let the newest project span wider
-  (a featured row) for hierarchy. Not urgent at 4 projects; revisit when it
-  grows.
+- ~~**`/projects` hierarchy · M**~~ — **DONE** (sixth pass). The newest
+  project (`projects[0]`, already `byDateDesc`) now spans a full-width
+  `.featured-row` above the rest of the grid — bigger cover, bigger title,
+  the `--wash-featured` tint, a `Latest →` label — instead of sitting flush
+  with everything else.
+
+---
+
+## Done (sixth pass — `/projects` hierarchy)
+
+`ProjectCard.astro` gained a `featured` prop; `projects/index.astro` splits
+the newest project off into its own `.featured-row`, everything else stays
+in the same `.project-grid`. Mock-first in an Artifact (flat grid vs.
+featured-row before/after) before porting. Full `test:all` green (typecheck,
+92 unit, clean build, 76/76 e2e + axe including the `/projects` sweep), plus
+a live dev-server pass in both themes and at 400px confirming the featured
+card spans full width on desktop and stacks to one column on mobile.
 
 ---
 
@@ -229,9 +243,10 @@ Items 1–7 shipped. What's left, ordered by ratio of impact to risk:
 
 1. **Item 8 (typography)** — now largely closed: item 3 gave the impact row and
    item 6 gave the bold article title. What remains is a small audit + leaning
-   on IBM Plex Mono where it fits.
-2. **Page cleanups** (`/404`, `/contact`, `/projects` hierarchy) — as they come
-   up; none block the above.
+   on IBM Plex Mono where it fits. The only item still open.
+
+All three per-page cleanups (`/404`, `/contact`, `/projects` hierarchy) are
+now done.
 
 Each visual step: Artifact mock → approval → live dev-server pass → port into
 `.astro` → run the `test:all` gate before commit.
