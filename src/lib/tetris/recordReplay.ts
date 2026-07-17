@@ -1,6 +1,6 @@
 import { createAmbientDemo, stepAmbientDemo } from './ambientDemo';
 import { chooseBestPlacement } from './autoplay';
-import { landingRow, type Cell, type PieceType } from './engine';
+import { landingRow, boardWithPiece, fullRowIndices, type Cell, type PieceType } from './engine';
 
 export interface PieceEvent {
   /** Tetromino identity — drives cell color. */
@@ -72,4 +72,35 @@ export function recordGame(cols: number, rows: number): Recording {
   }
 
   return { cols, rows, pieces };
+}
+
+export function emptyBoard(cols: number, rows: number): Cell[][] {
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => null as Cell)
+  );
+}
+
+/**
+ * Locks a recorded piece into the settled board and clears any full rows,
+ * dropping the stack — the pure board half of what the runtime player renders.
+ * clearedRows is recomputed here rather than trusted from the event so the
+ * player never depends on the recorder agreeing with it; the fold-consistency
+ * test proves they do agree for the committed recording.
+ */
+export function applyReplayEvent(board: Cell[][], ev: PieceEvent): Cell[][] {
+  const cols = board[0].length;
+  const placed = boardWithPiece(board, {
+    type: ev.type,
+    rotation: ev.rotation,
+    x: ev.x,
+    y: ev.landingY,
+  });
+  const full = fullRowIndices(placed);
+  if (full.length === 0) return placed;
+  const fullSet = new Set(full);
+  const kept = placed.filter((_, y) => !fullSet.has(y));
+  const empties = Array.from({ length: full.length }, () =>
+    Array.from({ length: cols }, () => null as Cell)
+  );
+  return [...empties, ...kept];
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { recordGame, type PieceEvent } from './recordReplay';
-import { cellsFor } from './engine';
+import { recordGame, type PieceEvent, emptyBoard, applyReplayEvent } from './recordReplay';
+import { cellsFor, boardWithPiece, fullRowIndices } from './engine';
 
 const PIECES = new Set(['I', 'O', 'T', 'S', 'Z', 'J', 'L']);
 
@@ -57,5 +57,50 @@ describe('recordGame', () => {
 
   it('is deterministic across runs', () => {
     expect(recordGame(16, 14)).toEqual(rec);
+  });
+});
+
+describe('applyReplayEvent', () => {
+  it('emptyBoard is rows x cols of nulls', () => {
+    const b = emptyBoard(16, 14);
+    expect(b.length).toBe(14);
+    expect(b[0].length).toBe(16);
+    expect(b.flat().every((c) => c === null)).toBe(true);
+  });
+
+  it('folding the recording reproduces every recorded clearedRows', () => {
+    const rec = recordGame(16, 14);
+    let board = emptyBoard(rec.cols, rec.rows);
+    for (const ev of rec.pieces) {
+      // The clear the player would compute from its own reconstructed board
+      // must equal what the recorder captured — otherwise the settled board
+      // would drift from the recorded flight and pieces would land wrong.
+      const placed = boardWithPiece(board, {
+        type: ev.type, rotation: ev.rotation, x: ev.x, y: ev.landingY,
+      });
+      expect(fullRowIndices(placed)).toEqual(ev.clearedRows);
+      board = applyReplayEvent(board, ev);
+    }
+  });
+
+  it('clears full rows and drops the stack', () => {
+    // Bottom row filled in cols 0,1 only. An O at origin x=1 occupies cols 2,3
+    // (its cells are dx 1,2 from the origin) across rows 2 and 3, so it
+    // completes row 3 exactly — and leaves its top half floating in row 2.
+    let board = emptyBoard(4, 4);
+    board[3] = ['I', 'I', null, null];
+    const ev: PieceEvent = {
+      type: 'O', rotation: 0, spawnX: 1, x: 1, landingY: 2, clearedRows: [3],
+    };
+    const after = applyReplayEvent(board, ev);
+    expect(after.length).toBe(4);
+    // The completed row is gone (no full row survives)...
+    expect(fullRowIndices(after)).toEqual([]);
+    // ...the O cells that were sitting above it drop onto the floor...
+    expect(after[3]).toEqual([null, null, 'O', 'O']);
+    // ...and a fresh empty row is unshifted at the top. Every one of these
+    // turns red if the clear / unshift / drop logic breaks — unlike the
+    // previous fixture, whose O landed off-board so no row ever completed.
+    expect(after[0].every((c) => c === null)).toBe(true);
   });
 });
