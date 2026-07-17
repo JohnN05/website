@@ -213,9 +213,8 @@ import ContactForm from '../components/ContactForm.astro';
 
     let pool: HTMLElement[] = [];
     let cells: HTMLElement[] = [];
-    // Cells sitting behind the copy or the card. They're never lit — they stay
-    // the resting grey — so the content greys out exactly the blocks it covers,
-    // by the content's real box shape. Recomputed on resize (cheap) so it stays
+    // Cells sitting behind the copy. They're never lit — they stay the resting grey —
+    // so the text doesn't sit on lit blocks. Recomputed on resize (cheap) so it stays
     // accurate as the centered content shifts, without rebuilding the grid.
     let occluded = new Set<HTMLElement>();
     let stageCounts: number[] = [0, 0, 0, 0];
