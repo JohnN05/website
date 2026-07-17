@@ -83,8 +83,9 @@ Every interactive widget splits into two layers:
 - **Pure logic** in `src/lib/` (`theme.ts`, `projects.ts`, `contactForm.ts`,
   `tags.ts`, `parallax.ts`, `nameplate.ts`,
   `tetris/engine.ts` + `tetris/bag.ts` + `tetris/autoplay.ts` +
-  `tetris/ambientDemo.ts`, `minesweeper/engine.ts`) — no DOM, no I/O, fully
-  unit-tested with Vitest.
+  `tetris/ambientDemo.ts` + `tetris/recordReplay.ts` (offline recorder +
+  replay-board reducer) + `tetris/heroReplay.ts` (generated baked game),
+  `minesweeper/engine.ts`) — no DOM, no I/O, fully unit-tested with Vitest.
 - **DOM wiring** in the matching `.astro` component's `<script>` block —
   imports the pure module, renders/re-renders the DOM, handles events.
   Covered by Playwright e2e, not unit tests.
@@ -213,34 +214,51 @@ load through one Google Fonts `css2` link in `BaseLayout.astro`.
 ## Hobby details
 
 **Tetris ambient hero** (`TetrisHero.astro` + `src/lib/tetris/*`) — decorative
-only, no play overlay. Real 7-bag randomization (`bag.ts`) and a genuine
-heuristic AI (`autoplay.ts`'s `chooseBestPlacement`, scoring by holes,
-bumpiness, aggregate height, and lines cleared) choose each placement, so the
-animation shows real variety. Below a 75% stack-height threshold
-(`BUILD_UP_HEIGHT_RATIO`), a clear is actively *penalized* rather than merely
-unweighted — a zero-weight version looked right in isolation but changed
-nothing, since a clear's height drop already scores well on its own; that
-weighting decision lives entirely inside `chooseBestPlacement` (derived from
-`state.board`) so `ambientDemo.ts` and `TetrisHero.astro` share one source of
-truth instead of two call sites that could silently diverge. Wall kicks and
-T-spin scoring (`isTSpin`/`rotate`/`lockPiece` in `engine.ts`) back the
-ambient loop; the board resets only on a genuine top-out, not a heuristic
-"this looks bad" reset (tried once, read as a random restart). Cleared rows
-flash before disappearing.
+only, no play overlay. It replays one **pre-recorded** game rather than
+computing moves live. An offline pure recorder (`recordReplay.ts`'s
+`recordGame`) runs the deterministic ambient demo once — spawn to a genuine
+top-out — and bakes the resulting ~124-piece event array into the generated
+`heroReplay.ts` (a drift-guard test deep-equals it to a fresh recording;
+regenerate after any engine/autoplay/bag/grid change). At runtime a tiny
+player walks that array. The recorded placements still come from the real
+heuristic AI (`autoplay.ts`'s `chooseBestPlacement`, scoring holes/bumpiness/
+aggregate-height/lines, with a below-`BUILD_UP_HEIGHT_RATIO` build-up-before-
+clear penalty) over 7-bag randomization, so the motion shows real variety —
+but that AI now runs **once offline at record time, not per cycle**. Wall
+kicks / T-spin scoring (`engine.ts`) back the recorded game; the board resets
+and the loop restarts only at the recorded top-out. Cleared rows flash before
+disappearing. A recorded piece's `x`/`landingY` is its **origin**, negative
+for wall-hugging rotations, and the terminal top-out piece has a cell above
+the ceiling — both intended (`boardWithPiece` clips the overflow); validity is
+"placed cells on-board", not "origin in [0,cols)".
 
-The board renders as two stacked full-hero-width layers (a blurred "soft"
-layer + a sharp "crisp" layer) masked by hand-tuned `--tetris-mask-*` gradient
-stops for a depth-of-field falloff — the values are tuned against screenshots,
-not a formula. Cols/rows/cell size are computed from the container's real box
-at runtime (not hardcoded to 10×20), recomputed on resize via
-`setupAmbientBoard()`, with an `ambientGeneration` counter so an in-flight
-animation from before a resize bails instead of animating into stale
-coordinates. Each piece plays a real spawn→turn→fall cycle using CSS
-`steps()` (not eased) for a blocky, snap-to-grid feel — narrower and
-deliberately different from the smooth easing every other hobby detail uses.
-The whole loop is gated off entirely when its container has no real box
-(hidden below the mobile breakpoint) — derived from the container's own
-size, not a second hardcoded breakpoint check.
+This replaced an earlier live loop that re-ran `chooseBestPlacement` and
+rebuilt the whole board DOM 2–4×/sec, re-blurring a 70%-viewport surface every
+mutation (the reported lag on weaker browsers). The falling piece now moves by
+a `transform` on a **pre-blurred wrapper** — `.piece-wrap-*` carries the
+`filter: blur`, while the `--tetris-mask-*` depth-of-field mask stays on the
+fixed `.piece-layer-*` parent — so the blurred raster is cached once and
+re-composited per step instead of re-rasterized; the settled board reblurs
+only on lock (~1×/piece), never per cycle. Do NOT reintroduce `left`/`top`
+animation on the piece cells or move the blur onto the moving layer — that
+reopens the reblur cost this change removes. The lock continuation commits the
+board and advances the replay index atomically *before* the interruptible
+line-clear flash, so a pause landing mid-flash can't replay the same piece.
+
+The board still renders as two stacked full-hero-width soft+crisp layers with
+the hand-tuned `--tetris-mask-*` stops (tuned against screenshots, not a
+formula). The grid is now a **fixed** `COLS_H × ROWS_H` (16×14, in
+`heroReplay.ts`) whose cells scale to fill the hero via `1fr` — recorded
+coordinates stay valid at any width, so resize only rescales cell pixels
+(`setupGrid()`), no board rebuild; a `generation` counter still makes an
+in-flight timeout chain bail after a resize/pause instead of animating into
+replaced state. Each piece plays a spawn→turn→fall cycle using CSS `steps()`
+(not eased) for a blocky snap. Pause guards freeze the loop when off-screen
+(IntersectionObserver), backgrounded (`visibilitychange`), or under reduced
+motion; `shouldRun()` gates on both the container having a real box (mobile
+`display:none` → 0×0, no second hardcoded breakpoint) **and** actual viewport
+intersection (`inView`, kept current by the observer — the sole viewport
+authority — so a tab refocus can't resume an off-screen loop).
 
 **"JOHN NG" wordmark** (`PieceMark.astro`) — on every route. J and O (the
 only letters in "JOHN NG" that also name real tetrominoes) reveal themselves
@@ -355,7 +373,10 @@ Verified sitewide by `tests/e2e/accessibility.spec.ts`: an
 routes, a skip-link-is-first-tab-stop check, and a reduced-motion check that
 the Tetris ambient loop freezes on a static frame. `tests/e2e/nav.spec.ts`
 covers the rail and mobile drawer; `tests/e2e/wordmark.spec.ts` covers the
-"JOHN NG" mark's reveal, ownership, and reduced-motion behavior.
+"JOHN NG" mark's reveal, ownership, and reduced-motion behavior;
+`tests/e2e/tetris-hero.spec.ts` covers the baked-replay player (piece-cycle
+advances, reduced-motion freeze, loop keeps advancing without stalling — the
+124-piece top-out wraparound is inspection-covered, too slow to drive in e2e).
 
 Two testing lessons worth keeping, both found by a dedicated audit of this
 suite:
