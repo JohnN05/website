@@ -60,10 +60,17 @@ test('desktop: ambient piece animates from spawn through fall before merging', a
   const crispLayer = page.locator('#tetris-piece-crisp');
   await expect(crispLayer.locator('.cell')).toHaveCount(4);
 
-  const spawnTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
+  // Since the baked-replay rewrite, motion is a transform on the WRAPPER
+  // (#tetris-piece-crisp itself), not left/top on each cell — cells are laid
+  // out once per spawn at their shape-relative offsets and never touched
+  // again during the flight (see layoutPieceCells/originTransform in
+  // TetrisHero.astro; the wrapper's blur is rasterized once, so translating
+  // it reuses that raster instead of re-blurring every step). Read the
+  // wrapper's own transform, which is what actually carries the piece.
+  const spawnTransform = await crispLayer.evaluate((el) => (el as HTMLElement).style.transform);
   await page.waitForTimeout(450); // safely inside the fall phase (300ms turn + up to 220ms fall = 520ms merge point); avoids the 520-720ms window where the piece layers are briefly empty between merge and the next spawn
-  const laterTop = await crispLayer.locator('.cell').first().evaluate((el) => (el as HTMLElement).style.top);
-  expect(laterTop).not.toBe(spawnTop);
+  const laterTransform = await crispLayer.evaluate((el) => (el as HTMLElement).style.transform);
+  expect(laterTransform).not.toBe(spawnTransform);
 });
 
 test('desktop: ambient piece stays a rigid shape while turning, sliding rather than scrambling into its rotation', async ({ page }) => {
