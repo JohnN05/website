@@ -18,6 +18,12 @@ export default defineConfig({
     // trade this repo wants: a loud failure beats a false green. Stop the dev
     // server before running e2e.
     reuseExistingServer: false,
+    // Default 60s is too tight for a cold `build && preview` on this repo's
+    // /mnt/c (WSL2) checkout — the filesystem itself is slow enough that a
+    // clean build can still be mid-write past 60s, so Playwright kills the
+    // webServer and leaves dist/ half-written. Bumped, not removed: a genuine
+    // hang should still fail loud rather than wait forever.
+    timeout: 180_000,
   },
   use: {
     baseURL: 'http://localhost:4321',

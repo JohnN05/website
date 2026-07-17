@@ -2,7 +2,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import TetrisHero from '../components/TetrisHero.astro';
-import TetrisWell from '../components/TetrisWell.astro';
 import PieceMark from '../components/PieceMark.astro';
 import { getCollection } from 'astro:content';
 import { selectFeatured } from '../lib/projects';
@@ -20,7 +19,7 @@ const featured = selectFeatured(
       any script to mark the hero resting in time — only markup gets there
       first. If a deliberate hero load-in is ever wanted, it needs its own
       mechanism; do not get it by deleting this class. */}
-  <section class="hero in" data-scroll-section data-band="j">
+  <section class="hero in" data-scroll-section>
     <div class="hero-copy" data-depth="0.05">
       <button class="nameplate" id="nameplate" type="button" data-reveal>
         <PieceMark layout="inline" reveals={true} trigger="load" />
@@ -33,7 +32,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--wash-bio);"></div>
 
-  <section class="bio" data-scroll-section data-band="o">
+  <section class="bio" data-scroll-section>
     <div class="bio-inner">
       {/* Portrait as an O-piece dissolve. Server-rendered cells (no runtime
           createElement), so ordinary Astro scoping applies. The core is the
@@ -42,8 +41,7 @@ const featured = selectFeatured(
           exactly over the notch, so at rest — reduced motion, no JS — the whole
           thing reads as one clean square. role="img"/aria-label carries the
           identity the old <img alt> did; the click-to-toggle is a decorative
-          enhancement, not an AT control. Bio drops the gold O in the scroll-well
-          (see TetrisWell.astro / CLAUDE.md), so its portrait is the O too. */}
+          enhancement, not an AT control. */}
       <div class="bio-frame" data-reveal data-depth="0.1" role="img" aria-label="John Ng">
         <div class="core"></div>
         <div class="blk o1"><span class="fill"></span><span class="flash"></span></div>
@@ -62,7 +60,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
 
-  <section class="featured" data-scroll-section data-band="l">
+  <section class="featured" data-scroll-section>
     <div class="featured-inner">
       <h2 data-reveal>Featured projects</h2>
       <div class="project-grid" data-depth="0.08">
@@ -73,7 +71,7 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
 
-  <section class="teaching" data-scroll-section data-band="i">
+  <section class="teaching" data-scroll-section>
     <div class="teaching-inner" data-depth="0.06">
       <p class="eyebrow" data-reveal>Teaching</p>
       <h2 data-reveal>I teach as much as I build.</h2>
@@ -96,8 +94,6 @@ const featured = selectFeatured(
   </section>
 
   <div class="seam" style="--seam-from: var(--wash-teaching); --seam-to: var(--color-bg);"></div>
-
-  <TetrisWell />
 </BaseLayout>
 <style>
   .hero {

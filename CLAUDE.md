@@ -41,8 +41,9 @@ touch a specific component):
 8. A six-part design-review pass (tracked in
    `docs/2026-07-16-design-review-next-steps.md`): balisong theme toggle
    rebuild, featured-card covers + hover piece-drop, a teaching impact row,
-   Home's `TetrisWell` scroll-well, an image-led article header, a bio-portrait
-   piece dissolve, a T-spin contact-send animation, a `/404` + Minesweeper
+   Home's `TetrisWell` scroll-well (built here, later removed — see
+   "Removed" below), an image-led article header, a bio-portrait piece
+   dissolve, a T-spin contact-send animation, a `/404` + Minesweeper
    redesign, and a `/projects` featured-row hierarchy.
 
 A whole-branch review after pass 6 caught three real usability bugs no test
@@ -94,8 +95,8 @@ any new component:
 - **Runtime-created elements never get scoped.** Astro scopes `<style>` by
   stamping a `data-astro-cid-*` attribute at build/render time; anything
   created via `document.createElement` (all the widget grids: `TetrisHero`,
-  `TetrisWell`, `MinesweeperBoard`) never receives it, so rules targeting
-  those elements need `:global()`. Forgetting it renders an unstyled grid,
+  `MinesweeperBoard`) never receives it, so rules targeting those elements
+  need `:global()`. Forgetting it renders an unstyled grid,
   not an error.
 - **A class passed as a prop to a child does not carry the parent's scope.**
   `<PieceMark class="rail-wordmark" />` styled from `Nav.astro`'s own
@@ -191,10 +192,13 @@ Two independent color systems, easy to conflate:
 - **Piece/wash tokens** (`tokens.css`) bind each Home section to a canonical
   Tetris hue: `--piece-j` (blue, hero), `--piece-o` (gold, bio), `--piece-l`
   (orange, featured), `--piece-i` (teal, teaching). Each `--wash-*` is
-  `color-mix(--color-bg, its --piece-*, 18%)` — the section background, the
-  `TetrisWell` piece dropped for that section, and the piece color are the
-  same value by construction, not independently chosen. Canonical I is teal,
-  not green (tried and rejected as non-canonical).
+  `color-mix(--color-bg, its --piece-*, 18%)`, so a section's background is
+  always mixed from the same hue as its own piece rather than an
+  independently chosen color — currently only `--piece-o` has a second,
+  visible consumer (the bio portrait's O-piece dissolve); `--piece-j/l/i`
+  exist solely to derive their section's wash since `TetrisWell`, their
+  other consumer, was removed (see "Removed"). Canonical I is teal, not
+  green (tried and rejected as non-canonical).
 
 Spacing scale (`src/styles/tokens.css`): `--space-1` (0.25rem) through
 `--space-9` (6rem), plus `--space-10` (9rem, Home's section vertical
@@ -249,21 +253,6 @@ block size left the O too small for the letter it replaces). The turn is
 applied by rewriting CSS grid placement (not a transitionable property), so
 it's a snap by construction. Exactly one mark performs per page
 (`data-owns`, set from the route); reduced motion leaves letters at rest.
-
-**`TetrisWell.astro`** — a Home-only decorative well fixed bottom-right. Each
-of Home's four sections drops one hardcoded tetromino as it scrolls into
-view (J→hero, O→bio, L→featured, I→teaching, matching the wash order above);
-the I-bar clears four lines at once, flashes, and empties; scrolling back to
-the top re-arms it. Piece shapes are fully hard-coded (not generated) since a
-4-wide well only has one tiling that both matches each piece's letter and
-sits grounded without floating. `pointer-events: none` and fades out while
-the footer is on screen, deferred until any in-progress clear finishes (a
-`clearActive` guard) so the payoff at the very bottom of the page — where the
-footer also enters — never gets hidden mid-animation. A single `nextIdx`
-pointer turns the four independent section observers into one ordered queue,
-since a scroll position restored mid-page would otherwise drop a piece onto
-an empty board out of sequence. Desktop-only, `aria-hidden`, off under
-reduced motion.
 
 **Theme toggle** (`ThemeToggle.astro`) — a shaped balisong (two handles that
 pivot about their own centerlines, visible pivot pins, a clip-point blade),
@@ -321,11 +310,20 @@ featured row above the regular grid.
 
 **Removed:** the Tetris click-to-play overlay (the ambient animation alone
 was judged enough to convey the hobby — `engine.ts`'s full game-logic API is
-otherwise untouched, still exercised by its own unit tests) and the article
+otherwise untouched, still exercised by its own unit tests), the article
 reading-progress capybara mascot (`CapybaraProgress.astro`, `lib/capybara.ts`
-— no replacement was added; the browser's own scrollbar conveys position).
-The footer's capybara easter egg is a separate, self-contained, pure-CSS
-component and was untouched by either removal.
+— no replacement was added; the browser's own scrollbar conveys position),
+and `TetrisWell.astro` (pass 8's Home scroll-well, `data-band` attributes
+and all — a design-review pass found two of its four per-section drops
+(hero's J, bio's O) purely redundant with a bigger tetromino visual already
+live in that same section (`TetrisHero`'s ambient board, the bio portrait's
+own O-piece dissolve), and a mocked fix that dropped only to the two
+sections without a competing visual still read wrong: with only one piece
+left to complete, its line-clear cleared the *whole* well over a single
+completed row, which looked broken rather than earned — so the feature was
+cut rather than patched further). The footer's capybara easter egg is a
+separate, self-contained, pure-CSS component and was untouched by any of
+the three removals.
 
 ## Hard constraints (don't reintroduce these)
 
@@ -350,7 +348,7 @@ component and was untouched by either removal.
 detail, full keyboard operability for Minesweeper (the only actually-playable
 one — Tetris is purely decorative), visible focus states sitewide,
 skip-to-content link, and `aria-hidden` on purely-decorative details (the
-Tetris ambient animation, `TetrisWell`, the footer capybara).
+Tetris ambient animation, the footer capybara).
 
 Verified sitewide by `tests/e2e/accessibility.spec.ts`: an
 `@axe-core/playwright` sweep (no serious/critical violations) across all 5
