@@ -65,12 +65,12 @@ import ContactForm from '../components/ContactForm.astro';
     mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
     -webkit-mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
   }
-  /* Off cells stay nearly invisible — a faint hint of grid structure, not a
-     checkerboard — so only the lit blocks (the form-progress pool) read as
-     shapes against the wash. */
+  /* Off cells are a transparent grey — visible enough that the empty grid
+     reads as its own surface set apart from the wash behind it, but well below
+     the lit blocks so those still clearly stand out as they fill in. */
   .well :global(div) {
     border-radius: 2px;
-    background: color-mix(in srgb, var(--color-text) 4%, transparent);
+    background: color-mix(in srgb, var(--color-text) 9%, transparent);
     transition: background-color 0.45s ease, opacity 0.45s ease, box-shadow 0.3s ease;
   }
   /* Lit cells carry enough of the T-piece hue to read as solid blocks against
