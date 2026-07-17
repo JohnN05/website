@@ -112,17 +112,17 @@ export function createGame(firstPiece: PieceType, cols: number = COLS, rows: num
   };
 }
 
-function withPiece(state: GameState, piece: Piece): GameState {
+function movePieceTo(state: GameState, piece: Piece): GameState {
   if (collides(state.board, piece)) return state;
   return { ...state, current: piece, lastMoveWasRotation: false };
 }
 
 export function moveLeft(state: GameState): GameState {
-  return withPiece(state, { ...state.current, x: state.current.x - 1 });
+  return movePieceTo(state, { ...state.current, x: state.current.x - 1 });
 }
 
 export function moveRight(state: GameState): GameState {
-  return withPiece(state, { ...state.current, x: state.current.x + 1 });
+  return movePieceTo(state, { ...state.current, x: state.current.x + 1 });
 }
 
 // Simplified SRS-style wall kicks, adapted to this engine's downward-y
@@ -199,11 +199,11 @@ function clearLines(board: Cell[][]): { board: Cell[][]; cleared: number } {
   const cols = board[0].length;
   const remaining = board.filter((row) => row.some((cell) => cell === null));
   const cleared = board.length - remaining.length;
-  const board2 = [
+  const compacted = [
     ...Array.from({ length: cleared }, () => Array<Cell>(cols).fill(null)),
     ...remaining,
   ];
-  return { board: board2, cleared };
+  return { board: compacted, cleared };
 }
 
 const LINE_SCORES = [0, 100, 300, 500, 800];

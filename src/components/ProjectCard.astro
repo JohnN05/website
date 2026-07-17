@@ -158,7 +158,7 @@ const initial = project.title.charAt(0);
 
       let timers: number[] = [];
       const clearTimers = () => {
-        timers.forEach((t) => window.clearTimeout(t));
+        timers.forEach((timerId) => window.clearTimeout(timerId));
         timers = [];
       };
 
@@ -170,11 +170,12 @@ const initial = project.title.charAt(0);
 
       const leave = () => {
         clearTimers();
-        let n = 0;
+        // One class toggle per half-flash, so a full on/off cycle is two toggles.
+        let toggleCount = 0;
         const tick = () => {
           piece.classList.toggle('flash');
-          n += 1;
-          if (n < FLASH_CYCLES * 2) {
+          toggleCount += 1;
+          if (toggleCount < FLASH_CYCLES * 2) {
             timers.push(window.setTimeout(tick, FLASH_INTERVAL_MS));
           } else {
             // Fade out in place, then reset to the top so the next hover drops fresh.

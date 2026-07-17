@@ -9,12 +9,14 @@ export interface ProjectMeta {
 }
 
 export function selectFeatured(projects: ProjectMeta[], count = 3): ProjectMeta[] {
-  const published = projects.filter((p) => !p.draft);
-  const featured = published.filter((p) => p.featured).sort(byDateDesc);
+  const published = projects.filter((project) => !project.draft);
+  const featured = published.filter((project) => project.featured).sort(byDateDesc);
   if (featured.length > 0) return featured.slice(0, count);
   return [...published].sort(byDateDesc).slice(0, count);
 }
 
-function byDateDesc(a: ProjectMeta, b: ProjectMeta): number {
+// Newest first. Shared with the /projects index so both order projects the
+// same way from one comparator, not two copies.
+export function byDateDesc(a: { date: Date }, b: { date: Date }): number {
   return b.date.getTime() - a.date.getTime();
 }

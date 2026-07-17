@@ -12,10 +12,19 @@ export interface MinesweeperCell {
 export type MinesweeperBoard = MinesweeperCell[][];
 
 export function createBoard(rng: () => number = Math.random): MinesweeperBoard {
-  const board: MinesweeperBoard = Array.from({ length: MS_ROWS }, () =>
+  const board = createEmptyBoard();
+  placeMines(board, rng);
+  computeAdjacentCounts(board);
+  return board;
+}
+
+function createEmptyBoard(): MinesweeperBoard {
+  return Array.from({ length: MS_ROWS }, () =>
     Array.from({ length: MS_COLS }, () => ({ mine: false, revealed: false, flagged: false, adjacent: 0 }))
   );
+}
 
+function placeMines(board: MinesweeperBoard, rng: () => number): void {
   let placed = 0;
   while (placed < MS_MINES) {
     const row = Math.floor(rng() * MS_ROWS);
@@ -25,15 +34,19 @@ export function createBoard(rng: () => number = Math.random): MinesweeperBoard {
       placed++;
     }
   }
+}
 
+function computeAdjacentCounts(board: MinesweeperBoard): void {
   for (let row = 0; row < MS_ROWS; row++) {
     for (let col = 0; col < MS_COLS; col++) {
       if (board[row][col].mine) continue;
       board[row][col].adjacent = neighbors(row, col).filter(([r, c]) => board[r][c].mine).length;
     }
   }
+}
 
-  return board;
+function cloneBoard(board: MinesweeperBoard): MinesweeperBoard {
+  return board.map((row) => row.map((cell) => ({ ...cell })));
 }
 
 function neighbors(row: number, col: number): [number, number][] {
@@ -54,7 +67,7 @@ export function reveal(
   row: number,
   col: number
 ): { board: MinesweeperBoard; exploded: boolean } {
-  const next = board.map((r) => r.map((cell) => ({ ...cell })));
+  const next = cloneBoard(board);
   const stack: [number, number][] = [[row, col]];
   let exploded = false;
 
@@ -76,7 +89,7 @@ export function reveal(
 }
 
 export function toggleFlag(board: MinesweeperBoard, row: number, col: number): MinesweeperBoard {
-  const next = board.map((r) => r.map((cell) => ({ ...cell })));
+  const next = cloneBoard(board);
   const cell = next[row][col];
   if (!cell.revealed) cell.flagged = !cell.flagged;
   return next;

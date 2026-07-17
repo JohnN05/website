@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
+import { byDateDesc } from '../../lib/projects';
 import { getCollection } from 'astro:content';
 
 const published = await getCollection('projects', ({ data }) => !data.draft);
-const sorted = published
-  .map((p) => ({ slug: p.slug, ...p.data }))
-  .sort((a, b) => b.date.getTime() - a.date.getTime());
+const projects = published
+  .map((entry) => ({ slug: entry.slug, ...entry.data }))
+  .sort(byDateDesc);
 ---
 <BaseLayout title="Projects — John Ng">
   <div class="intro-band">
@@ -19,7 +20,7 @@ const sorted = published
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--color-bg);"></div>
   <div class="grid-wrap">
     <div class="project-grid">
-      {sorted.map((p) => <ProjectCard project={p} showCover={true} />)}
+      {projects.map((project) => <ProjectCard project={project} showCover={true} />)}
     </div>
   </div>
 </BaseLayout>

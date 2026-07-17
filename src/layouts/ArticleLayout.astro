@@ -24,11 +24,20 @@ const pieceCells = PIECE_CELLS[accentName] ?? PIECE_CELLS.cobalt;
 const STACK_COLS = 10;
 const STACK_ROWS = 8;
 const STACK_HEIGHTS = [3, 4, 4, 5, 3, 2, 4, 5, 4, 3];
+
+// The stack fills from the bottom: a column of height h occupies the bottom h
+// rows, with its topmost filled row dimmed so the surface reads as unsettled.
+function stackCellState(row: number, col: number): 'on' | 'dim' | '' {
+  const topRow = STACK_ROWS - STACK_HEIGHTS[col];
+  if (row > topRow) return 'on';
+  if (row === topRow) return 'dim';
+  return '';
+}
+
 const stackCells: ('on' | 'dim' | '')[] = [];
-for (let r = 0; r < STACK_ROWS; r++) {
-  for (let c = 0; c < STACK_COLS; c++) {
-    const top = STACK_ROWS - STACK_HEIGHTS[c];
-    stackCells.push(r > top ? 'on' : r === top ? 'dim' : '');
+for (let row = 0; row < STACK_ROWS; row++) {
+  for (let col = 0; col < STACK_COLS; col++) {
+    stackCells.push(stackCellState(row, col));
   }
 }
 ---

@@ -117,7 +117,12 @@
   }
 </style>
 <script>
-  import { getInitialTheme, toggleTheme, persistTheme } from '../lib/theme';
+  import { getInitialTheme, toggleTheme, persistTheme, type Theme } from '../lib/theme';
+
+  function readCurrentTheme(): Theme {
+    const fromAttribute = document.documentElement.dataset.theme as Theme | undefined;
+    return fromAttribute ?? getInitialTheme(localStorage, (query) => window.matchMedia(query));
+  }
 
   // Bound by class across every mount, not by id — Astro bundles this <script>
   // once per page however many times the component is mounted, so a
@@ -127,10 +132,7 @@
 
   for (const button of buttons) {
     button.addEventListener('click', () => {
-      const current =
-        (document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ??
-        getInitialTheme(localStorage, (q) => window.matchMedia(q));
-      const next = toggleTheme(current);
+      const next = toggleTheme(readCurrentTheme());
       // The knife (and the sun/moon/label) are driven entirely by this
       // attribute in CSS, so flipping it here animates every mount at once and
       // needs no per-button visual bookkeeping.

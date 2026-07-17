@@ -152,6 +152,31 @@
     return grid.querySelectorAll('[role="gridcell"]')[index] as HTMLElement | undefined;
   }
 
+  function createCellButton(cell: MinesweeperCell, r: number, c: number): HTMLButtonElement {
+    const index = r * MS_COLS + c;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.tabIndex = index === focusIndex ? 0 : -1;
+    btn.setAttribute('role', 'gridcell');
+    btn.dataset.revealed = String(cell.revealed);
+    if (cell.revealed && cell.mine) btn.dataset.mine = 'true';
+    btn.setAttribute('aria-label', describeCell(cell));
+    btn.textContent = cellLabel(cell);
+    btn.addEventListener('click', () => {
+      // Keep the roving tabindex pointing at the cell actually played, or
+      // Tab re-enters the grid at cell 0 rather than where the player is.
+      focusIndex = index;
+      onReveal(r, c);
+    });
+    btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
+    btn.addEventListener('touchstart', () => {
+      longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
+    });
+    btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
+    btn.addEventListener('keydown', (e) => onKey(e, r, c));
+    return btn;
+  }
+
   function render() {
     // innerHTML = '' destroys whatever had focus, so remember whether focus was
     // on the board before tearing it down and put it back afterwards. Doing it
@@ -168,30 +193,7 @@
     board.forEach((row, r) => {
       const rowEl = document.createElement('div');
       rowEl.setAttribute('role', 'row');
-      row.forEach((cell, c) => {
-        const btn = document.createElement('button');
-        const index = r * MS_COLS + c;
-        btn.type = 'button';
-        btn.tabIndex = index === focusIndex ? 0 : -1;
-        btn.setAttribute('role', 'gridcell');
-        btn.dataset.revealed = String(cell.revealed);
-        if (cell.revealed && cell.mine) btn.dataset.mine = 'true';
-        btn.setAttribute('aria-label', describeCell(cell));
-        btn.textContent = cellLabel(cell);
-        btn.addEventListener('click', () => {
-          // Keep the roving tabindex pointing at the cell actually played, or
-          // Tab re-enters the grid at cell 0 rather than where the player is.
-          focusIndex = index;
-          onReveal(r, c);
-        });
-        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
-        btn.addEventListener('touchstart', () => {
-          longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
-        });
-        btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
-        btn.addEventListener('keydown', (e) => onKey(e, r, c));
-        rowEl.appendChild(btn);
-      });
+      row.forEach((cell, c) => rowEl.appendChild(createCellButton(cell, r, c)));
       grid.appendChild(rowEl);
     });
     if (hadFocus) getCell(focusIndex)?.focus();

@@ -260,56 +260,68 @@
   let CELL = 20, BOX_X = CELL, BOX_Y_REST = 9 * CELL;
 
   function sizeToCard() {
-    const w = shell.clientWidth, h = shell.clientHeight;
-    CELL = Math.max(12, Math.floor(Math.min((w * 0.82) / BOARD_W, (h * 0.9) / BOARD_H)));
+    const width = shell.clientWidth, height = shell.clientHeight;
+    CELL = Math.max(12, Math.floor(Math.min((width * 0.82) / BOARD_W, (height * 0.9) / BOARD_H)));
     BOX_X = 1 * CELL;
     BOX_Y_REST = 9 * CELL;
   }
-  function sizeCell(d: HTMLElement) { d.style.width = CELL + 'px'; d.style.height = CELL + 'px'; }
+  function sizeCell(el: HTMLElement) {
+    el.style.width = CELL + 'px';
+    el.style.height = CELL + 'px';
+  }
+  function gridTranslate(col: number, row: number) {
+    return `translate(${col * CELL}px, ${row * CELL}px)`;
+  }
+  // One `.cell` positioned on the board grid. `track` tags it with its row/col
+  // so flashRows() and the line-clear below can find it by row afterwards.
+  function addGridCell(className: string, col: number, row: number, track = false) {
+    const cell = document.createElement('div');
+    cell.className = className;
+    if (track) {
+      cell.dataset.row = String(row);
+      cell.dataset.col = String(col);
+    }
+    sizeCell(cell);
+    cell.style.transform = gridTranslate(col, row);
+    board.appendChild(cell);
+    return cell;
+  }
+  function allCells() {
+    return [...board.querySelectorAll<HTMLElement>('.cell')];
+  }
 
   function buildBoard() {
     board.style.width = BOARD_W * CELL + 'px';
     board.style.height = BOARD_H * CELL + 'px';
     board.innerHTML = '';
-    for (const [c, r] of SIL) {
-      const d = document.createElement('div');
-      d.className = 'sil cell';
-      d.dataset.row = String(r);
-      d.dataset.col = String(c);
-      sizeCell(d);
-      d.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
-      board.appendChild(d);
-    }
-    const ghosts = FINAL.map(([c, r]) => {
-      const d = document.createElement('div');
-      d.className = 'ghost cell';
-      sizeCell(d);
-      d.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
-      board.appendChild(d);
-      return d;
-    });
+    for (const [col, row] of SIL) addGridCell('sil cell', col, row, true);
+    const ghosts = FINAL.map(([col, row]) => addGridCell('ghost cell', col, row));
+    const piece = buildPiece();
+    return { ghosts, piece };
+  }
+
+  function buildPiece() {
     const piece = document.createElement('div');
     piece.className = 'piece';
     piece.style.width = 3 * CELL + 'px';
     piece.style.height = 3 * CELL + 'px';
     piece.style.transformOrigin = `${1.5 * CELL}px ${1.5 * CELL}px`;
-    for (const [c, r] of PC_LOCAL) {
-      const d = document.createElement('div');
-      d.className = 'pc';
-      sizeCell(d);
-      d.style.left = c * CELL + 'px';
-      d.style.top = r * CELL + 'px';
-      piece.appendChild(d);
+    for (const [col, row] of PC_LOCAL) {
+      const block = document.createElement('div');
+      block.className = 'pc';
+      sizeCell(block);
+      block.style.left = col * CELL + 'px';
+      block.style.top = row * CELL + 'px';
+      piece.appendChild(block);
     }
     board.appendChild(piece);
-    return { ghosts, piece };
+    return piece;
   }
   const boxAt = (y: number) => `translate(${BOX_X}px, ${y}px)`;
 
   function flashRows(): Promise<void> {
     return new Promise((res) => {
-      const targets = [...board.querySelectorAll<HTMLElement>('.cell')]
-        .filter((el) => FLASH_ROWS.includes(Number(el.dataset.row)));
+      const targets = allCells().filter((el) => FLASH_ROWS.includes(Number(el.dataset.row)));
       let tick = 0;
       const step = () => {
         targets.forEach((el) => el.classList.toggle('flash-on'));
@@ -347,30 +359,21 @@
     // commit the piece into the grid so it flashes/clears with the rows
     piece.remove();
     ghosts.forEach((g) => g.remove());
-    for (const [c, r] of FINAL) {
-      const d = document.createElement('div');
-      d.className = 'tcell cell';
-      d.dataset.row = String(r);
-      d.dataset.col = String(c);
-      sizeCell(d);
-      d.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
-      board.appendChild(d);
-    }
+    for (const [col, row] of FINAL) addGridCell('tcell cell', col, row, true);
 
     await flashRows();
     await wait(110);
     // clear the two full bottom rows
-    const cleared = [...board.querySelectorAll<HTMLElement>('.cell')]
-      .filter((el) => Number(el.dataset.row) >= 10);
+    const cleared = allCells().filter((el) => Number(el.dataset.row) >= 10);
     cleared.forEach((el) => { el.classList.add('row-clear'); el.style.opacity = '0'; });
     await wait(200);
     cleared.forEach((el) => el.remove());
     // gravity: the blocks left standing drop 2 rows onto the floor, blocky
-    for (const el of board.querySelectorAll<HTMLElement>('.cell')) {
-      const c = Number(el.dataset.col), r = Number(el.dataset.row) + 2;
-      el.dataset.row = String(r);
+    for (const el of allCells()) {
+      const col = Number(el.dataset.col), row = Number(el.dataset.row) + 2;
+      el.dataset.row = String(row);
       el.style.transition = 'transform 0.16s steps(2, end)';
-      el.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
+      el.style.transform = gridTranslate(col, row);
     }
     await wait(320);
   }
