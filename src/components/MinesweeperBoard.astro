@@ -13,10 +13,19 @@
   <div class="ms-grid" id="ms-grid" role="grid" aria-label="Minesweeper board"></div>
 </div>
 <style>
+  /* The board reads as one of the site's panels (same card language as the
+     project cards / contact card) rather than a bare grid floating in the wash. */
+  .minesweeper {
+    display: inline-block;
+    background: color-mix(in srgb, var(--color-text) 3%, var(--color-bg));
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: var(--space-4);
+  }
   .ms-grid {
     display: grid;
-    grid-template-columns: repeat(9, 2rem);
-    gap: 2px;
+    grid-template-columns: repeat(9, clamp(1.7rem, 7.5vw, 2rem));
+    gap: 3px;
   }
   /* :global() is required here because the grid cells are created at
      runtime via document.createElement (see the script below), so they
@@ -32,28 +41,79 @@
     display: contents;
   }
   .ms-grid :global(button) {
-    width: 2rem;
-    height: 2rem;
+    width: 100%;
+    aspect-ratio: 1;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.85rem;
-    background: var(--color-bg);
-    border: 1px solid var(--color-text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--color-text) 9%, var(--color-bg));
+    border: 1px solid var(--line);
+    border-radius: 3px;
     color: var(--color-text);
     cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+  .ms-grid :global(button:hover) {
+    background: color-mix(in srgb, var(--color-text) 16%, var(--color-bg));
+  }
+  .ms-grid :global(button:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
   }
   /* data-revealed (not aria-pressed) drives the "revealed" visual state:
      role="gridcell" doesn't permit aria-pressed (that state belongs to
      toggle buttons), and the cell's aria-label already conveys revealed/
      flagged/mine/adjacent-count state to assistive tech, so this is a
      plain styling hook rather than an accessibility attribute. */
+  /* revealed = opened: recede to the flat page ground so numbers keep full
+     --color-text contrast in both themes. The old revealed background was
+     --color-text-secondary, which put ivory numbers on a light grey in dark
+     mode — the unreadable case the redesign fixes. */
   .ms-grid :global(button[data-revealed='true']) {
-    background: var(--color-text-secondary);
+    background: var(--color-bg);
+    cursor: default;
+  }
+  .ms-grid :global(button[data-revealed='true']:hover) {
+    background: var(--color-bg);
+  }
+  .ms-grid :global(button[data-mine='true']) {
+    background: color-mix(in srgb, var(--color-error) 22%, var(--color-bg));
   }
   .ms-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  #ms-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    min-width: 0;                 /* wrap rather than shove the Reset button */
+  }
+  #ms-status[data-state='lost'] { color: var(--color-error); }
+  #ms-status[data-state='win'] { color: var(--color-text); font-weight: 600; }
+  #ms-reset {
+    flex-shrink: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  #ms-reset:hover {
+    border-color: var(--color-accent);
+  }
+  #ms-reset:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 </style>
 <script>
@@ -115,6 +175,7 @@
         btn.tabIndex = index === focusIndex ? 0 : -1;
         btn.setAttribute('role', 'gridcell');
         btn.dataset.revealed = String(cell.revealed);
+        if (cell.revealed && cell.mine) btn.dataset.mine = 'true';
         btn.setAttribute('aria-label', describeCell(cell));
         btn.textContent = cellLabel(cell);
         btn.addEventListener('click', () => {
@@ -142,10 +203,12 @@
     board = result.board;
     if (result.exploded) {
       gameOver = true;
-      status.textContent = 'You hit a mine. Press Reset to try again.';
+      status.textContent = 'You hit a mine.';
+      status.dataset.state = 'lost';
     } else if (checkWin(board)) {
       gameOver = true;
       status.textContent = 'You cleared the board!';
+      status.dataset.state = 'win';
     }
     render();
   }
@@ -187,6 +250,7 @@
     gameOver = false;
     focusIndex = 0;
     status.textContent = `Mines: ${MS_MINES}`;
+    delete status.dataset.state;
     render();
   });
 

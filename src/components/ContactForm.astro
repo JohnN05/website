@@ -2,40 +2,58 @@
      Without it the bot-field input below is just an ordinary form field: Netlify
      accepts it, filters nothing, and the spam protection this markup looks like
      it has does not exist. -->
-<form
-  name="contact"
-  method="POST"
-  data-netlify="true"
-  data-netlify-honeypot="bot-field"
-  id="contact-form"
-  class="contact-form"
->
-  <input type="hidden" name="form-name" value="contact" />
-  <p hidden>
-    <label>Don't fill this out if you're human: <input name="bot-field" /></label>
-  </p>
-  <div class="field">
-    <label for="name">Name</label>
-    <input id="name" name="name" type="text" required />
+<div class="contact-shell" id="contact-shell">
+  <form
+    name="contact"
+    method="POST"
+    data-netlify="true"
+    data-netlify-honeypot="bot-field"
+    id="contact-form"
+    class="contact-form"
+  >
+    <input type="hidden" name="form-name" value="contact" />
+    <p hidden>
+      <label>Don't fill this out if you're human: <input name="bot-field" /></label>
+    </p>
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" required />
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required />
+    </div>
+    <div class="field">
+      <label for="message">Message</label>
+      <textarea id="message" name="message" required rows="6"></textarea>
+    </div>
+    <button type="submit">Send</button>
+  </form>
+
+  <!-- Decorative send animation: a real T-Spin Double (coordinates verified
+       against src/lib/tetris/engine.ts — see scratchpad/tspin-solve.ts) plays
+       over the card on a successful send, standing in for "you completed the
+       message" the way clearing a line completes a well. aria-hidden because
+       the outcome is conveyed by #contact-success (role="status"); the whole
+       stage never builds under reduced motion. -->
+  <div class="tspin-stage" id="tspin-stage" aria-hidden="true"><div class="tspin-board" id="tspin-board"></div></div>
+
+  <div id="contact-success" class="contact-success" hidden role="status">
+    <span class="cs-eyebrow">Message sent</span>
+    <p class="cs-line">Thanks for the message. I'll talk to you soon!</p>
   </div>
-  <div class="field">
-    <label for="email">Email</label>
-    <input id="email" name="email" type="email" required />
-  </div>
-  <div class="field">
-    <label for="message">Message</label>
-    <textarea id="message" name="message" required rows="6"></textarea>
-  </div>
-  <button type="submit">Send</button>
-</form>
-<p id="contact-success" hidden role="status">Thanks — I'll get back to you soon.</p>
-<p id="contact-error" hidden role="alert">Something went wrong — please try again or reach out on LinkedIn/GitHub.</p>
+  <p id="contact-error" hidden role="alert">Something went wrong — please try again or reach out on LinkedIn/GitHub.</p>
+</div>
 <style>
+  .contact-shell {
+    position: relative;
+  }
   .contact-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
     max-width: 32rem;
+    transition: opacity 0.26s ease;
   }
   .contact-form[hidden] {
     display: none;
@@ -86,28 +104,297 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
-  #contact-success,
   #contact-error {
     margin: var(--space-4) 0 0;
     padding: var(--space-4);
     border-radius: 6px;
     font-size: 0.95rem;
-  }
-  #contact-success {
-    background: color-mix(in srgb, var(--color-accent-moss) 14%, var(--color-bg));
-    color: var(--color-text);
-  }
-  #contact-error {
     background: color-mix(in srgb, var(--color-error) 12%, var(--color-bg));
     color: var(--color-error);
+  }
+  /* The reply is the payoff to the T-spin, so it's a composed moment — a mono
+     eyebrow over a Bricolage headline — that rises out of the cleared board,
+     not a plain tinted form chip. */
+  .contact-success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-2);
+    padding: var(--space-5) 0;
+  }
+  /* class beats the global [hidden]{display:none} on equal specificity via
+     source order, so re-assert the hide or the block shows through at rest. */
+  .contact-success[hidden] {
+    display: none;
+  }
+  .cs-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    color: var(--color-accent-moss);
+  }
+  .cs-line {
+    margin: 0;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 600;
+    font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+    text-wrap: balance;
+    max-width: 22ch;
+  }
+  .cs-eyebrow,
+  .cs-line {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+  .contact-success.in .cs-eyebrow,
+  .contact-success.in .cs-line {
+    opacity: 1;
+    transform: none;
+  }
+  .contact-success.in .cs-line {
+    transition-delay: 0.1s;      /* staggered: eyebrow first, then the line */
+  }
+
+  /* ---- T-spin send stage ---- */
+  .tspin-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
+    /* silhouette tones for the inert stack, scoped here so the runtime cells
+       inherit them (custom properties cross the :global() boundary; the cells
+       themselves can't be reached by scoped selectors — see below) */
+    --sil: color-mix(in srgb, var(--color-text) 15%, var(--color-bg));
+    --sil-line: color-mix(in srgb, var(--color-text) 28%, var(--color-bg));
+  }
+  .tspin-stage.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  #tspin-board {
+    position: relative;
+  }
+  /* Every cell/piece below is created at runtime via document.createElement, so
+     it never gets Astro's scoped data-astro-cid attribute; the rules must be
+     :global() or they silently don't match (same trap as MinesweeperBoard). */
+  /* cell width/height are set inline from a card-measured CELL size (the board
+     scales to the card), so only the paint properties live here. */
+  #tspin-board :global(.cell) {
+    position: absolute;
+    border-radius: 2px;
+  }
+  #tspin-board :global(.sil) {
+    background: var(--sil);
+    box-shadow: inset 0 0 0 1px var(--sil-line);
+  }
+  #tspin-board :global(.ghost) {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--sil-line);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  #tspin-board :global(.ghost.show) {
+    opacity: 0.7;
+  }
+  #tspin-board :global(.tcell) {
+    background: var(--tetris-t);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 22%, var(--tetris-t));
+  }
+  /* the falling / spinning piece: one rigid body rotated about its pivot cell.
+     Box size (3xCELL) and transform-origin (its centre) are set inline. */
+  #tspin-board :global(.piece) {
+    position: absolute;
+  }
+  #tspin-board :global(.piece .pc) {
+    position: absolute;
+    border-radius: 2px;
+    background: var(--tetris-t);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 22%, var(--tetris-t));
+  }
+  #tspin-board :global(.flash-on) {
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+  #tspin-board :global(.row-clear) {
+    transition: opacity 0.3s ease, transform 0.3s ease;
   }
 </style>
 <script>
   import { submitContactForm } from '../lib/contactForm';
 
   const form = document.getElementById('contact-form') as HTMLFormElement;
-  const success = document.getElementById('contact-success')!;
-  const error = document.getElementById('contact-error')!;
+  const shell = document.getElementById('contact-shell') as HTMLElement;
+  const stage = document.getElementById('tspin-stage') as HTMLElement;
+  const board = document.getElementById('tspin-board') as HTMLElement;
+  const success = document.getElementById('contact-success') as HTMLElement;
+  const error = document.getElementById('contact-error') as HTMLElement;
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+
+  // --- T-Spin Double, coordinates verified against engine.ts (isTSpin=true,
+  // kick (0,0), 2 rows cleared). 5-wide board with 4 rows of headroom so the
+  // T spawns high. All rows below refer to that 12-row window. ---
+  const BOARD_W = 5, BOARD_H = 12;
+  const SIL = [[0,8],[4,8],[0,9],[1,9],[4,9],[0,10],[4,10],[0,11],[1,11],[3,11],[4,11]];
+  const FINAL = [[1,10],[2,10],[3,10],[2,11]];
+  const FLASH_ROWS = [10, 11];
+  const PC_LOCAL = [[1,0],[1,1],[2,1],[1,2]];  // point-right layout inside the box
+  const FALL_ROWS = 9;
+  const STEP_MS = 95;
+  const FLASH_CYCLES = 3, FLASH_INTERVAL_MS = 90;
+
+  // CELL is measured from the card so the board scales to it; BOX_X / BOX_Y_REST
+  // derive from it. Set in playTspin() before anything is built.
+  let CELL = 20, BOX_X = CELL, BOX_Y_REST = 9 * CELL;
+
+  function sizeToCard() {
+    const w = shell.clientWidth, h = shell.clientHeight;
+    CELL = Math.max(12, Math.floor(Math.min((w * 0.82) / BOARD_W, (h * 0.9) / BOARD_H)));
+    BOX_X = 1 * CELL;
+    BOX_Y_REST = 9 * CELL;
+  }
+  function sizeCell(d: HTMLElement) { d.style.width = CELL + 'px'; d.style.height = CELL + 'px'; }
+
+  function buildBoard() {
+    board.style.width = BOARD_W * CELL + 'px';
+    board.style.height = BOARD_H * CELL + 'px';
+    board.innerHTML = '';
+    for (const [c, r] of SIL) {
+      const d = document.createElement('div');
+      d.className = 'sil cell';
+      d.dataset.row = String(r);
+      d.dataset.col = String(c);
+      sizeCell(d);
+      d.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
+      board.appendChild(d);
+    }
+    const ghosts = FINAL.map(([c, r]) => {
+      const d = document.createElement('div');
+      d.className = 'ghost cell';
+      sizeCell(d);
+      d.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
+      board.appendChild(d);
+      return d;
+    });
+    const piece = document.createElement('div');
+    piece.className = 'piece';
+    piece.style.width = 3 * CELL + 'px';
+    piece.style.height = 3 * CELL + 'px';
+    piece.style.transformOrigin = `${1.5 * CELL}px ${1.5 * CELL}px`;
+    for (const [c, r] of PC_LOCAL) {
+      const d = document.createElement('div');
+      d.className = 'pc';
+      sizeCell(d);
+      d.style.left = c * CELL + 'px';
+      d.style.top = r * CELL + 'px';
+      piece.appendChild(d);
+    }
+    board.appendChild(piece);
+    return { ghosts, piece };
+  }
+  const boxAt = (y: number) => `translate(${BOX_X}px, ${y}px)`;
+
+  function flashRows(): Promise<void> {
+    return new Promise((res) => {
+      const targets = [...board.querySelectorAll<HTMLElement>('.cell')]
+        .filter((el) => FLASH_ROWS.includes(Number(el.dataset.row)));
+      let tick = 0;
+      const step = () => {
+        targets.forEach((el) => el.classList.toggle('flash-on'));
+        tick++;
+        if (tick >= FLASH_CYCLES * 2) {
+          targets.forEach((el) => el.classList.remove('flash-on'));
+          res();
+          return;
+        }
+        window.setTimeout(step, FLASH_INTERVAL_MS);
+      };
+      step();
+    });
+  }
+
+  async function playTspin() {
+    sizeToCard();
+    const { ghosts, piece } = buildBoard();
+    const spawnY = BOX_Y_REST - FALL_ROWS * CELL;
+    piece.style.transform = boxAt(spawnY);
+    stage.classList.add('show');
+    ghosts.forEach((g) => g.classList.add('show'));
+    await wait(300);                       // stage + ghost notch fade in
+
+    // blocky fall: one row per tick, instant snaps
+    for (let i = 1; i <= FALL_ROWS; i++) {
+      piece.style.transform = boxAt(spawnY + i * CELL);
+      await wait(STEP_MS);
+    }
+    // 90deg in-place spin — an INSTANT snap about the pivot (never a tween)
+    piece.style.transition = 'none';
+    piece.style.transform = boxAt(BOX_Y_REST) + ' rotate(90deg)';
+    await wait(560);                       // hold on the completed T-spin
+
+    // commit the piece into the grid so it flashes/clears with the rows
+    piece.remove();
+    ghosts.forEach((g) => g.remove());
+    for (const [c, r] of FINAL) {
+      const d = document.createElement('div');
+      d.className = 'tcell cell';
+      d.dataset.row = String(r);
+      d.dataset.col = String(c);
+      sizeCell(d);
+      d.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
+      board.appendChild(d);
+    }
+
+    await flashRows();
+    await wait(110);
+    // clear the two full bottom rows
+    const cleared = [...board.querySelectorAll<HTMLElement>('.cell')]
+      .filter((el) => Number(el.dataset.row) >= 10);
+    cleared.forEach((el) => { el.classList.add('row-clear'); el.style.opacity = '0'; });
+    await wait(200);
+    cleared.forEach((el) => el.remove());
+    // gravity: the blocks left standing drop 2 rows onto the floor, blocky
+    for (const el of board.querySelectorAll<HTMLElement>('.cell')) {
+      const c = Number(el.dataset.col), r = Number(el.dataset.row) + 2;
+      el.dataset.row = String(r);
+      el.style.transition = 'transform 0.16s steps(2, end)';
+      el.style.transform = `translate(${c * CELL}px, ${r * CELL}px)`;
+    }
+    await wait(320);
+  }
+
+  async function revealSuccess() {
+    if (prefersReduced) {
+      form.hidden = true;
+      success.hidden = false;
+      success.classList.add('in');         // no transition under reduced motion
+      return;
+    }
+    // freeze the card's height so it doesn't collapse while the form is hidden
+    shell.style.minHeight = shell.offsetHeight + 'px';
+    form.style.opacity = '0';
+    await wait(280);
+    form.hidden = true;
+    await playTspin();
+    // the reply emerges from the cleared board: the stack dissolves while the
+    // message rises into the freed space (staggered), not a pop-in
+    stage.classList.remove('show');
+    success.hidden = false;
+    void success.offsetWidth;              // reflow so the entrance transition runs
+    success.classList.add('in');
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -124,8 +411,7 @@
         botField: String(data.get('bot-field') ?? ''),
       });
       if (ok) {
-        form.hidden = true;
-        success.hidden = false;
+        await revealSuccess();
       } else {
         error.hidden = false;
       }

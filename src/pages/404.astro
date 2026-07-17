@@ -3,19 +3,75 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import MinesweeperBoard from '../components/MinesweeperBoard.astro';
 ---
 <BaseLayout title="Page not found — John Ng">
-  <section class="not-found">
-    <p class="context-line">This page doesn't exist. While you're here, try not to hit a mine.</p>
-    <MinesweeperBoard />
-    <a href="/" class="home-link">Back to Home</a>
-  </section>
+  <div class="not-found-band">
+    <section class="not-found">
+      <p class="eyebrow">Error 404 — Page not found</p>
+      <p class="context-line">This page doesn't exist. While you're here, try not to hit a mine.</p>
+      <MinesweeperBoard />
+      <a href="/" class="home-link">Back to Home</a>
+    </section>
+  </div>
+  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
+  /* A subtle wash band (the same cobalt --wash-hero /contact uses) so the 404
+     reads as one of the site's pages rather than a bare fallback. */
+  .not-found-band {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 90vh;
+    background: var(--wash-hero);
+    padding: var(--space-10) var(--space-5);
+  }
   .not-found {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
-    padding: 4rem 1.5rem;
+    gap: var(--space-5);
     text-align: center;
+  }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    margin: 0;
+  }
+  .context-line {
+    font-size: 1.15rem;
+    line-height: 1.5;
+    max-width: 34ch;
+    color: var(--color-text);
+    margin: 0;
+  }
+  /* Text stays at full --color-text contrast (cobalt-on-cobalt-wash was
+     unreadable, worst in dark); the accent survives as the underline + arrow. */
+  .home-link {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+    padding-bottom: 2px;
+  }
+  .home-link::before {
+    content: '\2190\00a0\00a0';
+    color: var(--color-accent);
+  }
+  .home-link:hover {
+    border-bottom-color: var(--color-accent);
+  }
+  /* Same seam mechanism as index.astro / contact.astro: fade the wash back to
+     flat --color-bg before the shared Footer, which has no wash of its own. */
+  .seam {
+    position: relative;
+    z-index: 1;
+    height: 6rem;
+    margin-top: -3rem;
+    margin-bottom: -3rem;
+    background: linear-gradient(to bottom, var(--seam-from), var(--seam-to));
+    filter: blur(32px);
+    pointer-events: none;
   }
 </style>

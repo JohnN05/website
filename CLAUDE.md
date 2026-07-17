@@ -930,6 +930,82 @@ none needed updating; the ordered-drop and axe sweeps still cover the well).
 Scatter distances, the O notch corner, and the gold wash remain open to live
 eyeball tuning.
 
+A fifth design-review pass (no plan doc, direct user request; tracked in
+`docs/2026-07-16-design-review-next-steps.md`) took the last two per-page
+cleanups — the `/contact` on-brand touch and the `/404` belong-to-the-system
+note — plus the Minesweeper redesign the 404 review implied. Mock-first in an
+Artifact over many rounds.
+
+1. **The contact send is a T-Spin Double** (`ContactForm.astro`). A first
+   "corner tetromino on the card" mock was rejected by the owner as a
+   purposeless Tetris reference — the frontend-design rule that a motif must
+   *encode something true*, not decorate. The approved direction ties the motif
+   to the one real completion on the page: on a successful send the fields fade,
+   a T piece spawns high, drops **block-by-block** down a well, snaps 90° **in
+   place** into the notch (an INSTANT rotation set with `transition:none`, not a
+   tween — Tetris rotations are discrete), the two completed rows flash
+   (`flashRows` cadence, `#fff`) and clear, the standing blocks drop by gravity,
+   and the reply **rises out of the freed space**. The reply is itself a composed
+   moment — a mono `Message sent` eyebrow over a Bricolage headline, staggered —
+   not the old plain moss-tinted chip, which read as bland against the buildup.
+   The board's geometry is **verified against `engine.ts`, not hand-drawn**: a
+   throwaway `scratchpad/tspin-solve.ts` drove the real `rotate()`/`isTSpin` to a
+   legal setup (`isTSpin=true`, kick `(0,0)` — an in-place spin, 2 rows cleared),
+   and those exact coordinates are baked as a fixed sequence rather than replayed
+   at runtime, since the visual is a **rigid-body 90° rotation the engine's
+   hand-authored per-rotation `SHAPES` don't model** (rotating the piece as one
+   `transform-origin`-pivoted box lands it on the grid; the engine's cell arrays
+   would scramble mid-turn — the same divergence trap noted for the ambient
+   piece). The board **scales to the card**: `CELL` is measured from the shell at
+   play time and every cell/piece dimension is set inline, so the CSS holds only
+   paint properties. Several earlier iterations were driven by direct user
+   feedback and are worth not regressing: the T-spin must be a *legal* one (an
+   earlier wall-hugging TSD read as fake), the fall must be blocky (a smooth
+   accelerating fall was rejected), the rotation must snap not tween, the piece
+   must spawn high (≥4 cells of headroom → a 12-row board), the delay before the
+   spin must equal the fall-step cadence, and the standing blocks must drop after
+   the clear. All gated on `prefers-reduced-motion: no-preference`; reduced
+   motion / no-JS / the error path keep the plain success/error swap, so the
+   fetch-submit inline-feedback constraint is preserved. Runtime cells use
+   `:global()` (the `createElement` scoping trap); the whole board never builds
+   under reduced motion. The engine was **investigated and found correct** when
+   the owner suspected a flaw — its SRS kick tables match the guideline (dy
+   negated for y-down), shapes/pivot/3-corner rule are right — so it was left
+   untouched (escalate/verify, don't "fix" correct logic); the earlier ugly mock,
+   not the engine, was the problem.
+2. **`/404` belongs to the system** (`404.astro`). A cobalt `--wash-hero` band
+   (the same one `/contact` uses) with a `.seam` fading to flat `--color-bg`
+   before the shared Footer, a mono `Error 404` eyebrow, the spec-matching
+   context line promoted to real lede type, token spacing, and a `Back to Home`
+   link at full `--color-text` contrast — **cobalt-on-cobalt-wash was unreadable,
+   worst in dark**, so the accent survives only as the underline + arrow.
+3. **Minesweeper redesigned** (`MinesweeperBoard.astro`) — it had visibly fallen
+   behind the other surfaces. Now a bordered panel matching the site's card
+   language; unopened tiles read as raised (`color-mix` tint + `--line` border),
+   and **opened cells recede to flat `--color-bg` so numbers keep full
+   `--color-text` contrast in both themes**. This was the reported dark-mode
+   readability bug: the old `button[data-revealed='true']` background was
+   `--color-text-secondary` (a light blue-grey), so revealed numbers rendered
+   ivory-on-light-grey in dark mode. (Classic per-number accent colors were
+   considered and rejected — the site's accents don't pass WCAG as small text on
+   `--color-bg` in both themes, so all numbers stay `--color-text`.) The Reset
+   button is restyled (mono, uppercase, hairline border, accent-on-hover border,
+   focus ring) instead of an unstyled default; the status line no longer collides
+   with it (`min-width:0` lets it wrap, Reset is `flex-shrink:0`, and the lose
+   copy shortened to "You hit a mine.") and colors itself on win/lose via a
+   `data-state`; a hit mine tints its own cell error-red (`data-mine`); cells are
+   responsive (`clamp` track + `aspect-ratio: 1`). No ARIA change — the grid
+   containment and the `role="status"` live region are untouched.
+
+Verified by the controller directly: full `test:all` — typecheck, 92 unit, clean
+build, and **76/76 e2e + axe** green in this sandbox's real browser (the axe
+sweep covers `/contact` and `/404`, both redesigned; the existing contact and
+minesweeper-404 specs still pass — the shortened lose copy and colored status
+changed no asserted text). The whole animation path was also driven live against
+the dev server (Playwright, both themes) to confirm the board scales, the reply
+fades, and the revealed numbers/home-link read in dark mode. T-spin timing/scale
+and the exact wash/panel values remain open to live eyeball tuning.
+
 ## Stack
 
 - **Astro** — static-first site generator. Zero JS by default; only hydrate

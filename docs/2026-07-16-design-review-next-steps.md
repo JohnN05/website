@@ -148,6 +148,49 @@ re-swap). Committed `d4ec940`.
 
 ---
 
+## Done (fifth pass — contact send T-spin + 404 / Minesweeper)
+
+The last two per-page cleanups (`/contact` on-brand touch and `/404`
+belong-to-the-system), plus the Minesweeper redesign the 404 review implied.
+Mock-first in an Artifact over many rounds.
+
+- **`/contact` — the send is a T-Spin Double.** A first "corner tetromino on the
+  card" mock was rejected by the owner as a purposeless Tetris reference. The
+  approved direction ties the motif to the one real completion on the page: on a
+  successful send the fields fade, a T piece spawns high, drops block-by-block
+  down a well, snaps 90° **in place** into the notch (an instant rotation, not a
+  tween, like real Tetris), the two completed rows flash and clear, the standing
+  blocks drop by gravity, and the reply **rises out of the freed space**. The
+  reply is a composed moment — a mono `Message sent` eyebrow over a Bricolage
+  headline ("Thanks for the message. I'll talk to you soon!") — not the old
+  plain tinted chip. Board coordinates are **verified against `engine.ts`**
+  (`scratchpad/tspin-solve.ts` drove the real `rotate()`/`isTSpin`: `isTSpin=true`,
+  kick `(0,0)`, 2 rows cleared) and baked as a fixed sequence. The board scales
+  to the card. Gated on motion; reduced-motion / no-JS / error keep the plain
+  swap, honoring the fetch-submit success/error constraint.
+- **`/404` — wash + system type.** Cobalt `--wash-hero` band (the same
+  `/contact` uses) with a seam to flat before the footer, a mono `Error 404`
+  eyebrow, the spec-matching context line promoted to lede type, token spacing,
+  and a `Back to Home` link at full `--color-text` contrast (cobalt was
+  unreadable on the cobalt wash, worst in dark) with the accent kept as its
+  underline + arrow.
+- **Minesweeper redesigned** (`MinesweeperBoard.astro`) — it had fallen behind.
+  Now a bordered panel matching the site's card language; unopened tiles read as
+  raised, **opened cells recede to flat `--color-bg` so numbers keep full
+  `--color-text` contrast in both themes** (the old revealed background was
+  `--color-text-secondary` — ivory numbers on a light grey in dark mode, the
+  unreadable case). Reset restyled (mono, hairline border, accent-on-hover,
+  focus ring); the status no longer collides with it (`min-width:0` wraps, Reset
+  `flex-shrink:0`, shorter lose copy) and colors itself on win/lose; a hit mine
+  tints its cell; cells are responsive.
+
+Verified by the controller directly: full `test:all` — typecheck, 92 unit,
+clean build, **76/76 e2e + axe** green in this sandbox's real browser (the axe
+sweep covers `/contact` and `/404`, both redesigned). T-spin timing/scale and
+the exact wash/panel values remain open to live eyeball tuning.
+
+---
+
 ## Remaining items
 
 Effort is rough (S/M/L). "Mock-first" means an approved Artifact mock before
@@ -167,13 +210,12 @@ than eyebrows.
 
 ## Per-page cleanups (lower stakes)
 
-- **`/404` context line · XS** — confirm the Minesweeper 404 has the context
-  line the spec calls for and uses the same tokens/type, so it doesn't read as a
-  one-off. Quick check, possibly already fine.
-- **`/contact` on-brand touch · S** — the form card is a plain tinted rectangle.
-  One touch (a grid line, a corner tetromino) to tie it in. Note the parity pass
-  already gave `ContactForm` an accent `:focus-visible` ring, so the review's
-  focus-ring suggestion is done; this is just the resting card.
+- ~~**`/404` context line · XS**~~ — **DONE** (fifth pass). Context line already
+  matched the spec; the page now carries the wash + system type + a redesigned
+  Minesweeper panel, so it no longer reads as a one-off.
+- ~~**`/contact` on-brand touch · S**~~ — **DONE** (fifth pass). Landed as the
+  send-is-a-T-spin animation rather than a resting-card ornament — the motif is
+  tied to the real completion, not bolted on.
 - **`/projects` hierarchy · M** — as the project count grows, the flat
   `auto-fit` grid will read as a spreadsheet. Let the newest project span wider
   (a featured row) for hierarchy. Not urgent at 4 projects; revisit when it
