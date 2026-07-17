@@ -81,10 +81,9 @@ import ContactForm from '../components/ContactForm.astro';
   }
 
   /* Plain centered two-column layout — the content deliberately does NOT try
-     to align to the well's cells. Instead the well greys out (leaves unlit)
-     exactly the cells behind the copy and the card, measured from their real
-     boxes in the script below, so occlusion is accurate regardless of where
-     the content lands. */
+     to align to the well's cells. Instead the script analytically greys out (leaves unlit)
+     the cells behind the copy, measured from its real box in the script below, so occlusion
+     stays accurate regardless of where the content lands. */
   .contact-inner {
     position: relative;
     z-index: 1;
