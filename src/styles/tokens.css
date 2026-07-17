@@ -26,7 +26,7 @@
   --piece-j: var(--color-accent); /* hero     · J · blue */
   --piece-o: var(--tetris-o); /* bio         · O · gold */
   --piece-l: var(--color-accent-clay); /* featured · L · orange */
-  --piece-i: var(--tetris-i); /* teaching    · I · teal */
+  --piece-i: var(--tetris-i); /* education   · I · teal */
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -51,7 +51,13 @@
   --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-j) var(--wash-mix));
   --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-o) var(--wash-mix));
   --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-l) var(--wash-mix));
-  --wash-teaching: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-i) var(--wash-mix));
+  --wash-education: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-i) var(--wash-mix));
+  /* Contact's own wash — mixed from --tetris-t (purple), the same piece its
+     send animation already plays, rather than reusing --wash-hero the way it
+     did before. Not part of the Home reading-order set above (contact isn't
+     a Home section), so it's declared on its own rather than folded into
+     --piece-*. */
+  --wash-contact: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--tetris-t) var(--wash-mix));
 }
 
 :root[data-theme='dark'] {

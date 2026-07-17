@@ -22,6 +22,17 @@ export function encodeForNetlify(formName: string, payload: ContactPayload): str
   return params.toString();
 }
 
+/**
+ * How many of the three fields currently hold non-whitespace text, 0-3.
+ * Drives the contact page's background well: each filled field reveals more
+ * of it, so the shared state between the form and its backdrop is this one
+ * pure number rather than the fields themselves.
+ */
+export function formProgressStage(name: string, email: string, message: string): 0 | 1 | 2 | 3 {
+  const filled = [name, email, message].filter((v) => v.trim().length > 0).length;
+  return filled as 0 | 1 | 2 | 3;
+}
+
 export async function submitContactForm(
   payload: ContactPayload,
   fetchImpl: typeof fetch = fetch

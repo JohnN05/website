@@ -3,7 +3,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ContactForm from '../components/ContactForm.astro';
 ---
 <BaseLayout title="Contact — John Ng">
-  <div class="contact-band">
+  <div class="contact-band" id="contact-band">
+    {/* Ambient backdrop: a Tetris well that fills as the form does — one
+        field filled reveals more of it, all three nearly completes it, and
+        a successful send (ContactForm's own `contact-sent` event) clears it,
+        in the same beat as the real T-Spin playing over the card. Purely
+        decorative (aria-hidden, never the source of truth for form state),
+        so it renders as an inert static scatter with no JS/reduced motion. */}
+    <div class="well" id="contact-well" aria-hidden="true" role="presentation"></div>
     <div class="contact-inner">
       <div class="contact-copy">
         <p class="eyebrow">Get in touch</p>
@@ -15,7 +22,7 @@ import ContactForm from '../components/ContactForm.astro';
       </div>
     </div>
   </div>
-  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--color-bg);"></div>
+  <div class="seam" style="--seam-from: var(--wash-contact); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
   .eyebrow {
@@ -26,13 +33,63 @@ import ContactForm from '../components/ContactForm.astro';
     margin: 0 0 var(--space-3);
   }
   .contact-band {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     min-height: 90vh;
-    background: var(--wash-hero);
+    background: var(--wash-contact);
     padding: var(--space-10) var(--space-5);
   }
+  /* The waiting well. Cell on/off state is driven entirely by the script
+     below (contact-progress / contact-sent) — nothing here reads form
+     values directly, so the well stays inert if JS never runs. */
+  .well {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    gap: 4px;
+    padding: var(--space-6);
+    opacity: 0.6;
+    filter: blur(0.5px);
+    mask-image: radial-gradient(ellipse 80% 65% at 76% 58%, black 0%, black 30%, transparent 74%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 65% at 76% 58%, black 0%, black 30%, transparent 74%);
+    translate: var(--well-mx, 0px) var(--well-my, 0px);
+    transition: translate 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  /* Off cells stay nearly invisible — a faint hint of grid structure, not a
+     checkerboard — so only the lit blocks (baseline scatter + form-progress
+     pool) read as shapes against the wash. */
+  .well :global(div) {
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--color-text) 3%, transparent);
+    transition: background-color 0.45s ease, opacity 0.45s ease, box-shadow 0.3s ease;
+  }
+  .well :global(div.on) {
+    background: color-mix(in srgb, var(--tetris-t) 48%, var(--color-bg));
+  }
+  /* The gap only a real send ever fills — a slow breathing pulse rather than
+     a static outline, foreshadowing the T-Spin instead of just sitting
+     empty. */
+  .well :global(div.notch) {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tetris-t) 55%, var(--color-bg));
+    animation: contact-notch-pulse 3.2s ease-in-out infinite;
+  }
+  @keyframes contact-notch-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .well { translate: none; transition: none; }
+    .well :global(div) { transition: none; }
+    .well :global(div.notch) { animation: none; opacity: 0.7; }
+  }
+  @media (pointer: coarse) { .well { translate: none !important; } }
+
   .contact-inner {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 68rem;
     margin: 0 auto;
@@ -54,10 +111,57 @@ import ContactForm from '../components/ContactForm.astro';
     color: var(--color-text-secondary);
     margin: 0;
   }
+  /* The frosted-glass fill lives on ::before, one layer behind the card's
+     real content, rather than directly on .contact-card. Chromium's
+     backdrop-filter measurably bleeds into fully-opaque descendants'
+     rendered color when it sits on an ancestor of them (confirmed: the Send
+     button's computed style is exactly rgb(52,84,209)/white/opacity 1 with
+     no filter of its own, yet axe's color-contrast check sampled a lighter
+     blend once backdrop-filter lived here) — axe-core failed the button on
+     contrast as a result. Moving backdrop-filter to a pseudo-element keeps
+     it out of the button's ancestor chain entirely. */
   .contact-card {
-    background: color-mix(in srgb, var(--color-text) 4%, var(--color-bg));
+    position: relative;
+    z-index: 0;
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: var(--space-6);
+    transition: border-color 0.3s ease;
+  }
+  .contact-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  /* Pure-CSS "the board notices you're writing" cue — :has() reads the
+     card's own focus-within state, no script involved, same
+     attribute/state-driven spirit as ThemeToggle. Keys to --tetris-t, the
+     same hue the send animation plays, so focusing previews the color that
+     eventually completes it. */
+  .contact-band:has(.contact-card:focus-within) .well { opacity: 0.85; }
+  .contact-band:has(.contact-card:focus-within) .contact-card {
+    border-color: color-mix(in srgb, var(--tetris-t) 45%, var(--line));
+  }
+  /* Page-wake entrance. This section is ~fully in view at load, the same as
+     Home's hero — a scroll-triggered reveal would never fire, so this plays
+     once on load instead (copy first, then the card). */
+  .contact-copy, .contact-card {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: contact-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .contact-copy { animation-delay: 0.05s; }
+  .contact-card { animation-delay: 0.2s; }
+  @keyframes contact-in {
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .contact-copy, .contact-card { animation: none; opacity: 1; transform: none; }
   }
   /* Same mechanism as index.astro's own seams; only one is needed here
      (fading wash-hero back to flat before the Footer), matching how
@@ -80,3 +184,128 @@ import ContactForm from '../components/ContactForm.astro';
     }
   }
 </style>
+
+<script>
+  // The waiting well. Genuinely random scatter each load (same spirit as the
+  // ambient Tetris board's real 7-bag randomness elsewhere on the site, not
+  // a fixed pattern) — a fixed `baseline` set of cells that never changes
+  // once built, plus a `pool` of additional cells revealed cumulatively as
+  // ContactForm.astro's `contact-progress` events report more fields filled.
+  // `contact-sent` (dispatched the instant the real T-Spin's rows start
+  // flashing) drops the pool back to empty, so the backdrop clears in the
+  // same beat as the card's own line clear.
+  //
+  // Purely decorative (aria-hidden on the container) and never the source of
+  // truth for anything — under reduced motion this whole block never runs,
+  // same convention as ContactForm.astro's own tspin-stage, and the well
+  // renders as a plain empty backdrop instead.
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const coarsePointer = matchMedia('(pointer: coarse)').matches;
+
+  if (!reducedMotion) {
+    const band = document.getElementById('contact-band') as HTMLElement;
+    const well = document.getElementById('contact-well') as HTMLElement;
+
+    const CELL_SIZE = 42;
+    const GAP = 4;
+    const BASELINE_FRACTION = 0.16;
+    // Cumulative share of the (non-baseline) pool revealed at stage 0-3.
+    const STAGE_FRACTIONS = [0, 0.35, 0.65, 0.9];
+
+    let pool: HTMLElement[] = [];
+    let stageCounts: number[] = [0, 0, 0, 0];
+    let currentStage = 0;
+    // Bumped on every rebuild so a resize mid-animation can't have a stale
+    // closure keep writing to cells that no longer exist — same guard
+    // TetrisHero.astro uses for its own ambientGeneration.
+    let generation = 0;
+
+    function applyStage(stage: number, gen: number) {
+      currentStage = stage;
+      if (gen !== generation) return;
+      const count = stageCounts[stage] ?? 0;
+      pool.forEach((cell, i) => cell.classList.toggle('on', i < count));
+    }
+
+    function buildWell() {
+      generation++;
+      const gen = generation;
+      const w = well.clientWidth;
+      const h = well.clientHeight;
+      if (w === 0 || h === 0) return;
+
+      const cols = Math.max(6, Math.floor((w + GAP) / (CELL_SIZE + GAP)));
+      const rows = Math.max(4, Math.floor((h + GAP) / (CELL_SIZE + GAP)));
+      well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      well.innerHTML = '';
+
+      // A 2x2 gap positioned toward where the card sits (the mask already
+      // keeps the well mostly visible in that same region) — the one spot
+      // only a real send ever fills.
+      const notchCol = Math.max(1, Math.floor(cols * 0.62));
+      const notchRow = Math.max(1, rows - 3);
+      const notchCells = new Set([
+        notchRow * cols + notchCol, notchRow * cols + notchCol + 1,
+        (notchRow + 1) * cols + notchCol, (notchRow + 1) * cols + notchCol + 1,
+      ]);
+
+      const candidates: number[] = [];
+      const startRow = Math.floor(rows * 0.35);
+      for (let y = startRow; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const i = y * cols + x;
+          if (!notchCells.has(i)) candidates.push(i);
+        }
+      }
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+      const baselineCount = Math.floor(candidates.length * BASELINE_FRACTION);
+      const baseline = new Set(candidates.slice(0, baselineCount));
+      const poolIndices = candidates.slice(baselineCount);
+      stageCounts = STAGE_FRACTIONS.map((f) => Math.floor(poolIndices.length * f));
+
+      const cells: HTMLElement[] = [];
+      for (let i = 0; i < cols * rows; i++) {
+        const cell = document.createElement('div');
+        if (notchCells.has(i)) cell.className = 'notch';
+        else if (baseline.has(i)) cell.className = 'on';
+        well.appendChild(cell);
+        cells.push(cell);
+      }
+      pool = poolIndices.map((i) => cells[i]);
+      applyStage(currentStage, gen);
+    }
+
+    band.addEventListener('contact-progress', (e) => {
+      applyStage((e as CustomEvent<{ stage: number }>).detail.stage, generation);
+    });
+    band.addEventListener('contact-sent', () => applyStage(0, generation));
+
+    buildWell();
+    let resizeTimer: number | undefined;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(buildWell, 150);
+    });
+
+    // Cursor-parallax on the well, fine-pointer only — a touch scroll has no
+    // persistent cursor position for this to read.
+    if (!coarsePointer) {
+      const MAX_PX = 14;
+      band.addEventListener('mousemove', (e) => {
+        const r = band.getBoundingClientRect();
+        const nx = (e.clientX - r.left) / r.width - 0.5;
+        const ny = (e.clientY - r.top) / r.height - 0.5;
+        well.style.setProperty('--well-mx', `${(nx * MAX_PX).toFixed(1)}px`);
+        well.style.setProperty('--well-my', `${(ny * MAX_PX).toFixed(1)}px`);
+      });
+      band.addEventListener('mouseleave', () => {
+        well.style.setProperty('--well-mx', '0px');
+        well.style.setProperty('--well-my', '0px');
+      });
+    }
+  }
+</script>
