@@ -313,14 +313,29 @@
     });
   }
 
+  // `onScreen` = the container has a real box (i.e. not the mobile
+  // display:none breakpoint); it changes only on resize. `inView` = the hero
+  // is actually intersecting the viewport, and is the IntersectionObserver's
+  // single source of truth (below). Both must gate the loop: without `inView`,
+  // a visibilitychange/reduced-motion/resize resume would call start() while
+  // the hero is scrolled off-screen (onScreen still true), running the loop —
+  // and burning the exact off-screen work this feature exists to avoid — until
+  // the IO next fired. `inView` starts false; the IO's initial callback flips
+  // it true (and calls start()) when the hero is on screen at load.
+  let inView = false;
+
   function shouldRun() {
-    return onScreen && !reducedMotion.matches;
+    return onScreen && inView && !reducedMotion.matches;
   }
 
   function start() {
     if (running || !shouldRun()) return;
     running = true;
     generation++;
+    // Re-render the committed board on (re)start so a resume never shows a
+    // stale frame — e.g. a pause that bailed mid-flash left the pre-clear rows
+    // on screen while `board` had already advanced past the clear.
+    renderBoth();
     runCycle();
   }
 
@@ -335,6 +350,7 @@
   // (rebuild + reblur on lock) for something off screen.
   const io = new IntersectionObserver((entries) => {
     for (const entry of entries) {
+      inView = entry.isIntersecting; // set BEFORE start() — shouldRun() reads it
       if (entry.isIntersecting) start();
       else stop();
     }
