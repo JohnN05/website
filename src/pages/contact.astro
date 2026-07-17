@@ -44,16 +44,22 @@ import ContactForm from '../components/ContactForm.astro';
   /* The waiting well. Cell on/off state is driven entirely by the script
      below (contact-progress / contact-sent) — nothing here reads form
      values directly, so the well stays inert if JS never runs. */
+  /* The mask keeps the well strongest in the open band left of and below the
+     form card, fading out before the far edges — NOT centered behind the
+     card (an earlier 76%-across center put the densest region squarely under
+     the opaque card, where it couldn't be seen, so the whole effect read as
+     faint stray texture). Centered at 46% across / 62% down instead, so the
+     visible density lands in empty space. */
   .well {
     position: absolute;
     inset: 0;
     display: grid;
     gap: 4px;
     padding: var(--space-6);
-    opacity: 0.7;
-    filter: blur(0.5px);
-    mask-image: radial-gradient(ellipse 80% 65% at 76% 58%, black 0%, black 30%, transparent 74%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 65% at 76% 58%, black 0%, black 30%, transparent 74%);
+    opacity: 0.85;
+    filter: blur(0.4px);
+    mask-image: radial-gradient(ellipse 78% 68% at 46% 62%, black 0%, black 34%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 78% 68% at 46% 62%, black 0%, black 34%, transparent 80%);
     translate: var(--well-mx, 0px) var(--well-my, 0px);
     transition: translate 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
@@ -62,11 +68,15 @@ import ContactForm from '../components/ContactForm.astro';
      pool) read as shapes against the wash. */
   .well :global(div) {
     border-radius: 2px;
-    background: color-mix(in srgb, var(--color-text) 3%, transparent);
+    background: color-mix(in srgb, var(--color-text) 4%, transparent);
     transition: background-color 0.45s ease, opacity 0.45s ease, box-shadow 0.3s ease;
   }
+  /* Lit cells carry enough of the T-piece hue to read as solid blocks against
+     the wash rather than blending into it — the whole point is that the well
+     is legible at rest. They sit in open space (never behind the card's text),
+     so a stronger fill costs no legibility elsewhere. */
   .well :global(div.on) {
-    background: color-mix(in srgb, var(--tetris-t) 48%, var(--color-bg));
+    background: color-mix(in srgb, var(--tetris-t) 80%, var(--color-bg));
   }
   /* The gap only a real send ever fills — a slow breathing pulse rather than
      a static outline, foreshadowing the T-Spin instead of just sitting
@@ -244,11 +254,12 @@ import ContactForm from '../components/ContactForm.astro';
       well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
       well.innerHTML = '';
 
-      // A 2x2 gap positioned toward where the card sits (the mask already
-      // keeps the well mostly visible in that same region) — the one spot
-      // only a real send ever fills.
-      const notchCol = Math.max(1, Math.floor(cols * 0.62));
-      const notchRow = Math.max(1, rows - 3);
+      // A 2x2 gap sitting in the well's most-visible zone (matching the mask
+      // center below) so the one spot only a real send ever fills is actually
+      // seen waiting — placed in the lower-middle, reading as a gap in the
+      // stack rather than a hole at the very floor.
+      const notchCol = Math.max(1, Math.floor(cols * 0.44));
+      const notchRow = Math.max(1, Math.floor(rows * 0.66));
       const notchCells = new Set([
         notchRow * cols + notchCol, notchRow * cols + notchCol + 1,
         (notchRow + 1) * cols + notchCol, (notchRow + 1) * cols + notchCol + 1,
