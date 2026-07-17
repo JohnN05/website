@@ -1,0 +1,37 @@
+name: CI
+
+# Runs the repo's real gate (npm run test:all = typecheck + unit + build + e2e)
+# on every push and PR. e2e uses Playwright/Chromium, so the runner installs
+# the browser and its system libs with `--with-deps` (root is available on the
+# GitHub runner, unlike the local WSL2 sandbox that needs the LD_LIBRARY_PATH
+# shim in the test:e2e script — that shim prepends a path that simply doesn't
+# exist here, which is harmless).
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+# One in-flight run per branch; a newer push cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium + system deps
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full gate (typecheck + unit + build + e2e)
+        run: npm run test:all

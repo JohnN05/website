@@ -1,0 +1,247 @@
+---
+import { accentForTag, ACCENT_VAR, PIECE_CELLS } from '../lib/tags';
+
+interface Props {
+  project: { slug: string; title: string; summary: string; date: Date; tags: string[] };
+  showCover?: boolean;
+  featured?: boolean;
+}
+const { project, showCover = false, featured = false } = Astro.props;
+const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(project.date);
+
+// Accent, its color var, and its tetromino all come from lib/tags so the card
+// and the article header render the same identity for a given tag.
+const accentName = accentForTag(project.tags[0] ?? project.title);
+const coverAccent = ACCENT_VAR[accentName];
+const pieceCells = PIECE_CELLS[accentName] ?? PIECE_CELLS.cobalt;
+const initial = project.title.charAt(0);
+---
+<a
+  class:list={['project-card', featured && 'featured']}
+  style={`--cover-accent: ${coverAccent};`}
+  href={`/projects/${project.slug}`}
+>
+  {showCover && (
+    <div class="cover" aria-hidden="true">
+      <span class="glyph">{initial}</span>
+      <div class="cover-piece">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span class={pieceCells.includes(i) ? 'on' : ''}></span>
+        ))}
+      </div>
+    </div>
+  )}
+  <div class="card-body">
+    <p class="meta">{featured && <span class="latest-label">Latest &rarr; </span>}{formattedDate}</p>
+    <h3>{project.title}</h3>
+    <p class="summary">{project.summary}</p>
+    <ul class="tags">
+      {project.tags.map((tag) => <li class={`tag tag-${accentForTag(tag)}`}>{tag}</li>)}
+    </ul>
+  </div>
+</a>
+<style>
+  .project-card {
+    position: relative;
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--color-text);
+    background: var(--color-bg);
+  }
+  /* On-brand top edge: dark at rest, lights to the card's own piece color on
+     hover, wiping in from the left. */
+  .project-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--cover-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    z-index: 1;
+  }
+  .project-card:hover,
+  .project-card:focus-visible {
+    border-color: color-mix(in srgb, var(--cover-accent) 40%, var(--line));
+  }
+  .project-card:hover::before,
+  .project-card:focus-visible::before {
+    transform: scaleX(1);
+  }
+
+  .cover {
+    position: relative;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-bg) 88%, var(--cover-accent) 12%);
+  }
+  .cover .glyph {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    font-size: 4.5rem;
+    line-height: 1;
+    color: var(--cover-accent);
+    opacity: 0.32;
+  }
+
+  /* A real tetromino drops into the cover on hover, then flashes white a few
+     times and clears in place on leave — the board's own line-clear motion,
+     driven from the script below (see TetrisHero's flashRows pattern). */
+  .cover-piece {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-4);
+    display: grid;
+    grid-template-columns: repeat(3, 12px);
+    grid-auto-rows: 12px;
+    gap: 2px;
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  .cover-piece span { border-radius: 2px; }
+  .cover-piece span.on { background: var(--cover-accent); }
+  .cover-piece.in { opacity: 1; transform: translateY(0); }
+  /* Clear in place: fade where it sits, no upward retreat. */
+  .cover-piece.cleared { opacity: 0; transform: translateY(0); }
+  .cover-piece.flash span.on { background: #ffffff; }
+
+  .card-body {
+    padding: var(--space-4);
+  }
+  .project-card .summary {
+    color: var(--color-text-secondary);
+  }
+
+  /* Featured: the newest project (index.astro picks projects[0], already
+     sorted byDateDesc) spans the full row as a horizontal card instead of
+     sitting flush in the grid with everything else — hierarchy by size and
+     position, not a different card language. Wash reuses --wash-featured
+     (the same clay-mixed tint Home's featured section wears), not an
+     invented color. */
+  .project-card.featured {
+    display: grid;
+    grid-template-columns: minmax(220px, 38%) 1fr;
+    background: var(--wash-featured);
+  }
+  .project-card.featured .cover {
+    height: 100%;
+    min-height: 220px;
+    background: color-mix(in srgb, var(--wash-featured) 82%, var(--cover-accent) 18%);
+  }
+  .project-card.featured .glyph {
+    font-size: 6rem;
+  }
+  .project-card.featured .card-body {
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .latest-label {
+    color: var(--cover-accent);
+  }
+  .project-card.featured h3 {
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  }
+  .project-card.featured .summary {
+    font-size: 1.02rem;
+    max-width: 52ch;
+  }
+  @media (max-width: 700px) {
+    .project-card.featured {
+      grid-template-columns: 1fr;
+    }
+    .project-card.featured .cover {
+      min-height: 140px;
+    }
+  }
+
+  /* Motion is opt-in: the lift, shadow, and piece transitions only exist when
+     the visitor hasn't asked for reduced motion. The accent border/edge (a
+     state change, not travel) stays either way, and the script below never
+     wires the drop/flash under reduced motion, so the piece simply stays
+     hidden. */
+  @media (prefers-reduced-motion: no-preference) {
+    .project-card {
+      transition: transform 0.18s ease, box-shadow 0.22s ease, border-color 0.18s ease;
+    }
+    .project-card::before {
+      transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+    }
+    .project-card:hover,
+    .project-card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--cover-accent) 70%, transparent);
+    }
+    .cover-piece {
+      transition: transform 0.32s cubic-bezier(0.3, 1.35, 0.5, 1), opacity 0.16s ease;
+    }
+    .cover-piece span.on {
+      transition: background-color 0.05s linear;
+    }
+  }
+</style>
+<script>
+  // Mirrors TetrisHero's flashRows(): a setTimeout-driven classList toggle
+  // loop, no CSS @keyframes to restart. Constants match the board's line-clear
+  // flash so the two read as the same motion.
+  const FLASH_CYCLES = 3;
+  const FLASH_INTERVAL_MS = 90;
+  const CLEAR_FADE_MS = 200;
+
+  // Reduced motion: never wire the drop/flash. The piece stays at its hidden
+  // resting state (opacity 0), so hover shows only the static cover + accent
+  // edge — no travel, no flashing.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll<HTMLElement>('.project-card').forEach((card) => {
+      const piece = card.querySelector<HTMLElement>('.cover-piece');
+      if (!piece) return; // no cover on this card (showCover=false)
+
+      let timers: number[] = [];
+      const clearTimers = () => {
+        timers.forEach((timerId) => window.clearTimeout(timerId));
+        timers = [];
+      };
+
+      const enter = () => {
+        clearTimers();
+        piece.classList.remove('flash', 'cleared');
+        piece.classList.add('in');
+      };
+
+      const leave = () => {
+        clearTimers();
+        // One class toggle per half-flash, so a full on/off cycle is two toggles.
+        let toggleCount = 0;
+        const tick = () => {
+          piece.classList.toggle('flash');
+          toggleCount += 1;
+          if (toggleCount < FLASH_CYCLES * 2) {
+            timers.push(window.setTimeout(tick, FLASH_INTERVAL_MS));
+          } else {
+            // Fade out in place, then reset to the top so the next hover drops fresh.
+            piece.classList.remove('flash');
+            piece.classList.add('cleared');
+            timers.push(
+              window.setTimeout(() => piece.classList.remove('in', 'cleared'), CLEAR_FADE_MS)
+            );
+          }
+        };
+        tick();
+      };
+
+      card.addEventListener('mouseenter', enter);
+      card.addEventListener('mouseleave', leave);
+      card.addEventListener('focusin', enter);
+      card.addEventListener('focusout', leave);
+    });
+  }
+</script>

@@ -1,0 +1,260 @@
+<div class="minesweeper" id="minesweeper">
+  <div class="ms-header">
+    <!-- role="status" (an implicit polite live region) because this is where
+         "You hit a mine." and "You cleared the board!" are written. Without it
+         nothing announces the end of the game: the cell labels don't convey it,
+         and every later Enter silently no-ops behind the gameOver guard, so a
+         screen-reader user is left pressing keys at a board that has already
+         finished. Polite, not assertive — it should follow the move the player
+         just made, not interrupt it. -->
+    <span id="ms-status" role="status">Mines: 10</span>
+    <button id="ms-reset" type="button">Reset</button>
+  </div>
+  <div class="ms-grid" id="ms-grid" role="grid" aria-label="Minesweeper board"></div>
+</div>
+<style>
+  /* The board reads as one of the site's panels (same card language as the
+     project cards / contact card) rather than a bare grid floating in the wash. */
+  .minesweeper {
+    display: inline-block;
+    background: color-mix(in srgb, var(--color-text) 3%, var(--color-bg));
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: var(--space-4);
+  }
+  .ms-grid {
+    display: grid;
+    grid-template-columns: repeat(9, clamp(1.7rem, 7.5vw, 2rem));
+    gap: 3px;
+  }
+  /* :global() is required here because the grid cells are created at
+     runtime via document.createElement (see the script below), so they
+     never receive Astro's scoped data-astro-cid attribute and would
+     otherwise not match these rules at all. */
+  /* role="row" wrapper divs are required for valid ARIA grid semantics
+     (a role="grid" element's children must be role="row", which in turn
+     must contain role="gridcell" children) but must not affect the
+     visual layout, which relies on the buttons being direct children of
+     the CSS grid container; display: contents removes the wrapper from
+     the box-layout tree while keeping it in the accessibility tree. */
+  .ms-grid :global([role='row']) {
+    display: contents;
+  }
+  .ms-grid :global(button) {
+    width: 100%;
+    aspect-ratio: 1;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--color-text) 9%, var(--color-bg));
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+  .ms-grid :global(button:hover) {
+    background: color-mix(in srgb, var(--color-text) 16%, var(--color-bg));
+  }
+  .ms-grid :global(button:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  /* data-revealed (not aria-pressed) drives the "revealed" visual state:
+     role="gridcell" doesn't permit aria-pressed (that state belongs to
+     toggle buttons), and the cell's aria-label already conveys revealed/
+     flagged/mine/adjacent-count state to assistive tech, so this is a
+     plain styling hook rather than an accessibility attribute. */
+  /* revealed = opened: recede to the flat page ground so numbers keep full
+     --color-text contrast in both themes. The old revealed background was
+     --color-text-secondary, which put ivory numbers on a light grey in dark
+     mode — the unreadable case the redesign fixes. */
+  .ms-grid :global(button[data-revealed='true']) {
+    background: var(--color-bg);
+    cursor: default;
+  }
+  .ms-grid :global(button[data-revealed='true']:hover) {
+    background: var(--color-bg);
+  }
+  .ms-grid :global(button[data-mine='true']) {
+    background: color-mix(in srgb, var(--color-error) 22%, var(--color-bg));
+  }
+  .ms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  #ms-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    min-width: 0;                 /* wrap rather than shove the Reset button */
+  }
+  #ms-status[data-state='lost'] { color: var(--color-error); }
+  #ms-status[data-state='win'] { color: var(--color-text); font-weight: 600; }
+  #ms-reset {
+    flex-shrink: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  #ms-reset:hover {
+    border-color: var(--color-accent);
+  }
+  #ms-reset:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+</style>
+<script>
+  import {
+    createBoard, reveal, toggleFlag, checkWin, MS_ROWS, MS_COLS, MS_MINES,
+    type MinesweeperBoard, type MinesweeperCell,
+  } from '../lib/minesweeper/engine';
+
+  const grid = document.getElementById('ms-grid')!;
+  const status = document.getElementById('ms-status')!;
+  const resetBtn = document.getElementById('ms-reset')!;
+
+  let board: MinesweeperBoard = createBoard();
+  let gameOver = false;
+  let focusIndex = 0;
+  let longPressTimer: number | undefined;
+
+  function cellLabel(cell: MinesweeperCell): string {
+    if (cell.flagged) return '\u{1F6A9}';
+    if (!cell.revealed) return '';
+    if (cell.mine) return '\u{1F4A3}';
+    return cell.adjacent > 0 ? String(cell.adjacent) : '';
+  }
+
+  function describeCell(cell: MinesweeperCell): string {
+    if (cell.flagged) return 'Flagged cell';
+    if (!cell.revealed) return 'Hidden cell';
+    if (cell.mine) return 'Mine';
+    return cell.adjacent > 0 ? `${cell.adjacent} adjacent mines` : 'Empty cell';
+  }
+
+  // Cells now live one level deeper than grid.children (grid > row > cell,
+  // per valid ARIA grid/row/gridcell structure), so index into the
+  // flattened cell list rather than grid.children directly.
+  function getCell(index: number): HTMLElement | undefined {
+    return grid.querySelectorAll('[role="gridcell"]')[index] as HTMLElement | undefined;
+  }
+
+  function createCellButton(cell: MinesweeperCell, r: number, c: number): HTMLButtonElement {
+    const index = r * MS_COLS + c;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.tabIndex = index === focusIndex ? 0 : -1;
+    btn.setAttribute('role', 'gridcell');
+    btn.dataset.revealed = String(cell.revealed);
+    if (cell.revealed && cell.mine) btn.dataset.mine = 'true';
+    btn.setAttribute('aria-label', describeCell(cell));
+    btn.textContent = cellLabel(cell);
+    btn.addEventListener('click', () => {
+      // Keep the roving tabindex pointing at the cell actually played, or
+      // Tab re-enters the grid at cell 0 rather than where the player is.
+      focusIndex = index;
+      onReveal(r, c);
+    });
+    btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
+    btn.addEventListener('touchstart', () => {
+      longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
+    });
+    btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
+    btn.addEventListener('keydown', (e) => onKey(e, r, c));
+    return btn;
+  }
+
+  function render() {
+    // innerHTML = '' destroys whatever had focus, so remember whether focus was
+    // on the board before tearing it down and put it back afterwards. Doing it
+    // here rather than at each call site is what fixes the mouse path: the
+    // keyboard path used to refocus by hand after every render() and the mouse
+    // path simply never did, dropping focus to <body> on every click.
+    //
+    // Gated on the grid ACTUALLY having had focus, which is what keeps this
+    // from stealing it: the initial render at load happens with focus on
+    // <body>, and Reset renders with focus on the Reset button — neither should
+    // yank focus onto a cell.
+    const hadFocus = grid.contains(document.activeElement);
+    grid.innerHTML = '';
+    board.forEach((row, r) => {
+      const rowEl = document.createElement('div');
+      rowEl.setAttribute('role', 'row');
+      row.forEach((cell, c) => rowEl.appendChild(createCellButton(cell, r, c)));
+      grid.appendChild(rowEl);
+    });
+    if (hadFocus) getCell(focusIndex)?.focus();
+  }
+
+  function onReveal(r: number, c: number) {
+    if (gameOver) return;
+    const result = reveal(board, r, c);
+    board = result.board;
+    if (result.exploded) {
+      gameOver = true;
+      status.textContent = 'You hit a mine.';
+      status.dataset.state = 'lost';
+    } else if (checkWin(board)) {
+      gameOver = true;
+      status.textContent = 'You cleared the board!';
+      status.dataset.state = 'win';
+    }
+    render();
+  }
+
+  function onFlag(r: number, c: number) {
+    if (gameOver) return;
+    board = toggleFlag(board, r, c);
+    render();
+  }
+
+  function onKey(e: KeyboardEvent, r: number, c: number) {
+    const deltas: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+    };
+    if (e.key in deltas) {
+      e.preventDefault();
+      const [dr, dc] = deltas[e.key];
+      const nr = Math.min(Math.max(r + dr, 0), MS_ROWS - 1);
+      const nc = Math.min(Math.max(c + dc, 0), MS_COLS - 1);
+      focusIndex = nr * MS_COLS + nc;
+      render();
+    } else if (e.key === 'Enter') {
+      // preventDefault stops the browser's own Enter-on-button default
+      // action (a synthetic click) from firing after onReveal already
+      // ran, which would otherwise call onReveal a second time.
+      e.preventDefault();
+      onReveal(r, c);
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      onFlag(r, c);
+    }
+    // No refocusing here any more: render() restores focus itself, for the
+    // mouse as well as the keyboard. Three hand-written copies of that step
+    // were what let the mouse path quietly go without one.
+  }
+
+  resetBtn.addEventListener('click', () => {
+    board = createBoard();
+    gameOver = false;
+    focusIndex = 0;
+    status.textContent = `Mines: ${MS_MINES}`;
+    delete status.dataset.state;
+    render();
+  });
+
+  render();
+</script>

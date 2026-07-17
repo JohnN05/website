@@ -1,0 +1,681 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import TetrisHero from '../components/TetrisHero.astro';
+import TetrisWell from '../components/TetrisWell.astro';
+import PieceMark from '../components/PieceMark.astro';
+import { getCollection } from 'astro:content';
+import { selectFeatured } from '../lib/projects';
+
+const allProjects = await getCollection('projects');
+const featured = selectFeatured(
+  allProjects.map((p) => ({ slug: p.slug, ...p.data })),
+  3
+);
+---
+<BaseLayout title="John Ng">
+  {/* `in` is authored here, not added by script: the hero is on screen at load
+      by definition, and reveal is an on-ENTRY effect, so it must never animate
+      in. The hidden state now lands before first paint, which is too early for
+      any script to mark the hero resting in time — only markup gets there
+      first. If a deliberate hero load-in is ever wanted, it needs its own
+      mechanism; do not get it by deleting this class. */}
+  <section class="hero in" data-scroll-section data-band="j">
+    <div class="hero-copy" data-depth="0.05">
+      <button class="nameplate" id="nameplate" type="button" data-reveal>
+        <PieceMark layout="inline" reveals={true} trigger="load" />
+      </button>
+      <p class="eyebrow" data-reveal>Software Engineer</p>
+      <h1 data-reveal>Coding practical solutions for people. That's always been the point.</h1>
+    </div>
+    <TetrisHero />
+  </section>
+
+  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--wash-bio);"></div>
+
+  <section class="bio" data-scroll-section data-band="o">
+    <div class="bio-inner">
+      {/* Portrait as an O-piece dissolve. Server-rendered cells (no runtime
+          createElement), so ordinary Astro scoping applies. The core is the
+          photo clipped to square-minus-O; the four .blk cells slice the same
+          photo (sprite: background-size 400% + per-cell position) and sit
+          exactly over the notch, so at rest — reduced motion, no JS — the whole
+          thing reads as one clean square. role="img"/aria-label carries the
+          identity the old <img alt> did; the click-to-toggle is a decorative
+          enhancement, not an AT control. Bio drops the gold O in the scroll-well
+          (see TetrisWell.astro / CLAUDE.md), so its portrait is the O too. */}
+      <div class="bio-frame" data-reveal data-depth="0.1" role="img" aria-label="John Ng">
+        <div class="core"></div>
+        <div class="blk o1"><span class="fill"></span><span class="flash"></span></div>
+        <div class="blk o2"><span class="fill"></span><span class="flash"></span></div>
+        <div class="blk o3"><span class="fill"></span><span class="flash"></span></div>
+        <div class="blk o4"><span class="fill"></span><span class="flash"></span></div>
+      </div>
+      <div class="bio-copy" data-depth="0.03">
+        <p class="eyebrow" data-reveal>College Park, MD — CS + Secondary Ed @ UMD</p>
+        <h2 data-reveal>Hi, I'm John Ng.</h2>
+        <p class="lede" data-reveal>I build software people actually use, then teach the next person how to build it too.</p>
+        <p class="detail" data-reveal>Chrome extension UMD students use every registration cycle. A summer turning a 270M-row bottleneck into a shipped platform at Capital Technology Group.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
+
+  <section class="featured" data-scroll-section data-band="l">
+    <div class="featured-inner">
+      <h2 data-reveal>Featured projects</h2>
+      <div class="project-grid" data-depth="0.08">
+        {featured.map((p) => <ProjectCard project={p} showCover={true} />)}
+      </div>
+    </div>
+  </section>
+
+  <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-teaching);"></div>
+
+  <section class="teaching" data-scroll-section data-band="i">
+    <div class="teaching-inner" data-depth="0.06">
+      <p class="eyebrow" data-reveal>Teaching</p>
+      <h2 data-reveal>I teach as much as I build.</h2>
+      <div class="impact" data-reveal>
+        <div class="stat">
+          <span class="stat-n" data-count="60" data-suffix="+">60+</span>
+          <span class="stat-l">Students</span>
+        </div>
+        <div class="stat">
+          <span class="stat-n" data-count="3">3</span>
+          <span class="stat-l">Countries</span>
+        </div>
+        <div class="stat">
+          <span class="stat-n" data-count="2">2</span>
+          <span class="stat-l">Programs</span>
+        </div>
+      </div>
+      <p class="detail" data-reveal>Nobel Explorers ML/CV curriculum for students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
+    </div>
+  </section>
+
+  <div class="seam" style="--seam-from: var(--wash-teaching); --seam-to: var(--color-bg);"></div>
+
+  <TetrisWell />
+</BaseLayout>
+<style>
+  .hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    /* Leaves --peek (10vh) of the next section visible below the fold on
+       first load rather than exactly filling the viewport — a deliberate
+       "there's more" cue, and the hook a future scroll-triggered reveal
+       would key off of. */
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-hero);
+    scroll-snap-align: start;
+  }
+  .hero-copy {
+    max-width: 60ch;
+  }
+  @media (min-width: 769px) {
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      /* A plain percentage shrinks the copy column every time the window
+         does, so it wraps far more aggressively on a narrower desktop
+         window than it does at a wide/fullscreen one. Holding a fixed
+         floor keeps the fullscreen wrap pattern as the window narrows,
+         only yielding back to the percentage once the window is narrow
+         enough that holding the floor would run text under the Tetris
+         board. */
+      max-width: max(23rem, 40%);
+    }
+  }
+  .nameplate {
+    font-size: clamp(1.7rem, 3.6vw, 2.4rem);
+    display: inline-flex;
+    margin: 0 0 var(--space-3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+  }
+  .nameplate:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 6px;
+    border-radius: 4px;
+  }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+  }
+  .hero-copy h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+  }
+  .bio {
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-bio);
+    scroll-snap-align: start;
+  }
+  .bio-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 0.85fr 1fr;
+    gap: var(--space-8);
+    align-items: center;
+  }
+  /* O-piece dissolve. --img is the shared source every cell slices; the core is
+     the photo clipped to the square minus the O notch (a bottom-left 2×2), so
+     when the cells break off the notch shows the wash behind. Cells colour to
+     --piece-o (gold, the bio section's own piece) when broken, and flash white
+     on reassembly before resolving back to the photo. */
+  .bio-frame {
+    position: relative;
+    justify-self: start;
+    width: 100%;
+    max-width: 22rem;
+    aspect-ratio: 1 / 1;
+    cursor: pointer;
+    --img: url('/headshot.jpg');
+  }
+  .bio-frame .core {
+    position: absolute;
+    inset: 0;
+    border-radius: 3px;
+    background-image: var(--img);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    /* The notch corner is nudged 1px into the O quarter (x 50%→50%-1px,
+       y 50%→50%+1px) so the core paints a hair *under* the four cells that
+       cover it at rest. Without the overlap, core's clipped edge and the
+       cells' edges both antialias against transparency at the exact 50%
+       seam, leaving a hairline of the wash showing through between the
+       stationary core and the moving pieces. The strip is the same photo
+       the covering cells already show, so the overlap is invisible at rest. */
+    -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, calc(50% - 1px) 100%, calc(50% - 1px) calc(50% + 1px), 0 calc(50% + 1px));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, calc(50% - 1px) 100%, calc(50% - 1px) calc(50% + 1px), 0 calc(50% + 1px));
+  }
+  .bio-frame .blk {
+    position: absolute;
+    width: 25%;
+    height: 25%;
+    background-image: var(--img);
+    background-repeat: no-repeat;
+    background-size: 400% 400%;
+    /* Break travel is set on the individual translate/rotate properties (not
+       transform) so `transform` stays free for the hover float below — the two
+       compose in the render pipeline instead of one clobbering the other. */
+    transition: translate 0.55s cubic-bezier(0.2, 0.75, 0.25, 1),
+                rotate 0.55s cubic-bezier(0.2, 0.75, 0.25, 1),
+                box-shadow 0.4s ease;
+    will-change: translate, transform;
+  }
+  .bio-frame .fill,
+  .bio-frame .flash {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .bio-frame .fill {
+    background: var(--piece-o);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+  }
+  .bio-frame .flash {
+    background: #fff;
+    opacity: 0;
+  }
+  /* O cells: a 2×2 block in the bottom-left quarter (cols 0-1, rows 2-3). */
+  .bio-frame .o1 { left: 0;   top: 50%; background-position: 0%      66.667%; }
+  .bio-frame .o2 { left: 25%; top: 50%; background-position: 33.333% 66.667%; }
+  .bio-frame .o3 { left: 0;   top: 75%; background-position: 0%      100%; }
+  .bio-frame .o4 { left: 25%; top: 75%; background-position: 33.333% 100%; }
+  .bio-frame.broken .blk {
+    border-radius: 2px;
+    box-shadow: 0 6px 18px rgba(15, 30, 61, 0.22);
+  }
+  .bio-frame.broken .o1 { translate: -64% -22%; rotate: -9deg; }
+  .bio-frame.broken .o2 { translate: -30% -46%; rotate: 6deg; }
+  .bio-frame.broken .o3 { translate: -72% 30%; rotate: 7deg; }
+  .bio-frame.broken .o4 { translate: -26% 40%; rotate: -6deg; }
+  .bio-frame.colored .fill { opacity: 1; }
+  .bio-frame.flashing .flash { opacity: 0.92; }
+  /* Hovering the broken portrait signals it's clickable (toggles back whole):
+     a white glow ring fades up on each floating piece, and they drift on a
+     slow, phase-offset float so they don't bob in unison. Hover-only and
+     hover-capable-devices-only — touch has no idle-hover state to get stuck in;
+     those visitors still tap to reassemble, just without the cue. */
+  @media (hover: hover) {
+    .bio-frame.broken:hover .blk {
+      box-shadow: 0 6px 18px rgba(15, 30, 61, 0.22),
+                  0 0 0 1px rgba(255, 255, 255, 0.55),
+                  0 0 12px 2px rgba(255, 255, 255, 0.45);
+      animation: bio-piece-float 3.4s ease-in-out infinite;
+    }
+    .bio-frame.broken:hover .o2 { animation-delay: -0.8s; }
+    .bio-frame.broken:hover .o3 { animation-delay: -1.6s; }
+    .bio-frame.broken:hover .o4 { animation-delay: -2.4s; }
+  }
+  @keyframes bio-piece-float {
+    50% { transform: translateY(-3px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* Belt-and-suspenders: the script never attaches under reduced motion, so
+       these classes are never added — but if they were, the portrait still
+       stays a whole, un-coloured photo. */
+    .bio-frame .blk { transition: none; animation: none; }
+    .bio-frame.broken .blk { translate: 0; rotate: 0; box-shadow: none; }
+    .bio-frame.broken:hover .blk { animation: none; box-shadow: none; }
+    .bio-frame.colored .fill { opacity: 0; }
+  }
+  .bio-copy .eyebrow {
+    margin: 0 0 var(--space-4);
+  }
+  .bio-copy h2 {
+    font-size: clamp(1.7rem, 2.4vw, 2rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-5);
+    text-wrap: balance;
+  }
+  .bio-copy .lede {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    max-width: 34ch;
+    margin: 0 0 var(--space-5);
+  }
+  .bio-copy .detail {
+    font-size: 1rem;
+    line-height: 1.65;
+    max-width: 42ch;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-3);
+  }
+  @media (max-width: 860px) {
+    .bio-inner {
+      grid-template-columns: 1fr;
+    }
+    .bio-frame {
+      justify-self: center;
+      max-width: 16rem;
+      margin-bottom: var(--space-4);
+    }
+    .bio-copy .lede,
+    .bio-copy .detail {
+      max-width: 100%;
+    }
+  }
+
+  .featured {
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-featured);
+    scroll-snap-align: start;
+  }
+  .featured-inner {
+    width: 100%;
+  }
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .teaching {
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    padding: var(--space-10) var(--space-5);
+    background: var(--wash-teaching);
+    scroll-snap-align: start;
+  }
+  .teaching-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+  }
+  .teaching .eyebrow {
+    margin: 0 0 var(--space-4);
+  }
+  .teaching h2 {
+    font-size: clamp(2rem, 3.6vw, 2.6rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-5);
+    max-width: 20ch;
+  }
+  .teaching .detail {
+    font-size: 1.05rem;
+    line-height: 1.65;
+    max-width: 56ch;
+    color: var(--color-text-secondary);
+    margin: var(--space-6) 0 0;
+  }
+
+  /* Impact row: the real numbers as evidence, mono labels beneath — the one
+     place on the page "big number, small label" is earned, and a second
+     structural rhythm that isn't another prose block. */
+  .impact {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: clamp(var(--space-6), 6vw, var(--space-9));
+    justify-content: start;
+    align-items: end;
+    width: fit-content;
+    margin: var(--space-6) 0 0;
+    padding: var(--space-5) 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-n {
+    display: block;
+    margin: 0;
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-size: clamp(2.6rem, 7vw, 4rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat:nth-child(1) .stat-n { color: var(--color-accent); }
+  .stat:nth-child(2) .stat-n { color: var(--color-accent-clay); }
+  .stat:nth-child(3) .stat-n { color: var(--color-accent-moss); }
+  .stat-l {
+    display: block;
+    margin: var(--space-2) 0 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+  }
+  @media (max-width: 520px) {
+    .impact {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-5) var(--space-6);
+    }
+  }
+
+  /* Blend zone between two adjacent sections' wash colors — a flat
+     color-mix boundary reads as a hard seam; a blurred gradient band
+     straddling it reads as one continuous surface. Needs position:relative
+     for z-index to take effect, which is what lets it paint over both
+     neighboring sections despite sitting between them in source order —
+     sections themselves stay position:static (flex doesn't change that),
+     which always paints below positioned+z-index content regardless of DOM
+     order. The last instance (teaching → --color-bg) fades the wash back
+     out before Footer.astro, which stays plain on every route and has no
+     idea this wash system exists. */
+  .seam {
+    position: relative;
+    z-index: 1;
+    height: 10rem;
+    margin-top: -5rem;
+    margin-bottom: -5rem;
+    background: linear-gradient(to bottom, var(--seam-from), var(--seam-to));
+    filter: blur(40px);
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero, .bio, .featured, .teaching {
+      transition: background-color 0.15s ease;
+    }
+  }
+</style>
+
+<script>
+  const REVEAL_STAGGER_MS = 110;
+  // A beat after the section is judged entered, before the first child moves.
+  const REVEAL_LEAD_IN_MS = 160;
+  // How far into the section the reveal starts. Raising this delays the start
+  // in scroll distance rather than in time, which is the other half of "later".
+  const REVEAL_THRESHOLD = 0.25;
+
+  // Same reduced-motion convention as the Tetris ambient loop: check once, and
+  // if motion is reduced simply never attach. The hidden state is gated on
+  // data-motion, which BaseLayout.astro's inline head script sets before first
+  // paint (and never sets under reduced motion), so content renders normally
+  // here regardless.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-scroll-section]')
+    );
+
+    sections.forEach((section) => {
+      const items = Array.from(
+        section.querySelectorAll<HTMLElement>('[data-reveal]')
+      );
+      items.forEach((el, i) => {
+        el.style.transitionDelay = `${REVEAL_LEAD_IN_MS + i * REVEAL_STAGGER_MS}ms`;
+      });
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('in');
+          // Fires once per section per page load — no replay on re-entry.
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: REVEAL_THRESHOLD }
+    );
+
+    // The hero ships with `in` already on it (see the markup) and is done;
+    // observing it would only re-add a class it carries. Every other section
+    // is governed solely by the threshold above — an earlier version also
+    // pre-marked any section merely touching the viewport, which disagreed
+    // with that threshold: the deliberate ~10vh peek left bio 11.1% visible at
+    // 1920x1080, enough to be pre-marked but not enough to trip the observer,
+    // so bio's reveal silently never played on tall viewports.
+    sections
+      .filter((section) => !section.classList.contains('in'))
+      .forEach((section) => observer.observe(section));
+  }
+</script>
+
+<script>
+  import { parallaxShift } from '../lib/parallax';
+
+  const PARALLAX_MIN_WIDTH_PX = 769;
+  const RESIZE_DEBOUNCE_MS = 150;
+
+  if (
+    matchMedia(`(min-width: ${PARALLAX_MIN_WIDTH_PX}px)`).matches &&
+    !matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    const layers = Array.from(document.querySelectorAll<HTMLElement>('[data-depth]'));
+    const sectionTops = new Map<HTMLElement, number>();
+    const visible = new Set<HTMLElement>();
+
+    function hostOf(el: HTMLElement): HTMLElement | null {
+      return el.closest<HTMLElement>('[data-scroll-section]');
+    }
+
+    // offsetTop forces a synchronous layout, so it is read here and on resize —
+    // never inside the scroll handler. Same reasoning as TetrisHero.astro's
+    // setupAmbientBoard().
+    function refreshTops(): void {
+      sectionTops.clear();
+      document
+        .querySelectorAll<HTMLElement>('[data-scroll-section]')
+        .forEach((section) => sectionTops.set(section, section.offsetTop));
+    }
+
+    function applyParallax(): void {
+      const scrollY = window.scrollY;
+      for (const el of layers) {
+        const host = hostOf(el);
+        if (!host || !visible.has(host)) continue;
+        const top = sectionTops.get(host);
+        if (top === undefined) continue;
+        const shift = parallaxShift(scrollY, top, Number(el.dataset.depth));
+        el.style.setProperty('--parallax-y', `${shift.toFixed(2)}px`);
+      }
+    }
+
+    // Off-screen sections cost nothing: their layers are skipped entirely
+    // rather than transformed where nobody can see them.
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const section = entry.target as HTMLElement;
+        if (entry.isIntersecting) visible.add(section);
+        else visible.delete(section);
+      });
+      applyParallax();
+    });
+    document
+      .querySelectorAll<HTMLElement>('[data-scroll-section]')
+      .forEach((section) => observer.observe(section));
+
+    let queued = false;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          applyParallax();
+        });
+      },
+      { passive: true }
+    );
+
+    let resizeTimer: number | undefined;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        refreshTops();
+        applyParallax();
+      }, RESIZE_DEBOUNCE_MS);
+    });
+
+    refreshTops();
+    applyParallax();
+  }
+</script>
+
+<script>
+  // Teaching impact numbers count up on entry. The markup ships the final
+  // values, so reduced motion and no-JS both render them correct with nothing
+  // to do here; only when motion is allowed do we reset to 0 and animate.
+  const COUNT_MS = 1100;
+
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const impact = document.querySelector<HTMLElement>('.impact');
+    if (impact) {
+      const nums = Array.from(impact.querySelectorAll<HTMLElement>('.stat-n'));
+      const targets = nums.map((el) => ({
+        el,
+        target: Number(el.dataset.count),
+        suffix: el.dataset.suffix ?? '',
+      }));
+      // Zero them up front. The section is reveal-hidden (opacity 0) until it
+      // enters, so this reset is never visible as a flicker from the final value.
+      targets.forEach(({ el, suffix }) => (el.textContent = `0${suffix}`));
+
+      const run = ({ el, target, suffix }: (typeof targets)[number]) => {
+        const start = performance.now();
+        const frame = (now: number) => {
+          const p = Math.min((now - start) / COUNT_MS, 1);
+          const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+          el.textContent = `${Math.round(target * eased)}${suffix}`;
+          if (p < 1) requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      };
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            targets.forEach(run);
+            observer.unobserve(entry.target); // once per load, like the reveal
+          });
+        },
+        { threshold: 0.4 }
+      );
+      observer.observe(impact);
+    }
+  }
+</script>
+
+<script>
+  // Bio portrait O-piece dissolve. On entry the photo holds whole for a beat,
+  // then an O tetromino (a bottom-left 2×2 block) breaks off, the cells colour
+  // to the section's gold, and the notch reveals the wash. Clicking toggles; on
+  // reassembly the cells fly home and flash white before resolving to the photo.
+  // Decorative — the resting whole photo needs no JS, so under reduced motion (or
+  // no JS at all) this never attaches and the portrait renders as a clean square.
+  const HOLD_MS = 650; // whole beat before the piece breaks off on entry
+  const HOME_MS = 560; // time for scattered cells to fly back home (matches CSS)
+  const FLASH_CYCLES = 3;
+  const FLASH_MS = 90;
+
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const frame = document.querySelector<HTMLElement>('.bio-frame');
+    if (frame) {
+      let busy = false;
+
+      const breakApart = () => {
+        frame.classList.add('broken');
+        // Colour in a beat after the break starts, so the cells read as photo
+        // first and gold second rather than snapping straight to solid.
+        setTimeout(() => frame.classList.add('colored'), 120);
+      };
+
+      const assemble = () => {
+        busy = true;
+        frame.classList.remove('broken'); // cells fly home, still gold
+        setTimeout(() => {
+          // Same flash cadence as the board's flashRows(): a class toggle loop,
+          // no CSS @keyframes to restart. Once done, drop the colour to reveal
+          // the photo underneath.
+          let n = 0;
+          const tick = () => {
+            frame.classList.toggle('flashing');
+            n += 1;
+            if (n < FLASH_CYCLES * 2) {
+              setTimeout(tick, FLASH_MS);
+            } else {
+              frame.classList.remove('flashing', 'colored');
+              busy = false;
+            }
+          };
+          tick();
+        }, HOME_MS);
+      };
+
+      frame.addEventListener('click', () => {
+        if (busy) return; // ignore clicks mid-reassembly
+        if (frame.classList.contains('broken')) assemble();
+        else breakApart();
+      });
+
+      // Break off once, a beat after the section is judged entered.
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            setTimeout(breakApart, HOLD_MS);
+            observer.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.4 }
+      );
+      observer.observe(frame);
+    }
+  }
+</script>

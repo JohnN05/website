@@ -1,0 +1,67 @@
+:root {
+  --color-bg: #FAF7F0;
+  --color-text: #0F1E3D;
+  --color-accent: #3454D1;
+  --color-accent-maroon: #B06B5F;
+  --color-accent-clay: #C08552;
+  --color-accent-moss: #7A9B76;
+  --color-text-secondary: #4A5468;
+  --color-error: #B3261E;
+  --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
+
+  /* Tetris piece hues — theme-invariant like the accent colors above.
+     Shared by TetrisHero.astro's ambient board and the home hero's
+     nameplate (index.astro), so both render the same piece exactly the
+     same color instead of each hardcoding their own copy. */
+  --tetris-i: #6B9AA8;
+  --tetris-o: #C9A75C;
+  --tetris-t: #8B6B9E;
+  --tetris-j: #5C7FA6;
+
+  /* The four pieces the Home scroll-well (TetrisWell.astro) drops, one per
+     section in reading order. Each section's --wash-* below is mixed from the
+     SAME hue the piece wears, so the piece reads as belonging to the section
+     it lands in. J uses the cobalt accent (the site's canonical "J-piece
+     blue"); the rest reuse the muted per-piece palette above. */
+  --piece-j: var(--color-accent); /* hero     · J · blue */
+  --piece-o: var(--tetris-o); /* bio         · O · gold */
+  --piece-l: var(--color-accent-clay); /* featured · L · orange */
+  --piece-i: var(--tetris-i); /* teaching    · I · teal */
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 9rem;
+
+  /* One wash per Home section, mixed 1:1 in reading order from the SAME
+     --piece-* hue the scroll-well drops into that section (J/L/O/I above), so
+     section and piece share a color — not an invented palette. (This replaced
+     an earlier ACCENT_ORDER mapping — cobalt/maroon/clay/moss — once the well
+     made each section's identity its tetromino.) Each derives from
+     var(--color-bg), so despite living only in :root it recomputes correctly
+     under :root[data-theme='dark'] below with no separate override —
+     custom properties resolve at point of use, not point of declaration. */
+  --wash-mix: 18%;
+  --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-j) var(--wash-mix));
+  --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-o) var(--wash-mix));
+  --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-l) var(--wash-mix));
+  --wash-teaching: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-i) var(--wash-mix));
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #0F1E3D;
+  --color-text: #FAF7F0;
+  --color-accent: #3454D1;
+  --color-accent-maroon: #B06B5F;
+  --color-accent-clay: #C08552;
+  --color-accent-moss: #7A9B76;
+  --color-text-secondary: #9AA7B8;
+  --color-error: #E5847C;
+  --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
+}

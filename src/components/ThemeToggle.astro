@@ -1,0 +1,143 @@
+<!-- No id. This component is mounted twice on every page (the desktop rail and
+     the mobile drawer), and an id would therefore be duplicated — which is not
+     a validity nitpick here but the actual bug that shipped once: a single
+     getElementById returned only the first in DOM order (the rail's), leaving
+     the drawer's button inert and dark mode unreachable for every mobile
+     visitor. The class is the hook, and it works for any number of mounts.
+
+     The balisong is CSS-driven off html[data-theme], NOT toggled by this
+     component's script: closed = light, blade-out = dark. Because BaseLayout
+     sets data-theme before first paint, the knife renders in the correct
+     resting state with no flash and no JS. The click handler only flips
+     data-theme (+ persists); the flip animation falls out of the CSS
+     transition on that attribute change. Under reduced motion the transition
+     is removed but the resting silhouette still swaps, so the current mode is
+     never ambiguous. -->
+<button class="theme-toggle" type="button" aria-label="Toggle light or dark theme">
+  <svg class="knife" viewBox="0 0 132 60" width="46" height="21" aria-hidden="true">
+    <!-- Mako-style blade: clip point, belly, swedge line. Sheathed (hidden)
+         when closed; revealed when the handles swing open. -->
+    <g class="blade">
+      <polygon points="66,27.2 112,27.2 121,28.3 126,30 119,32 66,32.8"></polygon>
+      <path class="swedge" d="M111 27.6 L125 30"></path>
+    </g>
+    <!-- Each handle pivots about its own centerline, so a 180° flip keeps the
+         two parallel and in-lane — together over the blade when closed,
+         stacked on the far side when open. -->
+    <g class="handle-bot"><rect class="handle" x="66" y="30.6" width="54" height="5" rx="2.5"></rect></g>
+    <g class="handle-top"><rect class="handle" x="66" y="24.4" width="54" height="5" rx="2.5"></rect></g>
+    <circle class="pin" cx="66" cy="26.9" r="2.6"></circle>
+    <circle class="pin" cx="66" cy="33.1" r="2.6"></circle>
+  </svg>
+  <!-- Discoverability layer: a sun/moon and the current mode word, so the
+       control advertises its state to sighted users. Decorative — the button's
+       accessible name is the aria-label above (the action), not this text. -->
+  <span class="tt-label" aria-hidden="true">
+    <svg class="tt-sky sun" viewBox="0 0 24 24" width="15" height="15">
+      <circle cx="12" cy="12" r="4.6"></circle>
+      <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2 2M17.5 17.5l2 2M19.5 4.5l-2 2M6.5 17.5l-2 2"></path>
+      </g>
+    </svg>
+    <svg class="tt-sky moon" viewBox="0 0 24 24" width="15" height="15">
+      <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"></path>
+    </svg>
+    <span class="tt-mode tt-mode-light">Light</span>
+    <span class="tt-mode tt-mode-dark">Dark</span>
+  </span>
+</button>
+<style>
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text);
+    padding: var(--space-2) 0;
+    font: inherit;
+  }
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
+
+  .knife { display: block; overflow: visible; flex-shrink: 0; }
+  .knife .handle { fill: currentColor; }
+  .knife .pin { fill: var(--color-bg); stroke: currentColor; stroke-width: 1.4; }
+  .knife .blade { fill: var(--color-accent); opacity: 0; transition: opacity 0.28s ease; }
+  .knife .swedge {
+    fill: none;
+    stroke: color-mix(in srgb, #fff 55%, var(--color-accent));
+    stroke-width: 0.8;
+  }
+  .knife .handle-top,
+  .knife .handle-bot {
+    transform-box: view-box;
+    transition: transform 0.5s cubic-bezier(0.68, -0.35, 0.32, 1.35);
+  }
+  .knife .handle-top { transform-origin: 66px 26.9px; }
+  .knife .handle-bot { transform-origin: 66px 33.1px; }
+
+  /* Dark = open: handles flip 180° off the blade, blade revealed. Light is the
+     default resting state (handles at rest covering the blade, blade hidden),
+     so it needs no rule — which is also the correct no-JS / unset fallback. */
+  :global(html[data-theme='dark']) .knife .handle-top { transform: rotate(-180deg); }
+  :global(html[data-theme='dark']) .knife .handle-bot { transform: rotate(180deg); }
+  :global(html[data-theme='dark']) .knife .blade { opacity: 1; }
+
+  .tt-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+  }
+  .tt-sky { display: block; flex-shrink: 0; }
+  .tt-sky.sun { fill: var(--color-accent-clay); }
+  .tt-sky.moon { fill: var(--tetris-i); }
+
+  /* Light is the default: show sun + "Light", hide the dark pair. */
+  .tt-sky.moon,
+  .tt-mode-dark { display: none; }
+  :global(html[data-theme='dark']) .tt-sky.sun,
+  :global(html[data-theme='dark']) .tt-mode-light { display: none; }
+  :global(html[data-theme='dark']) .tt-sky.moon { display: block; }
+  :global(html[data-theme='dark']) .tt-mode-dark { display: inline; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .knife .handle-top,
+    .knife .handle-bot,
+    .knife .blade {
+      transition: none;
+    }
+  }
+</style>
+<script>
+  import { getInitialTheme, toggleTheme, persistTheme, type Theme } from '../lib/theme';
+
+  function readCurrentTheme(): Theme {
+    const fromAttribute = document.documentElement.dataset.theme as Theme | undefined;
+    return fromAttribute ?? getInitialTheme(localStorage, (query) => window.matchMedia(query));
+  }
+
+  // Bound by class across every mount, not by id — Astro bundles this <script>
+  // once per page however many times the component is mounted, so a
+  // single-element lookup would bind one button and leave the rest dead (which
+  // is exactly what happened to the mobile drawer's copy once).
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.theme-toggle');
+
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const next = toggleTheme(readCurrentTheme());
+      // The knife (and the sun/moon/label) are driven entirely by this
+      // attribute in CSS, so flipping it here animates every mount at once and
+      // needs no per-button visual bookkeeping.
+      document.documentElement.dataset.theme = next;
+      persistTheme(localStorage, next);
+    });
+  }
+</script>

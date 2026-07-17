@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/ContactForm.astro';
+---
+<BaseLayout title="Contact — John Ng">
+  <div class="contact-band">
+    <div class="contact-inner">
+      <div class="contact-copy">
+        <p class="eyebrow">Get in touch</p>
+        <h1>Contact</h1>
+        <p class="lede">Have a project, a role, or just a question? Send a message below — I read every one.</p>
+      </div>
+      <div class="contact-card">
+        <ContactForm />
+      </div>
+    </div>
+  </div>
+  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--color-bg);"></div>
+</BaseLayout>
+<style>
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 var(--space-3);
+  }
+  .contact-band {
+    display: flex;
+    align-items: center;
+    min-height: 90vh;
+    background: var(--wash-hero);
+    padding: var(--space-10) var(--space-5);
+  }
+  .contact-inner {
+    width: 100%;
+    max-width: 68rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: var(--space-8);
+    align-items: start;
+  }
+  .contact-copy h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--space-4);
+    text-wrap: balance;
+  }
+  .contact-copy .lede {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    max-width: 34ch;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+  .contact-card {
+    background: color-mix(in srgb, var(--color-text) 4%, var(--color-bg));
+    border-radius: 6px;
+    padding: var(--space-6);
+  }
+  /* Same mechanism as index.astro's own seams; only one is needed here
+     (fading wash-hero back to flat before the Footer), matching how
+     Home's own hero section has no seam *above* it either — a wash
+     band only needs a seam where it meets another section, not at the
+     page's very top. */
+  .seam {
+    position: relative;
+    z-index: 1;
+    height: 6rem;
+    margin-top: -3rem;
+    margin-bottom: -3rem;
+    background: linear-gradient(to bottom, var(--seam-from), var(--seam-to));
+    filter: blur(32px);
+    pointer-events: none;
+  }
+  @media (max-width: 860px) {
+    .contact-inner {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

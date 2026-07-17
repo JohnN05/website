@@ -1,0 +1,211 @@
+* { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Both snap rules are scoped to [data-snap='sections'] — set by BaseLayout on
+   Home alone, because Home is the only page built out of snap targets.
+
+   Unscoped, `mandatory` made every other route completely unscrollable on a
+   phone, and not subtly: with no section targets anywhere, the only snap area
+   on those pages was MobileNav's own `scroll-snap-align: start` sitting at
+   document position 0, so mandatory snapping pinned the viewport there and
+   refused to move. /contact's Send button — the site's only contact channel —
+   was unreachable, as were 3 of the 4 project cards. Wheel, scrollBy,
+   scrollTo, and the skip link all returned to 0.
+
+   That MobileNav snap target is not the culprit and must stay: it exists so
+   position 0 is itself a valid snap point, which is what keeps the hamburger
+   from being force-snapped above the fold on Home. It only became a trap
+   because it was the sole target on pages that were never snap containers to
+   begin with. */
+@media (max-width: 768px) {
+  html[data-snap='sections'] {
+    scroll-snap-type: y mandatory;
+  }
+}
+
+/* Desktop replacement for the removed wheel-intercept scroll lock. Proximity
+   (not mandatory) is deliberate: mandatory fires its own scroll animation on
+   every gesture, which would yank the parallax layers mid-drift and re-create
+   the exact conflict the lock had. Proximity leaves the gesture alone and only
+   settles when the visitor stops near a section. */
+@media (min-width: 769px) {
+  html[data-snap='sections'] {
+    scroll-snap-type: y proximity;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; }
+
+.eyebrow, .meta { font-family: 'IBM Plex Mono', monospace; }
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  /* Must carry the same [data-snap='sections'] as the snap rules above, not a
+     bare `html`. This used to win on source order alone at equal specificity;
+     once those rules were scoped to an attribute (0,1,1) a bare html selector
+     here (0,0,1) would lose to them no matter where it sits in the file, and
+     snapping would quietly come back on for precisely the visitors who asked
+     for it off. */
+  html[data-snap='sections'] {
+    scroll-snap-type: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+}
+.tag {
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  color: var(--color-text-secondary);
+}
+.tag-cobalt { border-color: var(--color-accent); }
+.tag-maroon { border-color: var(--color-accent-maroon); }
+.tag-clay { border-color: var(--color-accent-clay); }
+.tag-moss { border-color: var(--color-accent-moss); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 769px) {
+  /* Single source of truth for the desktop rail's width, read by both
+     #main-content's margin-left here and .rail's own width in Nav.astro —
+     duplicating this formula in both places invites the two to drift apart,
+     the same failure shape this codebase has already hit once with the
+     Tetris ambient piece's animated vs. committed placement (see CLAUDE.md).
+     Scales from a 9rem floor at the 769px breakpoint up to a 12rem cap by the
+     time the viewport reaches ~1149px, holding 12rem beyond that. */
+  :root {
+    --rail-width: clamp(9rem, 2.9rem + 12.68vw, 12rem);
+  }
+  /* The footer is a SIBLING of #main-content in BaseLayout, not a child, so it
+     never inherited this offset and spanned the full viewport — straight under
+     the fixed rail. That was invisible until Footer.astro took z-index: 2 (so
+     its capybara caption could paint above Home's blurred .seam), because
+     z-index: 2 also beats the rail's z-index: auto: the footer's own
+     transparent box then won hit-testing over the rail's controls, and a
+     visitor at the bottom of any desktop page could see the theme toggle,
+     click it, and have nothing happen.
+
+     Offsetting the footer fixes the dead click at its cause — the two elements
+     simply stop overlapping — rather than by escalating the rail's z-index,
+     which would only re-open the caption-under-seam bug the footer's z-index
+     was added to close. It also fixes what that overlap looked like: the
+     footer's border-top drew a hairline across the rail column and the
+     copyright line rendered inside it. Same var as #main-content, not a second
+     copy of the formula. */
+  #main-content,
+  .site-footer {
+    margin-left: var(--rail-width);
+  }
+}
+
+/* ── Home scroll motion ──────────────────────────────────────────────────
+   Lives here rather than in index.astro's scoped <style> for two reasons,
+   both real Astro scoping traps: a `body[...]` selector in a component's
+   scoped block gets rewritten to body[data-astro-cid-*] and silently never
+   matches (<body> belongs to BaseLayout.astro), and the Tetris board's root
+   is authored in TetrisHero.astro under that component's own cid, out of
+   index.astro's reach. Everything below is attribute-gated, so it only
+   touches elements that opt in. */
+
+/* Registered so they can be transitioned — an unregistered custom property is
+   untyped and jumps instead of animating. */
+@property --reveal-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --reveal-o {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+/* --parallax-y is registered for a different reason than the two above: it is
+   never transitioned (JS rewrites it per frame), but it MUST NOT inherit.
+   Custom properties inherit by default, and the transform rule below matches
+   [data-reveal] children of [data-depth] elements — so an unregistered
+   --parallax-y written on .hero-copy also reached its own h1/eyebrow, which
+   then applied that same translate again INSIDE the already-translated
+   parent. Measured: hero copy at depth 0.05 rendered 40px off at scrollY 400
+   instead of 20px — an effective depth of 0.10, narrowing the very
+   board-vs-copy rate difference the effect exists to create. */
+@property --parallax-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* Reveal and parallax both want translateY on the same elements; each rides
+   its own custom property into one transform so neither clobbers the other.
+   BOTH attributes must stay in this selector: the mock scoped it to
+   [data-reveal] only, and the Tetris board (data-depth, no data-reveal) had
+   --parallax-y written to it every frame with nothing consuming it — it
+   silently never moved. */
+[data-reveal],
+[data-depth] {
+  transform: translateY(calc(var(--reveal-y) + var(--parallax-y, 0px)));
+}
+
+/* The hidden state is gated on an attribute set only when motion is allowed,
+   so content renders at rest under reduced motion or with no JS at all. It's
+   set on
+   <html> by a render-blocking inline script in BaseLayout.astro rather than on
+   <body> by index.astro's module script: a module script runs after first
+   paint, so gating there painted already-visible content at rest and then
+   transitioned it OUT. Gating before paint is also what lets one threshold
+   govern reveal everywhere — see index.astro's observer. */
+html[data-motion='on'] [data-reveal] {
+  --reveal-y: 28px;
+  --reveal-o: 0;
+  opacity: var(--reveal-o);
+  transition:
+    --reveal-y 880ms cubic-bezier(0.22, 1, 0.36, 1),
+    --reveal-o 760ms ease-out;
+}
+html[data-motion='on'] [data-scroll-section].in [data-reveal] {
+  --reveal-y: 0px;
+  --reveal-o: 1;
+}

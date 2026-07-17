@@ -1,0 +1,417 @@
+<div class="tetris-hero" id="tetris-hero" data-depth="0.16">
+  <div class="tetris-ambient-soft" id="tetris-ambient-soft" aria-hidden="true" role="presentation"></div>
+  <div class="tetris-ambient-crisp" id="tetris-ambient-crisp" aria-hidden="true" role="presentation"></div>
+  <div class="tetris-piece" id="tetris-piece" aria-hidden="true">
+    <div class="piece-layer-soft" id="tetris-piece-soft"></div>
+    <div class="piece-layer-crisp" id="tetris-piece-crisp"></div>
+  </div>
+</div>
+<style>
+  .tetris-hero {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 70%;
+    overflow: hidden;
+    /* --tetris-i/o/t/j now live in tokens.css :root (shared with the home
+       hero's nameplate) rather than being redeclared here. */
+    /* Depth-of-field via two stacked copies of the same board: a blurred
+       "soft" layer and a sharp "crisp" layer. The illusion only works if the
+       two masks are SEPARATED across the width — the blurred layer has to be
+       the only thing visible in the near/left zone, and the sharp layer must
+       stay absent there and only take over toward the right. (An earlier
+       revision collapsed both to the same 8% dead zone, so the sharp layer
+       was present everywhere and there was no visible blur at all.)
+
+       This container is `right: 0; width: 70%` of the hero, so its own left
+       edge already sits at ~30% of the hero width — right where the copy
+       ends. All offsets below are relative to the container's own width.
+
+       soft (blurred): NO dead-zone step and NO opacity floor — it starts at
+       literal transparent right at the container's left edge and rises on a
+       gentle ease-in (alpha ~ t^1.4) so the near edge melts in with no
+       visible seam, then climbs steadily to full at 90%. The seam in earlier
+       revisions came from jumping straight to a nonzero alpha (0.15/0.35) at
+       the first stop; easing up from 0 removes it. This layer governs where
+       the board appears / the whole fade.
+       crisp (sharp): dead zone 42%, starts from ZERO, quadratic rise so the
+       sharp layer stays absent through the blurred middle and only overtakes
+       near the right edge, full by 92%. Net left→right: nothing → faint+
+       blurred → brighter+blurred → full+sharp. */
+    --tetris-mask-soft: linear-gradient(
+      90deg, transparent 0%,
+      rgba(0, 0, 0, 0.03) 12%, rgba(0, 0, 0, 0.10) 22%,
+      rgba(0, 0, 0, 0.19) 32%, rgba(0, 0, 0, 0.30) 42%,
+      rgba(0, 0, 0, 0.43) 52%, rgba(0, 0, 0, 0.57) 62%,
+      rgba(0, 0, 0, 0.72) 72%, rgba(0, 0, 0, 0.88) 82%,
+      black 90%
+    );
+    --tetris-mask-crisp: linear-gradient(
+      90deg, transparent 0%, transparent 42%,
+      rgba(0, 0, 0, 0.026) 50%, rgba(0, 0, 0, 0.102) 58%,
+      rgba(0, 0, 0, 0.23) 66%, rgba(0, 0, 0, 0.41) 74%,
+      rgba(0, 0, 0, 0.64) 82%, rgba(0, 0, 0, 0.85) 88%,
+      black 92%
+    );
+  }
+  @media (max-width: 768px) { .tetris-hero { display: none; } }
+  .tetris-ambient-soft, .tetris-ambient-crisp {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    gap: 1px;
+    background: var(--color-text-secondary);
+  }
+  .tetris-ambient-soft {
+    filter: blur(4px);
+    opacity: 0.85;
+    mask-image: var(--tetris-mask-soft);
+    -webkit-mask-image: var(--tetris-mask-soft);
+  }
+  .tetris-ambient-crisp {
+    opacity: 0.9;
+    mask-image: var(--tetris-mask-crisp);
+    -webkit-mask-image: var(--tetris-mask-crisp);
+  }
+  /* :global() is required here because the grid cells are created at
+     runtime via document.createElement (see the script above), so they
+     never receive Astro's scoped data-astro-cid attribute and would
+     otherwise not match these rules at all. */
+  .tetris-ambient-soft :global(div), .tetris-ambient-crisp :global(div), .tetris-piece :global(.cell) { background: var(--color-bg); }
+  .tetris-ambient-soft :global(div[data-piece='I']), .tetris-ambient-crisp :global(div[data-piece='I']), .tetris-piece :global(.cell[data-piece='I']) { background: var(--tetris-i); }
+  .tetris-ambient-soft :global(div[data-piece='O']), .tetris-ambient-crisp :global(div[data-piece='O']), .tetris-piece :global(.cell[data-piece='O']) { background: var(--tetris-o); }
+  .tetris-ambient-soft :global(div[data-piece='T']), .tetris-ambient-crisp :global(div[data-piece='T']), .tetris-piece :global(.cell[data-piece='T']) { background: var(--tetris-t); }
+  .tetris-ambient-soft :global(div[data-piece='J']), .tetris-ambient-crisp :global(div[data-piece='J']), .tetris-piece :global(.cell[data-piece='J']) { background: var(--tetris-j); }
+  .tetris-ambient-soft :global(div[data-piece='S']), .tetris-ambient-crisp :global(div[data-piece='S']), .tetris-piece :global(.cell[data-piece='S']) { background: var(--color-accent-moss); }
+  .tetris-ambient-soft :global(div[data-piece='Z']), .tetris-ambient-crisp :global(div[data-piece='Z']), .tetris-piece :global(.cell[data-piece='Z']) { background: var(--color-accent-maroon); }
+  .tetris-ambient-soft :global(div[data-piece='L']), .tetris-ambient-crisp :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
+  .tetris-ambient-soft :global(div.flashing), .tetris-ambient-crisp :global(div.flashing) { background: var(--color-bg) !important; }
+
+  .tetris-piece {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .piece-layer-soft, .piece-layer-crisp {
+    position: absolute;
+    inset: 0;
+  }
+  .piece-layer-soft {
+    filter: blur(4px);
+    opacity: 0.85;
+    mask-image: var(--tetris-mask-soft);
+    -webkit-mask-image: var(--tetris-mask-soft);
+  }
+  .piece-layer-crisp {
+    opacity: 0.9;
+    mask-image: var(--tetris-mask-crisp);
+    -webkit-mask-image: var(--tetris-mask-crisp);
+  }
+  .piece-layer-soft :global(.cell), .piece-layer-crisp :global(.cell) {
+    position: absolute;
+    border-radius: 1px;
+  }
+  .tetris-piece.phase-turn .piece-layer-soft :global(.cell),
+  .tetris-piece.phase-turn .piece-layer-crisp :global(.cell) {
+    transition: left 0.3s steps(3, end), top 0.3s steps(3, end);
+  }
+  .tetris-piece.phase-fall .piece-layer-soft :global(.cell),
+  .tetris-piece.phase-fall .piece-layer-crisp :global(.cell) {
+    transition: top 0.22s steps(6, end);
+  }
+</style>
+<script>
+  import {
+    landingRow, cellsFor,
+    type GameState, type Piece,
+  } from '../lib/tetris/engine';
+  import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
+  import { chooseBestPlacement } from '../lib/tetris/autoplay';
+
+  const ambientSoftEl = document.getElementById('tetris-ambient-soft')!;
+  const ambientCrispEl = document.getElementById('tetris-ambient-crisp')!;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function renderBoard(el: HTMLElement, state: GameState) {
+    el.innerHTML = '';
+    const rows = state.board.length;
+    const cols = state.board[0].length;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const cell = document.createElement('div');
+        const piece = state.board[y][x];
+        if (piece) cell.dataset.piece = piece;
+        el.appendChild(cell);
+      }
+    }
+  }
+
+  // Target cell size used only to derive how many columns/rows fit — the
+  // actual on-screen cell size (cellW/cellH below) is always computed
+  // exactly from the container's real box plus the grid's 1px gaps, so the
+  // falling-piece overlay never drifts out of alignment with the grid
+  // (see this task's plan notes for why that drift/cutoff bug existed).
+  const CELL_SIZE = 44;
+  const GAP = 1;
+  // cols/rows/cellW/cellH all derive from the container's box at the moment
+  // this runs. The grid itself (columns: repeat(cols, 1fr), rows: implicit
+  // auto-stretch) re-flows to any container size on its own, but cols/rows
+  // stay whatever they were computed to be here — so if the container's
+  // aspect ratio changes later (a window resize) without recomputing them,
+  // column width (containerWidth / cols) and row height
+  // (containerHeight / rows) drift apart independently and cells stop being
+  // square. setupAmbientBoard() is re-run from a resize listener below for
+  // exactly this reason.
+  let ambientCols = 0;
+  let ambientRows = 0;
+  let cellW = 0;
+  let cellH = 0;
+  let ambientState!: GameState;
+  let ambientStep = 0;
+  // Bumped every time setupAmbientBoard() reinitializes the board so any
+  // already-scheduled runAmbientCycle timeout chain (which closes over
+  // ambientCols/ambientState by reference) can detect it's stale and stop
+  // instead of continuing to animate/step a board that's just been replaced.
+  let ambientGeneration = 0;
+  // Bumped every time runAmbientCycle() spawns a new piece and mirrored
+  // onto #tetris-piece's data-cycle attribute purely as an e2e-test hook:
+  // it lets a test confirm two reads of the piece's DOM position belong to
+  // the *same* spawn rather than trying to infer that from wall-clock
+  // timing, which drifts unpredictably against this loop's own setTimeout
+  // chain once real page-load/IPC latency is in play.
+  let pieceCycle = 0;
+
+  // Whether the board is actually on screen. Below the mobile breakpoint
+  // .tetris-hero is display: none, which makes this container 0x0 — and a 0x0
+  // container still runs every line below it: cols/rows clamp to their 4x4
+  // floor, cellW/cellH come out NEGATIVE ((0 - 3 * GAP) / 4), and the cycle
+  // chain re-renders that invisible board and schedules its successor forever.
+  // A decorative background loop burning a phone's battery for something no
+  // one can see is the whole bug.
+  //
+  // Derived from the box rather than by re-testing (max-width: 768px) in JS:
+  // the breakpoint already lives in this component's own CSS, and a second
+  // copy of the literal 768 here is exactly the two-call-sites-drift shape
+  // this codebase keeps paying for (see CLAUDE.md). "Is it on screen" is also
+  // the thing actually meant, so it stays correct if the breakpoint moves.
+  let ambientOnScreen = false;
+
+  function setupAmbientBoard() {
+    ambientGeneration++;
+    ambientOnScreen = ambientSoftEl.clientWidth > 0 && ambientSoftEl.clientHeight > 0;
+    if (!ambientOnScreen) return;
+    ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
+    ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
+    ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+    ambientCrispEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
+    cellW = (ambientSoftEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
+    cellH = (ambientSoftEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
+
+    ambientState = createAmbientDemo(ambientCols, ambientRows);
+    ambientStep = 0;
+    renderBoard(ambientSoftEl, ambientState);
+    renderBoard(ambientCrispEl, ambientState);
+    pieceSoftEl.innerHTML = '';
+    pieceCrispEl.innerHTML = '';
+    pieceEl.classList.remove('phase-turn', 'phase-fall');
+  }
+
+  const pieceEl = document.getElementById('tetris-piece')!;
+  const pieceSoftEl = document.getElementById('tetris-piece-soft')!;
+  const pieceCrispEl = document.getElementById('tetris-piece-crisp')!;
+
+  setupAmbientBoard();
+
+  const TURN_MS = 300;
+  const FALL_MS = 220;
+  const PAUSE_MS = 200;
+  const FLASH_CYCLES = 3;
+  const FLASH_INTERVAL_MS = 90;
+  let pieceCellsSoft: HTMLElement[] = [];
+  let pieceCellsCrisp: HTMLElement[] = [];
+
+  function flashRows(rows: number[]): Promise<void> {
+    if (rows.length === 0) return Promise.resolve();
+    const cellsInRows = (el: HTMLElement): HTMLElement[] =>
+      rows.flatMap((r) =>
+        Array.from(el.children).slice(r * ambientCols, r * ambientCols + ambientCols) as HTMLElement[]
+      );
+    const targets = [...cellsInRows(ambientSoftEl), ...cellsInRows(ambientCrispEl)];
+    let tick = 0;
+    return new Promise((resolve) => {
+      const step = () => {
+        targets.forEach((el) => el.classList.toggle('flashing'));
+        tick++;
+        if (tick >= FLASH_CYCLES * 2) {
+          targets.forEach((el) => el.classList.remove('flashing'));
+          resolve();
+          return;
+        }
+        window.setTimeout(step, FLASH_INTERVAL_MS);
+      };
+      step();
+    });
+  }
+
+  function initPieceCells(el: HTMLElement, type: string): HTMLElement[] {
+    el.innerHTML = '';
+    return Array.from({ length: 4 }, () => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.piece = type;
+      el.appendChild(cell);
+      return cell;
+    });
+  }
+
+  function positionPieceCells(cells: HTMLElement[], coords: number[][]) {
+    coords.forEach(([x, y], i) => {
+      const cell = cells[i];
+      cell.style.width = `${cellW}px`;
+      cell.style.height = `${cellH}px`;
+      cell.style.left = `${x * cellW}px`;
+      cell.style.top = `${y * cellH}px`;
+    });
+  }
+
+  function runAmbientCycle() {
+    // Captured once per cycle: if setupAmbientBoard() reinitializes the
+    // board (a resize) while this cycle's chain of rAF/setTimeout callbacks
+    // is still in flight, every later checkpoint below compares against the
+    // *current* ambientGeneration and bails rather than animating/locking a
+    // piece into a board that's already been replaced with a differently-
+    // sized one.
+    const gen = ambientGeneration;
+    pieceEl.dataset.cycle = String(++pieceCycle);
+
+    // Must call chooseBestPlacement identically to how stepAmbientDemo will
+    // below when it commits this same placement, or the two calls can rank
+    // placements differently and the piece will animate toward one column
+    // but lock into another. Neither call overrides the default weighting
+    // anymore, so this is trivially true, but keep the calls symmetric.
+    const placement = chooseBestPlacement(ambientState);
+    const landingY = landingRow(ambientState.board, {
+      ...ambientState.current,
+      rotation: placement.rotation,
+      x: placement.x,
+    });
+
+    // Spawn already in its final rotation, not rotation 0. SHAPES' 4
+    // rotation states are independently hand-authored (SRS-style), not one
+    // shape rotated per cell index — so index i's offset can jump by a
+    // completely unrelated (dx, dy) between two rotation states (e.g. the
+    // I piece's index 0 goes from (0,1) to (2,0) between rotations 0 and
+    // 1). Animating left/top from a rotation-0 shape to the target
+    // rotation made each of the 4 cell divs fly along its own unrelated
+    // diagonal, landing off-grid for the transition's mid-frames before
+    // snapping onto the grid at the end. Keeping the same rotation on both
+    // ends of the turn phase means every cell moves by one uniform
+    // (dx, 0) — a rigid slide into the target column instead of a
+    // scramble.
+    const spawnPiece: Piece = { ...ambientState.current, rotation: placement.rotation, y: 0 };
+    pieceCellsSoft = initPieceCells(pieceSoftEl, spawnPiece.type);
+    pieceCellsCrisp = initPieceCells(pieceCrispEl, spawnPiece.type);
+    pieceEl.classList.remove('phase-fall');
+    pieceEl.classList.add('phase-turn');
+    positionPieceCells(pieceCellsSoft, cellsFor(spawnPiece));
+    positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
+
+    requestAnimationFrame(() => {
+      if (gen !== ambientGeneration) return;
+      const turned = { ...spawnPiece, x: placement.x };
+      positionPieceCells(pieceCellsSoft, cellsFor(turned));
+      positionPieceCells(pieceCellsCrisp, cellsFor(turned));
+
+      // Chained from inside this rAF callback — where the turn's CSS
+      // transition actually starts — rather than scheduled from cycle
+      // start alongside it. TURN_MS (300) exactly equals the phase-turn
+      // transition's own 0.3s duration with zero margin, but rAF doesn't
+      // fire until the next paint (~1 frame after cycle start), so a timer
+      // anchored to cycle start could fire before the transition's final
+      // steps(3, end) jump landed, freezing the piece mid-slide — worse
+      // the farther it had to travel, which is why S/Z (whose autoplay
+      // placements tend to need bigger horizontal jumps) showed it most.
+      // Anchoring both clocks to the same instant removes the race:
+      // setTimeout never fires early, so by the time it fires here the
+      // transition (started at this same instant) is guaranteed done.
+      window.setTimeout(() => {
+        if (gen !== ambientGeneration) return;
+        pieceEl.classList.remove('phase-turn');
+        pieceEl.classList.add('phase-fall');
+        const landed = { ...spawnPiece, x: placement.x, y: landingY };
+        positionPieceCells(pieceCellsSoft, cellsFor(landed));
+        positionPieceCells(pieceCellsCrisp, cellsFor(landed));
+
+        // Same reasoning as above, one phase down: chained from the exact
+        // moment the fall's CSS transition starts instead of racing it
+        // from cycle start.
+        window.setTimeout(async () => {
+          if (gen !== ambientGeneration) return;
+          // stepAmbientDemo recomputes chooseBestPlacement itself and
+          // commits via hardDrop. It locks the piece in exactly the spot
+          // just animated to because both calls resolve
+          // chooseBestPlacement identically (same args, same default
+          // weighting) — not just because they see the same state, which
+          // was previously assumed to be enough and wasn't (see
+          // ambientDemo.ts's stepAmbientDemo). If the commit would have
+          // caused a real top-out, stepAmbientDemo silently resets to a
+          // fresh empty board instead (see ambientDemo.ts) rather than
+          // surfacing it — a rare, purely cosmetic edge case where this
+          // animation's predicted landing spot is replaced by an empty
+          // board right as it lands, accepted as-is since this is a
+          // decorative background loop, not gameplay.
+          const stepResult = stepAmbientDemo(ambientState, ambientStep++);
+          // Clear the falling-piece overlay as soon as the piece locks,
+          // before any flash. The locked piece is now baked into the
+          // board cells themselves (preClearBoard), so leaving the
+          // overlay in place during the flash left a stale, un-flashing
+          // copy of the piece sitting on top of the grid for the whole
+          // flash duration — the only case where this dangling overlay
+          // was visible long enough to notice, since a non-clearing drop
+          // clears it on the very next synchronous lines.
+          pieceSoftEl.innerHTML = '';
+          pieceCrispEl.innerHTML = '';
+          if (stepResult.clearedRows.length > 0) {
+            renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
+            renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
+            await flashRows(stepResult.clearedRows);
+            if (gen !== ambientGeneration) return;
+          }
+          ambientState = stepResult.state;
+          renderBoard(ambientSoftEl, ambientState);
+          renderBoard(ambientCrispEl, ambientState);
+          window.setTimeout(() => {
+            if (gen !== ambientGeneration) return;
+            runAmbientCycle();
+          }, PAUSE_MS);
+        }, FALL_MS);
+      }, TURN_MS);
+    });
+  }
+
+  function ambientShouldRun() {
+    return ambientOnScreen && !reducedMotion.matches;
+  }
+
+  if (ambientShouldRun()) {
+    runAmbientCycle();
+  }
+
+  // Debounced: resize fires continuously while a window is being dragged,
+  // and each call tears down + recreates the whole ambient board, so
+  // reacting on every event would restart the animation dozens of times per
+  // drag instead of once after it settles.
+  let resizeTimer: number | undefined;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      setupAmbientBoard();
+      // Rechecked per resize, not latched at load: a visitor who widens a
+      // narrow window brings the board on screen, and one who narrows it takes
+      // it off. setupAmbientBoard() has already bumped the generation, so any
+      // cycle still in flight from the previous size bails on its own.
+      if (ambientShouldRun()) runAmbientCycle();
+    }, 200);
+  });
+</script>

@@ -1,0 +1,89 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { byDateDesc } from '../../lib/projects';
+import { getCollection } from 'astro:content';
+
+const published = await getCollection('projects', ({ data }) => !data.draft);
+const projects = published
+  .map((entry) => ({ slug: entry.slug, ...entry.data }))
+  .sort(byDateDesc);
+const [newestProject, ...restProjects] = projects;
+---
+<BaseLayout title="Projects — John Ng">
+  <div class="intro-band">
+    <div class="intro-inner">
+      <p class="eyebrow">Selected work</p>
+      <h1>Projects</h1>
+      <p class="lede">A running log of what I've built — extensions, platforms, research tools — with full write-ups landing as I finish them.</p>
+    </div>
+  </div>
+  <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--color-bg);"></div>
+  <div class="grid-wrap">
+    {newestProject && (
+      <div class="featured-row">
+        <ProjectCard project={newestProject} showCover={true} featured={true} />
+      </div>
+    )}
+    {restProjects.length > 0 && (
+      <div class="project-grid">
+        {restProjects.map((project) => <ProjectCard project={project} showCover={true} />)}
+      </div>
+    )}
+  </div>
+</BaseLayout>
+<style>
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 var(--space-3);
+  }
+  .intro-band {
+    background: var(--wash-featured);
+    padding: var(--space-8) var(--space-5) var(--space-7);
+  }
+  .intro-inner {
+    max-width: 42rem;
+    margin: 0 auto;
+  }
+  .intro-inner h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .intro-inner .lede {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    max-width: 46ch;
+    color: var(--color-text-secondary);
+    margin: var(--space-4) 0 0;
+  }
+  /* Same blur-band mechanism as index.astro's own .seam — one wash band
+     fading to flat --color-bg before the grid, not a new pattern. */
+  .seam {
+    position: relative;
+    z-index: 1;
+    height: 6rem;
+    margin-top: -3rem;
+    margin-bottom: -3rem;
+    background: linear-gradient(to bottom, var(--seam-from), var(--seam-to));
+    filter: blur(32px);
+    pointer-events: none;
+  }
+  .grid-wrap {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-7) var(--space-5) var(--space-8);
+  }
+  .featured-row {
+    margin-bottom: var(--space-6);
+  }
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-6);
+  }
+</style>

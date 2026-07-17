@@ -1,0 +1,84 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import PieceMark from './PieceMark.astro';
+
+// The ownership rule: exactly one JOHN NG performs the reveal per page. On
+// Home the hero nameplate IS the name, so the rail stays quiet rather than
+// saying it twice; on every other route the rail is the only name on screen
+// and takes the reveal.
+const isHome = Astro.url.pathname === '/';
+---
+<nav class="rail" id="nav-rail" aria-label="Primary">
+  <a href="/" class="rail-home" aria-label="John Ng — Home">
+    <PieceMark layout="stack" reveals={!isHome} trigger="hover" class="rail-wordmark" />
+  </a>
+
+  <div class="rail-links">
+    <a href="/projects" aria-label="Projects">
+      <span class="rail-icon" aria-hidden="true">&#9638;</span>
+      <span class="rail-label">Projects</span>
+    </a>
+    <a href="/contact" aria-label="Contact">
+      <span class="rail-icon" aria-hidden="true">&#9993;</span>
+      <span class="rail-label">Contact</span>
+    </a>
+  </div>
+
+  <div class="rail-footer">
+    <ThemeToggle />
+  </div>
+</nav>
+<style>
+  .rail {
+    display: none;
+  }
+  @media (min-width: 769px) {
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--rail-width);
+      padding: var(--space-4) 0;
+      border-right: 1px solid var(--line);
+    }
+  }
+
+  .rail-home {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-4);
+    text-decoration: none;
+    color: var(--color-text);
+    /* Lives here, not on .rail-wordmark: that class is passed as a prop into
+       PieceMark, whose root element is stamped with PieceMark's own Astro cid,
+       not this file's — a rule authored against .rail-wordmark from this
+       scoped <style> block would never match it. This wrapper contains
+       nothing but the mark, so the size just inherits down, same mechanism
+       index.astro's .nameplate already relies on. */
+    font-size: 1.25rem;
+  }
+
+  .rail-links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .rail-links a {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    text-decoration: none;
+    color: var(--color-text);
+    white-space: nowrap;
+  }
+
+  .rail-footer {
+    margin-top: auto;
+    padding: 0 var(--space-4);
+  }
+</style>

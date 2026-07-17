@@ -1,0 +1,247 @@
+---
+// Home-only decorative scroll-well. As the visitor scrolls the four Home
+// sections, each drops its own tetromino into a small fixed well at the
+// bottom-right; the last section drops a vertical I-bar that completes four
+// lines and clears the well. Scrolling back to the top replays it.
+//
+// Purely decorative: aria-hidden, pointer-events:none, hidden below the
+// desktop breakpoint and under reduced motion. Every piece is hard-coded —
+// no generation, no gravity — because line-clear geometry pins the shapes
+// (see the script). The 20 empty board cells are server-rendered so ordinary
+// Astro scoping applies to them; the pieces are created at runtime, so their
+// selectors need :global() (the same createElement scoping trap as
+// TetrisHero.astro / MinesweeperBoard.astro — see CLAUDE.md).
+const emptyCells = Array.from({ length: 20 });
+---
+<div class="tetris-well" aria-hidden="true">
+  <div class="well">
+    <div class="grid-bg">{emptyCells.map(() => <div class="e"></div>)}</div>
+    {/* .piece / .cell nodes are injected by the script below */}
+  </div>
+</div>
+
+<style>
+  .tetris-well {
+    --wc: 15px; /* well cell size */
+    --wg: 1px; /* well gap */
+    position: fixed;
+    right: clamp(0.9rem, 2.5vw, 1.6rem);
+    bottom: 1.4rem;
+    z-index: 5;
+    pointer-events: none; /* never intercept clicks — decoration only */
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+  /* Fade out while the footer is on screen so the two never overlap at the
+     bottom of the page. Set from the script's footer IntersectionObserver. */
+  .tetris-well.near-footer {
+    opacity: 0;
+  }
+  .well {
+    position: relative;
+    width: calc(var(--wc) * 4 + var(--wg) * 3);
+    height: calc(var(--wc) * 5 + var(--wg) * 4);
+    border: 1px solid var(--line);
+    border-top: none;
+    border-radius: 0 0 3px 3px;
+  }
+  /* Static empty board behind the pieces so the well reads as a board being
+     filled rather than pieces floating in space. */
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(4, var(--wc));
+    grid-template-rows: repeat(5, var(--wc));
+    gap: var(--wg);
+  }
+  .grid-bg .e {
+    background: color-mix(in srgb, var(--color-text) 5%, transparent);
+    border-radius: 1px;
+  }
+
+  /* Runtime-created nodes: scoped rules would never match them, so :global(). */
+  .tetris-well :global(.piece) {
+    position: absolute;
+    inset: 0;
+    transform: translateY(calc(var(--wc) * -9));
+    opacity: 0;
+    /* stepped snap-drop, echoing the ambient hero piece's steps() motion */
+    transition: transform 0.34s steps(7, end), opacity 0.12s linear;
+  }
+  .tetris-well :global(.piece.dropped) {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .tetris-well :global(.cell) {
+    position: absolute;
+    width: var(--wc);
+    height: var(--wc);
+    border-radius: 1px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 16%, transparent);
+  }
+  /* Each piece wears its own tetromino hue — the same one its section's wash
+     is mixed from, so piece and section share a color. */
+  .tetris-well :global(.cell.p-j) { background: var(--piece-j); } /* J · blue */
+  .tetris-well :global(.cell.p-l) { background: var(--piece-l); } /* L · orange */
+  .tetris-well :global(.cell.p-o) { background: var(--piece-o); } /* O · gold */
+  .tetris-well :global(.cell.p-i) { background: var(--piece-i); } /* I · teal */
+  /* Line-clear flash (the board's own #fff cadence), then the well empties. */
+  .tetris-well.flash :global(.cell) { background: #ffffff; box-shadow: none; }
+  .tetris-well.cleared :global(.piece) { opacity: 0; transition: opacity 0.18s ease; }
+
+  /* Decorative + motion-driven: off below the desktop rail breakpoint (where
+     the Tetris hero is hidden too) and off entirely under reduced motion. */
+  @media (max-width: 768px) {
+    .tetris-well { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tetris-well { display: none; }
+  }
+</style>
+
+<script>
+  // Reduced motion / no-JS: the CSS hides the well and this never runs.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const root = document.querySelector<HTMLElement>('.tetris-well');
+    const well = root?.querySelector<HTMLElement>('.well');
+    if (root && well) {
+      const WC = 15, WG = 1, STEP = WC + WG;
+
+      // Hard-coded, no gravity. Cells are FINAL coords [col, rowFromBottom].
+      // Pieces 1–3 pack columns 0–2 solid over rows 0–3, leaving column 3 open
+      // top-to-bottom — so NO row completes during the build. The last piece is
+      // a vertical I-bar down column 3 that completes all four rows at once,
+      // then the well flashes and clears. That "leave a well, drop the bar for
+      // a Tetris" constraint is why the shapes are J / L / O / I. data-band on
+      // each Home section (see index.astro) says which piece it drops.
+      // Drop order = scroll order (hero, bio, feat, teach). The shapes are the
+      // one {J, O, L} tiling of cols 0-2 that is BOTH genuine-silhouette and
+      // grounded in this order: J on the floor, O resting on it, L on top — so
+      // every piece lands on filled cells, none floats. (An earlier version had
+      // bio drop the orange piece, but the only cells left for it there form a
+      // J, not an L — a J wearing L's colour. Swapping bio↔feat pieces is what
+      // lets both be true tetrominoes. See CLAUDE.md.)
+      const PIECES = [
+        { band: 'j', cls: 'p-j', last: false, cells: [[0,0],[1,0],[2,0],[0,1]] }, // hero  · J · blue
+        { band: 'o', cls: 'p-o', last: false, cells: [[1,1],[2,1],[1,2],[2,2]] }, // bio   · O · gold
+        { band: 'l', cls: 'p-l', last: false, cells: [[0,2],[0,3],[1,3],[2,3]] }, // feat  · L · orange
+        { band: 'i', cls: 'p-i', last: true,  cells: [[3,0],[3,1],[3,2],[3,3]] }, // teach · I · teal ← clears
+      ];
+
+      const pieceEl: Record<string, HTMLElement> = {};
+      let lastBand = '';
+      for (const p of PIECES) {
+        if (p.last) lastBand = p.band;
+        const el = document.createElement('div');
+        el.className = 'piece';
+        for (const [c, r] of p.cells) {
+          const cell = document.createElement('div');
+          cell.className = 'cell ' + p.cls;
+          cell.style.left = c * STEP + 'px';
+          cell.style.bottom = r * STEP + 'px';
+          el.appendChild(cell);
+        }
+        well.appendChild(el);
+        pieceEl[p.band] = el;
+      }
+
+      // Every timer is tracked so a reset can cancel a clear still in flight.
+      const FLASH_CYCLES = 4, FLASH_MS = 130;
+      const timers = new Set<number>();
+      const later = (fn: () => void, ms: number) => {
+        const id = window.setTimeout(() => { timers.delete(id); fn(); }, ms);
+        timers.add(id);
+        return id;
+      };
+      const cancelTimers = () => { timers.forEach((id) => clearTimeout(id)); timers.clear(); };
+
+      // The footer-fade must defer to the line-clear: the clear plays at the
+      // very bottom of the page, exactly where the footer enters, so fading on
+      // footer-visibility alone would hide the well mid-payoff. The well counts
+      // as "busy" from the moment the I-bar drops until the clear finishes, and
+      // the fade is only honored when it isn't busy.
+      let footerVisible = false;
+      let clearActive = false;
+      const updateFade = () => root.classList.toggle('near-footer', footerVisible && !clearActive);
+
+      function clearLines() {
+        let n = 0;
+        const tick = () => {
+          root!.classList.toggle('flash');
+          if (++n < FLASH_CYCLES * 2) {
+            later(tick, FLASH_MS);
+          } else {
+            root!.classList.remove('flash');
+            root!.classList.add('cleared');
+            clearActive = false;
+            updateFade(); // now the emptied well may fade for the footer
+          }
+        };
+        tick();
+      }
+
+      const sections = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-scroll-section][data-band]')
+      );
+      // Pieces drop strictly in order. A refresh (or deep link) can land the
+      // viewport on any section, firing that section's observer first — without
+      // this gate it would drop a piece onto an empty board, out of sequence.
+      // A piece only drops when it is the NEXT expected one, so nothing plays
+      // until the hero's J leads off; the board stays clear until then.
+      const order = PIECES.map((p) => p.band);
+      let nextIdx = 0;
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const band = (e.target as HTMLElement).dataset.band!;
+          if (order.indexOf(band) !== nextIdx) continue; // out of order → wait
+          pieceEl[band].classList.add('dropped');
+          nextIdx++;
+          if (band === lastBand) {
+            // Busy from the drop through the clear, so the footer-fade holds off.
+            clearActive = true;
+            updateFade();
+            later(clearLines, 420); // clear once the bar lands
+          }
+        }
+      }, { threshold: 0.35 });
+      const observeAll = () => sections.forEach((s) => io.observe(s));
+      observeAll();
+
+      // Replay: scrolling back to the very top wipes the well and re-arms the
+      // observer, so the build + clear plays again on the way down.
+      // Re-observing (not just clearing classes) re-drops the hero piece, whose
+      // section never left the viewport. Guarded so it fires once per return.
+      let armed = false;
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 200) { armed = true; return; }
+        if (armed && window.scrollY <= 2) {
+          armed = false;
+          cancelTimers();
+          io.disconnect();
+          clearActive = false;
+          nextIdx = 0; // restart the ordered sequence from the hero
+          root.classList.remove('flash', 'cleared');
+          Object.values(pieceEl).forEach((el) => el.classList.remove('dropped'));
+          updateFade();
+          // Re-arm next frame so the reset transform commits before re-adding it.
+          requestAnimationFrame(observeAll);
+        }
+      }, { passive: true });
+
+      // Footer non-interference: fade the well out while the footer is on
+      // screen, so it never sits over the copyright / capybara at the page
+      // bottom. pointer-events:none already keeps it from blocking clicks; this
+      // covers the visual overlap.
+      const footer = document.querySelector<HTMLElement>('.site-footer');
+      if (footer) {
+        const footerIo = new IntersectionObserver((entries) => {
+          for (const e of entries) footerVisible = e.isIntersecting;
+          updateFade();
+        }, { threshold: 0 });
+        footerIo.observe(footer);
+      }
+    }
+  }
+</script>
