@@ -32,9 +32,6 @@ import ContactForm from '../components/ContactForm.astro';
     font-size: 0.85rem;
     margin: 0 0 var(--space-3);
   }
-  /* Mobile-first: a plain stacked band. The desktop grid-aligned layout
-     (where the copy and card snap to the well's own cell columns) lives in
-     the min-width: 861px block near the bottom. */
   .contact-band {
     position: relative;
     overflow: hidden;
@@ -97,14 +94,27 @@ import ContactForm from '../components/ContactForm.astro';
     .well :global(div.notch) { animation: none; opacity: 0.7; }
   }
 
+  /* Plain centered two-column layout — the content deliberately does NOT try
+     to align to the well's cells. Instead the well greys out (leaves unlit)
+     exactly the cells behind the copy and the card, measured from their real
+     boxes in the script below, so occlusion is accurate regardless of where
+     the content lands. */
   .contact-inner {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 34rem;
+    max-width: 68rem;
     margin: 0 auto;
     display: grid;
-    gap: var(--space-6);
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: var(--space-8);
+    align-items: center;
+  }
+  @media (max-width: 860px) {
+    .contact-inner {
+      grid-template-columns: 1fr;
+      max-width: 34rem;
+    }
   }
   .contact-copy h1 {
     font-size: clamp(2rem, 4vw, 2.8rem);
@@ -186,45 +196,6 @@ import ContactForm from '../components/ContactForm.astro';
     filter: blur(32px);
     pointer-events: none;
   }
-  /* Desktop: the content overlays the well and shares its exact box (same
-     inset:0 + var(--space-6) padding) and column tracks (repeat(--cols, 1fr)
-     with the same 4px gap), so the copy and card land on real cell
-     boundaries. --cols / --copy-span / --card-span / --row-pitch are set from
-     the well-building script so they always match the grid actually drawn.
-     Placement leaves one empty cell as padding on the left, top, and right,
-     and one empty cell as the gap between the copy and the card. */
-  /* Side-by-side grid only once there's room for two comfortable columns;
-     below this the mobile-first stacked column takes over, which has no
-     absolute overlay and so can't bump on resize at all. */
-  @media (min-width: 1080px) {
-    .contact-band {
-      display: block;
-      padding: 0;
-    }
-    .contact-inner {
-      position: absolute;
-      inset: 0;
-      max-width: none;
-      margin: 0;
-      padding: var(--space-6);
-      padding-top: calc(var(--space-6) + var(--row-pitch, 44px));
-      grid-template-columns: repeat(var(--cols, 27), 1fr);
-      column-gap: 4px;
-      align-content: start;
-      gap: 0;
-    }
-    /* col 0 is the left padding; copy starts on the second line. */
-    .contact-copy {
-      grid-column: 2 / span var(--copy-span, 10);
-      align-self: start;
-    }
-    /* ends at line -2 so the final cell column stays empty as right padding;
-       the empty column between copy's end and the card's start is the gap. */
-    .contact-card {
-      grid-column: span var(--card-span, 14) / -2;
-      align-self: start;
-    }
-  }
 </style>
 
 <script>
@@ -259,58 +230,78 @@ import ContactForm from '../components/ContactForm.astro';
     const STAGE_FRACTIONS = [0, 0.4, 0.72, 1];
 
     let pool: HTMLElement[] = [];
+    let cells: HTMLElement[] = [];
     let notchCellEls: HTMLElement[] = [];
+    // Cells sitting behind the copy or the card. They're never lit — they stay
+    // the resting grey — so the content greys out exactly the blocks it covers,
+    // by the content's real box shape. Recomputed on resize (cheap) so it stays
+    // accurate as the centered content shifts, without rebuilding the grid.
+    let occluded = new Set<HTMLElement>();
     let stageCounts: number[] = [0, 0, 0, 0];
     let currentStage = 0;
     // Bumped on every rebuild so a resize mid-animation can't have a stale
     // closure keep writing to cells that no longer exist — same guard
     // TetrisHero.astro uses for its own ambientGeneration.
     let generation = 0;
+    let lastCols = 0;
+    let lastRows = 0;
 
     function applyStage(stage: number, gen: number) {
       currentStage = stage;
       if (gen !== generation) return;
       const count = stageCounts[stage] ?? 0;
-      pool.forEach((cell, i) => cell.classList.toggle('on', i < count));
+      // A pooled cell lights only if it's within the current fill count AND not
+      // occluded by the copy/card — so blocks behind the content read as greyed
+      // out no matter how full the well is.
+      pool.forEach((cell, i) => cell.classList.toggle('on', i < count && !occluded.has(cell)));
       // The notch is the gap the fill leaves behind, so it only makes sense
       // once there's a stack around it — hidden entirely at stage 0 so an
       // empty well is truly empty, not a lone outline floating in nothing.
       notchCellEls.forEach((cell) => (cell.style.visibility = stage > 0 ? 'visible' : 'hidden'));
     }
 
-    // The column/row count the well grid resolves to at the current size.
-    // Kept so a resize can tell whether the cell grid actually changed (needs a
-    // rebuild) or only the pixel size did (content re-align only).
-    let lastCols = 0;
-    let lastRows = 0;
-
     function gridDims() {
       const w = well.clientWidth;
       const h = well.clientHeight;
       if (w === 0 || h === 0) return null;
       return {
-        h,
         cols: Math.max(6, Math.floor((w + GAP) / (CELL_SIZE + GAP))),
         rows: Math.max(4, Math.floor((h + GAP) / (CELL_SIZE + GAP))),
       };
     }
 
-    // Publish the grid the well draws to the band so the desktop content
-    // overlay can place the copy and card on the same cell columns: one empty
-    // cell of padding on the left, top, and right, and one empty cell of gap
-    // between the two (the card gets priority on width; the copy takes what's
-    // left). Runs on every resize frame — cheap, no DOM rebuild — so the
-    // content tracks the window continuously and the two never bump.
-    function setContentVars({ h, cols, rows }: { h: number; cols: number; rows: number }) {
-      const PAD_PX = parseFloat(getComputedStyle(well).paddingTop) || 32;
-      const cellHpx = (h - 2 * PAD_PX - (rows - 1) * GAP) / rows;
-      const usable = cols - 2; // one padding cell on each side
-      const cardSpan = Math.max(8, Math.round(usable * 0.55));
-      const copySpan = Math.max(1, usable - 1 - cardSpan); // the -1 is the gap cell
-      band.style.setProperty('--cols', String(cols));
-      band.style.setProperty('--copy-span', String(copySpan));
-      band.style.setProperty('--card-span', String(cardSpan));
-      band.style.setProperty('--row-pitch', `${(cellHpx + GAP).toFixed(2)}px`);
+    // Which cells the copy and card cover, computed analytically from each
+    // cell's pixel rect (no per-cell getBoundingClientRect — that was the whole
+    // reason the grid took ~2s to appear). Only the two content boxes are
+    // measured, once each.
+    function computeOcclusion(cols: number, rows: number) {
+      occluded = new Set();
+      const wellRect = well.getBoundingClientRect();
+      if (!wellRect.width || !wellRect.height) return;
+      const PAD = parseFloat(getComputedStyle(well).paddingTop) || 32;
+      const cw = (wellRect.width - 2 * PAD - (cols - 1) * GAP) / cols;
+      const ch = (wellRect.height - 2 * PAD - (rows - 1) * GAP) / rows;
+      const M = 2; // px slack so a block peeking at a content edge still greys
+      const boxes = ['.contact-copy', '.contact-card']
+        .map((s) => band.querySelector<HTMLElement>(s))
+        .filter((el): el is HTMLElement => el !== null)
+        .map((el) => el.getBoundingClientRect());
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const cell = cells[y * cols + x];
+          if (!cell) continue;
+          const left = wellRect.left + PAD + x * (cw + GAP);
+          const top = wellRect.top + PAD + y * (ch + GAP);
+          const right = left + cw;
+          const bottom = top + ch;
+          for (const b of boxes) {
+            if (left < b.right + M && right > b.left - M && top < b.bottom + M && bottom > b.top - M) {
+              occluded.add(cell);
+              break;
+            }
+          }
+        }
+      }
     }
 
     function buildWell() {
@@ -321,9 +312,6 @@ import ContactForm from '../components/ContactForm.astro';
       const { cols, rows } = dims;
       lastCols = cols;
       lastRows = rows;
-      // Set the content vars before the copy-carve below so the carve measures
-      // the copy in its final grid spot.
-      setContentVars(dims);
       well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
       well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
       well.innerHTML = '';
@@ -339,47 +327,25 @@ import ContactForm from '../components/ContactForm.astro';
         (notchRow + 1) * cols + notchCol, (notchRow + 1) * cols + notchCol + 1,
       ]);
 
-      // Cells that would land behind the copy column are excluded so the
-      // heading/lede never sit on lit blocks (the card's own region needs no
-      // such treatment — it's opaque and hides whatever's behind it). Measured
-      // from the copy's real box rather than a hardcoded fraction, so it stays
-      // correct if the layout changes; a small margin pads it out.
-      const copyEl = band.querySelector<HTMLElement>('.contact-copy');
-      const wellRect = well.getBoundingClientRect();
-      const inCopyZone = (col: number, row: number) => {
-        if (!copyEl || wellRect.width === 0 || wellRect.height === 0) return false;
-        const c = copyEl.getBoundingClientRect();
-        const M = 0.03;
-        const fx = col / cols, fy = row / rows;
-        return (
-          fx >= (c.left - wellRect.left) / wellRect.width - M &&
-          fx <= (c.right - wellRect.left) / wellRect.width + M &&
-          fy >= (c.top - wellRect.top) / wellRect.height - M &&
-          fy <= (c.bottom - wellRect.top) / wellRect.height + M
-        );
-      };
-
-      const candidates: number[] = [];
       // Fill from the second row down, leaving a single empty row of margin
       // along the very top so the well doesn't run flush to the section's top
-      // edge (the copy zone carve-out below still keeps the heading/lede
-      // clear separately).
+      // edge. Occlusion (copy/card) is applied at render time in applyStage, not
+      // baked into the pool, so a resize can re-occlude without a rebuild.
+      const candidates: number[] = [];
       const startRow = 1;
       for (let y = startRow; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const i = y * cols + x;
-          if (!notchCells.has(i) && !inCopyZone(x, y)) candidates.push(i);
+          if (!notchCells.has(i)) candidates.push(i);
         }
       }
       for (let i = candidates.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
       }
-      // Every candidate is now part of the fill pool — no always-on baseline,
-      // so the stage-0 count of 0 leaves the well genuinely blank.
       stageCounts = STAGE_FRACTIONS.map((f) => Math.floor(candidates.length * f));
 
-      const cells: HTMLElement[] = [];
+      cells = [];
       for (let i = 0; i < cols * rows; i++) {
         const cell = document.createElement('div');
         if (notchCells.has(i)) cell.className = 'notch';
@@ -388,6 +354,7 @@ import ContactForm from '../components/ContactForm.astro';
       }
       pool = candidates.map((i) => cells[i]);
       notchCellEls = [...notchCells].map((i) => cells[i]);
+      computeOcclusion(cols, rows);
       applyStage(currentStage, gen);
     }
 
@@ -397,10 +364,9 @@ import ContactForm from '../components/ContactForm.astro';
     band.addEventListener('contact-sent', () => applyStage(0, generation));
 
     buildWell();
-    // On resize, re-align the content every animation frame (cheap) so it
-    // never lags the window, but only rebuild the well's cells when the
-    // column/row count actually changes — restretching the existing 1fr tracks
-    // already covers every in-between size with no flicker or gap.
+    // On resize, only rebuild the whole grid when the column/row count actually
+    // changes; otherwise just re-measure what the (now shifted) content covers
+    // and re-light — cheap, no re-randomised flicker.
     let rafId = 0;
     window.addEventListener('resize', () => {
       if (rafId) return;
@@ -408,8 +374,12 @@ import ContactForm from '../components/ContactForm.astro';
         rafId = 0;
         const dims = gridDims();
         if (!dims) return;
-        setContentVars(dims);
-        if (dims.cols !== lastCols || dims.rows !== lastRows) buildWell();
+        if (dims.cols !== lastCols || dims.rows !== lastRows) {
+          buildWell();
+        } else {
+          computeOcclusion(lastCols, lastRows);
+          applyStage(currentStage, generation);
+        }
       });
     });
   }
