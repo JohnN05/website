@@ -62,8 +62,6 @@ import ContactForm from '../components/ContactForm.astro';
     filter: blur(0.4px);
     mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
     -webkit-mask-image: radial-gradient(ellipse 78% 74% at 46% 66%, black 0%, black 42%, transparent 86%);
-    translate: var(--well-mx, 0px) var(--well-my, 0px);
-    transition: translate 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
   /* Off cells stay nearly invisible — a faint hint of grid structure, not a
      checkerboard — so only the lit blocks (the form-progress pool) read as
@@ -93,11 +91,9 @@ import ContactForm from '../components/ContactForm.astro';
     50% { opacity: 1; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .well { translate: none; transition: none; }
     .well :global(div) { transition: none; }
     .well :global(div.notch) { animation: none; opacity: 0.7; }
   }
-  @media (pointer: coarse) { .well { translate: none !important; } }
 
   .contact-inner {
     position: relative;
@@ -212,12 +208,8 @@ import ContactForm from '../components/ContactForm.astro';
   // one-shot transient overlay that's fine to skip entirely), this well is
   // persistent background chrome — same category as TetrisHero's ambient
   // board, which still shows a static frame under reduced motion rather than
-  // nothing. So the well always builds; only the CONTINUOUS animations
-  // (notch breathing, cursor-parallax) are gated off, via the CSS media
-  // query above and the pointer check below respectively.
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const coarsePointer = matchMedia('(pointer: coarse)').matches;
-
+  // nothing. So the well always builds; only the notch's breathing pulse is
+  // gated off under reduced motion, via the CSS media query above.
   {
     const band = document.getElementById('contact-band') as HTMLElement;
     const well = document.getElementById('contact-well') as HTMLElement;
@@ -226,9 +218,11 @@ import ContactForm from '../components/ContactForm.astro';
     const GAP = 4;
     // Cumulative share of the pool lit at each stage. Stage 0 (no fields
     // filled) is deliberately empty — the well starts blank and fills only as
-    // the form does, so the backdrop reads as a direct response to typing
-    // rather than ambient decoration that happens to also react.
-    const STAGE_FRACTIONS = [0, 0.34, 0.64, 0.88];
+    // the form does, so the backdrop reads as a direct response to typing.
+    // Stage 3 (all fields filled) fills the entire pool: the only gap left is
+    // the notch, so a completed form reads as a well one piece short, ready
+    // for the send to finish and clear it.
+    const STAGE_FRACTIONS = [0, 0.4, 0.72, 1];
 
     let pool: HTMLElement[] = [];
     let notchCellEls: HTMLElement[] = [];
@@ -333,23 +327,5 @@ import ContactForm from '../components/ContactForm.astro';
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(buildWell, 150);
     });
-
-    // Cursor-parallax on the well: fine-pointer only (a touch scroll has no
-    // persistent cursor position to read) and motion-allowed only (this one
-    // IS continuous motion, unlike the static grid above).
-    if (!coarsePointer && !reducedMotion) {
-      const MAX_PX = 14;
-      band.addEventListener('mousemove', (e) => {
-        const r = band.getBoundingClientRect();
-        const nx = (e.clientX - r.left) / r.width - 0.5;
-        const ny = (e.clientY - r.top) / r.height - 0.5;
-        well.style.setProperty('--well-mx', `${(nx * MAX_PX).toFixed(1)}px`);
-        well.style.setProperty('--well-my', `${(ny * MAX_PX).toFixed(1)}px`);
-      });
-      band.addEventListener('mouseleave', () => {
-        well.style.setProperty('--well-mx', '0px');
-        well.style.setProperty('--well-my', '0px');
-      });
-    }
   }
 </script>
