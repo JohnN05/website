@@ -2,8 +2,8 @@
   <div class="tetris-ambient-soft" id="tetris-ambient-soft" aria-hidden="true" role="presentation"></div>
   <div class="tetris-ambient-crisp" id="tetris-ambient-crisp" aria-hidden="true" role="presentation"></div>
   <div class="tetris-piece" id="tetris-piece" aria-hidden="true">
-    <div class="piece-layer-soft" id="tetris-piece-soft"></div>
-    <div class="piece-layer-crisp" id="tetris-piece-crisp"></div>
+    <div class="piece-layer-soft"><div class="piece-wrap-soft" id="tetris-piece-soft"></div></div>
+    <div class="piece-layer-crisp"><div class="piece-wrap-crisp" id="tetris-piece-crisp"></div></div>
   </div>
 </div>
 <style>
@@ -96,154 +96,144 @@
   .tetris-ambient-soft :global(div[data-piece='L']), .tetris-ambient-crisp :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
   .tetris-ambient-soft :global(div.flashing), .tetris-ambient-crisp :global(div.flashing) { background: var(--color-bg) !important; }
 
-  .tetris-piece {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-  .piece-layer-soft, .piece-layer-crisp {
-    position: absolute;
-    inset: 0;
-  }
+  .tetris-piece { position: absolute; inset: 0; pointer-events: none; }
+  .piece-layer-soft, .piece-layer-crisp { position: absolute; inset: 0; }
+  /* Mask stays on the FIXED parent (board-space depth-of-field), so it does
+     not travel with the piece. */
   .piece-layer-soft {
-    filter: blur(4px);
-    opacity: 0.85;
     mask-image: var(--tetris-mask-soft);
     -webkit-mask-image: var(--tetris-mask-soft);
   }
   .piece-layer-crisp {
-    opacity: 0.9;
     mask-image: var(--tetris-mask-crisp);
     -webkit-mask-image: var(--tetris-mask-crisp);
   }
-  .piece-layer-soft :global(.cell), .piece-layer-crisp :global(.cell) {
-    position: absolute;
-    border-radius: 1px;
+  /* The blur lives on the wrapper and is rasterized ONCE; translating the
+     wrapper reuses that cached raster (composite-only) instead of re-blurring
+     every animation step — the whole point of this change. */
+  .piece-wrap-soft, .piece-wrap-crisp {
+    position: absolute; inset: 0; will-change: transform;
   }
-  .tetris-piece.phase-turn .piece-layer-soft :global(.cell),
-  .tetris-piece.phase-turn .piece-layer-crisp :global(.cell) {
-    transition: left 0.3s steps(3, end), top 0.3s steps(3, end);
+  .piece-wrap-soft { filter: blur(4px); opacity: 0.85; }
+  .piece-wrap-crisp { opacity: 0.9; }
+  .piece-wrap-soft :global(.cell), .piece-wrap-crisp :global(.cell) {
+    position: absolute; border-radius: 1px;
   }
-  .tetris-piece.phase-fall .piece-layer-soft :global(.cell),
-  .tetris-piece.phase-fall .piece-layer-crisp :global(.cell) {
-    transition: top 0.22s steps(6, end);
+  /* Motion is now a transform on the wrapper, not left/top on each cell —
+     steps() keeps the blocky snap. */
+  .tetris-piece.phase-turn .piece-wrap-soft,
+  .tetris-piece.phase-turn .piece-wrap-crisp {
+    transition: transform 0.3s steps(3, end);
+  }
+  .tetris-piece.phase-fall .piece-wrap-soft,
+  .tetris-piece.phase-fall .piece-wrap-crisp {
+    transition: transform 0.22s steps(6, end);
   }
 </style>
 <script>
-  import {
-    landingRow, cellsFor,
-    type GameState, type Piece,
-  } from '../lib/tetris/engine';
-  import { createAmbientDemo, stepAmbientDemo } from '../lib/tetris/ambientDemo';
-  import { chooseBestPlacement } from '../lib/tetris/autoplay';
+  import { cellsFor, boardWithPiece } from '../lib/tetris/engine';
+  import { emptyBoard, applyReplayEvent, type PieceEvent } from '../lib/tetris/recordReplay';
+  import { COLS_H, ROWS_H, REPLAY } from '../lib/tetris/heroReplay';
 
   const ambientSoftEl = document.getElementById('tetris-ambient-soft')!;
   const ambientCrispEl = document.getElementById('tetris-ambient-crisp')!;
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-  function renderBoard(el: HTMLElement, state: GameState) {
-    el.innerHTML = '';
-    const rows = state.board.length;
-    const cols = state.board[0].length;
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const cell = document.createElement('div');
-        const piece = state.board[y][x];
-        if (piece) cell.dataset.piece = piece;
-        el.appendChild(cell);
-      }
-    }
-  }
-
-  // Target cell size used only to derive how many columns/rows fit — the
-  // actual on-screen cell size (cellW/cellH below) is always computed
-  // exactly from the container's real box plus the grid's 1px gaps, so the
-  // falling-piece overlay never drifts out of alignment with the grid
-  // (see this task's plan notes for why that drift/cutoff bug existed).
-  const CELL_SIZE = 44;
-  const GAP = 1;
-  // cols/rows/cellW/cellH all derive from the container's box at the moment
-  // this runs. The grid itself (columns: repeat(cols, 1fr), rows: implicit
-  // auto-stretch) re-flows to any container size on its own, but cols/rows
-  // stay whatever they were computed to be here — so if the container's
-  // aspect ratio changes later (a window resize) without recomputing them,
-  // column width (containerWidth / cols) and row height
-  // (containerHeight / rows) drift apart independently and cells stop being
-  // square. setupAmbientBoard() is re-run from a resize listener below for
-  // exactly this reason.
-  let ambientCols = 0;
-  let ambientRows = 0;
-  let cellW = 0;
-  let cellH = 0;
-  let ambientState!: GameState;
-  let ambientStep = 0;
-  // Bumped every time setupAmbientBoard() reinitializes the board so any
-  // already-scheduled runAmbientCycle timeout chain (which closes over
-  // ambientCols/ambientState by reference) can detect it's stale and stop
-  // instead of continuing to animate/step a board that's just been replaced.
-  let ambientGeneration = 0;
-  // Bumped every time runAmbientCycle() spawns a new piece and mirrored
-  // onto #tetris-piece's data-cycle attribute purely as an e2e-test hook:
-  // it lets a test confirm two reads of the piece's DOM position belong to
-  // the *same* spawn rather than trying to infer that from wall-clock
-  // timing, which drifts unpredictably against this loop's own setTimeout
-  // chain once real page-load/IPC latency is in play.
-  let pieceCycle = 0;
-
-  // Whether the board is actually on screen. Below the mobile breakpoint
-  // .tetris-hero is display: none, which makes this container 0x0 — and a 0x0
-  // container still runs every line below it: cols/rows clamp to their 4x4
-  // floor, cellW/cellH come out NEGATIVE ((0 - 3 * GAP) / 4), and the cycle
-  // chain re-renders that invisible board and schedules its successor forever.
-  // A decorative background loop burning a phone's battery for something no
-  // one can see is the whole bug.
-  //
-  // Derived from the box rather than by re-testing (max-width: 768px) in JS:
-  // the breakpoint already lives in this component's own CSS, and a second
-  // copy of the literal 768 here is exactly the two-call-sites-drift shape
-  // this codebase keeps paying for (see CLAUDE.md). "Is it on screen" is also
-  // the thing actually meant, so it stays correct if the breakpoint moves.
-  let ambientOnScreen = false;
-
-  function setupAmbientBoard() {
-    ambientGeneration++;
-    ambientOnScreen = ambientSoftEl.clientWidth > 0 && ambientSoftEl.clientHeight > 0;
-    if (!ambientOnScreen) return;
-    ambientCols = Math.max(4, Math.floor((ambientSoftEl.clientWidth + GAP) / (CELL_SIZE + GAP)));
-    ambientRows = Math.max(4, Math.floor((ambientSoftEl.clientHeight + GAP) / (CELL_SIZE + GAP)));
-    ambientSoftEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
-    ambientCrispEl.style.gridTemplateColumns = `repeat(${ambientCols}, 1fr)`;
-    cellW = (ambientSoftEl.clientWidth - (ambientCols - 1) * GAP) / ambientCols;
-    cellH = (ambientSoftEl.clientHeight - (ambientRows - 1) * GAP) / ambientRows;
-
-    ambientState = createAmbientDemo(ambientCols, ambientRows);
-    ambientStep = 0;
-    renderBoard(ambientSoftEl, ambientState);
-    renderBoard(ambientCrispEl, ambientState);
-    pieceSoftEl.innerHTML = '';
-    pieceCrispEl.innerHTML = '';
-    pieceEl.classList.remove('phase-turn', 'phase-fall');
-  }
-
   const pieceEl = document.getElementById('tetris-piece')!;
   const pieceSoftEl = document.getElementById('tetris-piece-soft')!;
   const pieceCrispEl = document.getElementById('tetris-piece-crisp')!;
+  const heroEl = document.getElementById('tetris-hero')!;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  setupAmbientBoard();
-
+  const GAP = 1;
   const TURN_MS = 300;
   const FALL_MS = 220;
   const PAUSE_MS = 200;
   const FLASH_CYCLES = 3;
   const FLASH_INTERVAL_MS = 90;
-  let pieceCellsSoft: HTMLElement[] = [];
-  let pieceCellsCrisp: HTMLElement[] = [];
+
+  let cellW = 0;
+  let cellH = 0;
+  let board = emptyBoard(COLS_H, ROWS_H);
+  let index = 0;
+  let onScreen = false;
+  let running = false;
+  // Bumped on every (re)start so a stale setTimeout chain from before a resize
+  // or a pause bails instead of animating into replaced state — same guard
+  // shape the previous live loop used.
+  let generation = 0;
+  let pieceCycle = 0;
+
+  // Renders `src` (defaults to the current settled board). Passing an explicit
+  // board lets the lock flash the PRE-clear state (full rows still present and
+  // lit) before rendering the post-clear board.
+  function renderBoard(el: HTMLElement, src: import('../lib/tetris/engine').Cell[][] = board) {
+    el.innerHTML = '';
+    for (let y = 0; y < ROWS_H; y++) {
+      for (let x = 0; x < COLS_H; x++) {
+        const cell = document.createElement('div');
+        const piece = src[y][x];
+        if (piece) cell.dataset.piece = piece;
+        el.appendChild(cell);
+      }
+    }
+  }
+  function renderBoth(src?: import('../lib/tetris/engine').Cell[][]) {
+    renderBoard(ambientSoftEl, src);
+    renderBoard(ambientCrispEl, src);
+  }
+
+  // Fixed grid: column/row COUNT never changes; only cell pixel size does, so
+  // the recorded coordinates stay valid at any width. onScreen is derived from
+  // the box (0x0 below the mobile breakpoint, where .tetris-hero is
+  // display:none) — not a second hardcoded 768 check.
+  function setupGrid() {
+    onScreen = ambientSoftEl.clientWidth > 0 && ambientSoftEl.clientHeight > 0;
+    if (!onScreen) return;
+    ambientSoftEl.style.gridTemplateColumns = `repeat(${COLS_H}, 1fr)`;
+    ambientCrispEl.style.gridTemplateColumns = `repeat(${COLS_H}, 1fr)`;
+    cellW = (ambientSoftEl.clientWidth - (COLS_H - 1) * GAP) / COLS_H;
+    cellH = (ambientSoftEl.clientHeight - (ROWS_H - 1) * GAP) / ROWS_H;
+    renderBoth();
+  }
+
+  // The 4 cells sit at their shape-relative offsets (constant for a fixed
+  // rotation); the WRAPPER's transform positions the piece. So the cells are
+  // laid out once per spawn and never touched again during the flight.
+  function layoutPieceCells(el: HTMLElement, ev: PieceEvent): HTMLElement[] {
+    el.innerHTML = '';
+    const coords = cellsFor({ type: ev.type, rotation: ev.rotation, x: 0, y: 0 });
+    const minX = Math.min(...coords.map((c) => c[0]));
+    const minY = Math.min(...coords.map((c) => c[1]));
+    return coords.map(([cx, cy]) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.piece = ev.type;
+      cell.style.width = `${cellW}px`;
+      cell.style.height = `${cellH}px`;
+      cell.style.left = `${(cx - minX) * (cellW + GAP)}px`;
+      cell.style.top = `${(cy - minY) * (cellH + GAP)}px`;
+      el.appendChild(cell);
+      return cell;
+    });
+  }
+
+  // Origin of the piece's bounding box in board space, for a given piece x/y.
+  function originTransform(ev: PieceEvent, atX: number, atY: number): string {
+    const coords = cellsFor({ type: ev.type, rotation: ev.rotation, x: atX, y: atY });
+    const boxX = Math.min(...coords.map((c) => c[0]));
+    const boxY = Math.min(...coords.map((c) => c[1]));
+    return `translate(${boxX * (cellW + GAP)}px, ${boxY * (cellH + GAP)}px)`;
+  }
+
+  function setPieceTransform(t: string) {
+    (pieceSoftEl as HTMLElement).style.transform = t;
+    (pieceCrispEl as HTMLElement).style.transform = t;
+  }
 
   function flashRows(rows: number[]): Promise<void> {
     if (rows.length === 0) return Promise.resolve();
     const cellsInRows = (el: HTMLElement): HTMLElement[] =>
       rows.flatMap((r) =>
-        Array.from(el.children).slice(r * ambientCols, r * ambientCols + ambientCols) as HTMLElement[]
+        Array.from(el.children).slice(r * COLS_H, r * COLS_H + COLS_H) as HTMLElement[]
       );
     const targets = [...cellsInRows(ambientSoftEl), ...cellsInRows(ambientCrispEl)];
     let tick = 0;
@@ -262,164 +252,141 @@
     });
   }
 
-  function initPieceCells(el: HTMLElement, type: string): HTMLElement[] {
-    el.innerHTML = '';
-    return Array.from({ length: 4 }, () => {
-      const cell = document.createElement('div');
-      cell.className = 'cell';
-      cell.dataset.piece = type;
-      el.appendChild(cell);
-      return cell;
-    });
-  }
-
-  function positionPieceCells(cells: HTMLElement[], coords: number[][]) {
-    coords.forEach(([x, y], i) => {
-      const cell = cells[i];
-      cell.style.width = `${cellW}px`;
-      cell.style.height = `${cellH}px`;
-      cell.style.left = `${x * cellW}px`;
-      cell.style.top = `${y * cellH}px`;
-    });
-  }
-
-  function runAmbientCycle() {
-    // Captured once per cycle: if setupAmbientBoard() reinitializes the
-    // board (a resize) while this cycle's chain of rAF/setTimeout callbacks
-    // is still in flight, every later checkpoint below compares against the
-    // *current* ambientGeneration and bails rather than animating/locking a
-    // piece into a board that's already been replaced with a differently-
-    // sized one.
-    const gen = ambientGeneration;
+  function runCycle() {
+    const gen = generation;
+    const ev = REPLAY[index];
     pieceEl.dataset.cycle = String(++pieceCycle);
 
-    // Must call chooseBestPlacement identically to how stepAmbientDemo will
-    // below when it commits this same placement, or the two calls can rank
-    // placements differently and the piece will animate toward one column
-    // but lock into another. Neither call overrides the default weighting
-    // anymore, so this is trivially true, but keep the calls symmetric.
-    const placement = chooseBestPlacement(ambientState);
-    const landingY = landingRow(ambientState.board, {
-      ...ambientState.current,
-      rotation: placement.rotation,
-      x: placement.x,
-    });
-
-    // Spawn already in its final rotation, not rotation 0. SHAPES' 4
-    // rotation states are independently hand-authored (SRS-style), not one
-    // shape rotated per cell index — so index i's offset can jump by a
-    // completely unrelated (dx, dy) between two rotation states (e.g. the
-    // I piece's index 0 goes from (0,1) to (2,0) between rotations 0 and
-    // 1). Animating left/top from a rotation-0 shape to the target
-    // rotation made each of the 4 cell divs fly along its own unrelated
-    // diagonal, landing off-grid for the transition's mid-frames before
-    // snapping onto the grid at the end. Keeping the same rotation on both
-    // ends of the turn phase means every cell moves by one uniform
-    // (dx, 0) — a rigid slide into the target column instead of a
-    // scramble.
-    const spawnPiece: Piece = { ...ambientState.current, rotation: placement.rotation, y: 0 };
-    pieceCellsSoft = initPieceCells(pieceSoftEl, spawnPiece.type);
-    pieceCellsCrisp = initPieceCells(pieceCrispEl, spawnPiece.type);
-    pieceEl.classList.remove('phase-fall');
-    pieceEl.classList.add('phase-turn');
-    positionPieceCells(pieceCellsSoft, cellsFor(spawnPiece));
-    positionPieceCells(pieceCellsCrisp, cellsFor(spawnPiece));
+    layoutPieceCells(pieceSoftEl, ev);
+    layoutPieceCells(pieceCrispEl, ev);
+    // Jump INSTANTLY to the spawn cell at the top of the board — both phase
+    // classes off, so no transition is active. Without this, the wrapper still
+    // holds the previous piece's fall transform (near the bottom), and adding
+    // phase-turn before setting the spawn transform makes the new piece
+    // visibly slide UP from that old landing spot to the top before falling —
+    // the "pieces go up then down" bug. Force the spawn position to commit
+    // (offsetWidth reflow) before any transition is enabled.
+    pieceEl.classList.remove('phase-fall', 'phase-turn');
+    setPieceTransform(originTransform(ev, ev.spawnX, 0));
+    void pieceEl.offsetWidth;
 
     requestAnimationFrame(() => {
-      if (gen !== ambientGeneration) return;
-      const turned = { ...spawnPiece, x: placement.x };
-      positionPieceCells(pieceCellsSoft, cellsFor(turned));
-      positionPieceCells(pieceCellsCrisp, cellsFor(turned));
+      if (gen !== generation) return;
+      pieceEl.classList.add('phase-turn');
+      setPieceTransform(originTransform(ev, ev.x, 0)); // turn-slide to column
 
-      // Chained from inside this rAF callback — where the turn's CSS
-      // transition actually starts — rather than scheduled from cycle
-      // start alongside it. TURN_MS (300) exactly equals the phase-turn
-      // transition's own 0.3s duration with zero margin, but rAF doesn't
-      // fire until the next paint (~1 frame after cycle start), so a timer
-      // anchored to cycle start could fire before the transition's final
-      // steps(3, end) jump landed, freezing the piece mid-slide — worse
-      // the farther it had to travel, which is why S/Z (whose autoplay
-      // placements tend to need bigger horizontal jumps) showed it most.
-      // Anchoring both clocks to the same instant removes the race:
-      // setTimeout never fires early, so by the time it fires here the
-      // transition (started at this same instant) is guaranteed done.
       window.setTimeout(() => {
-        if (gen !== ambientGeneration) return;
+        if (gen !== generation) return;
         pieceEl.classList.remove('phase-turn');
         pieceEl.classList.add('phase-fall');
-        const landed = { ...spawnPiece, x: placement.x, y: landingY };
-        positionPieceCells(pieceCellsSoft, cellsFor(landed));
-        positionPieceCells(pieceCellsCrisp, cellsFor(landed));
+        setPieceTransform(originTransform(ev, ev.x, ev.landingY)); // fall
 
-        // Same reasoning as above, one phase down: chained from the exact
-        // moment the fall's CSS transition starts instead of racing it
-        // from cycle start.
         window.setTimeout(async () => {
-          if (gen !== ambientGeneration) return;
-          // stepAmbientDemo recomputes chooseBestPlacement itself and
-          // commits via hardDrop. It locks the piece in exactly the spot
-          // just animated to because both calls resolve
-          // chooseBestPlacement identically (same args, same default
-          // weighting) — not just because they see the same state, which
-          // was previously assumed to be enough and wasn't (see
-          // ambientDemo.ts's stepAmbientDemo). If the commit would have
-          // caused a real top-out, stepAmbientDemo silently resets to a
-          // fresh empty board instead (see ambientDemo.ts) rather than
-          // surfacing it — a rare, purely cosmetic edge case where this
-          // animation's predicted landing spot is replaced by an empty
-          // board right as it lands, accepted as-is since this is a
-          // decorative background loop, not gameplay.
-          const stepResult = stepAmbientDemo(ambientState, ambientStep++);
-          // Clear the falling-piece overlay as soon as the piece locks,
-          // before any flash. The locked piece is now baked into the
-          // board cells themselves (preClearBoard), so leaving the
-          // overlay in place during the flash left a stale, un-flashing
-          // copy of the piece sitting on top of the grid for the whole
-          // flash duration — the only case where this dangling overlay
-          // was visible long enough to notice, since a non-clearing drop
-          // clears it on the very next synchronous lines.
+          if (gen !== generation) return;
+          // Lock. For a clearing drop, flash the PRE-clear board (locked piece
+          // baked in, full rows still present and lit) before committing the
+          // cleared result — mirrors the old preClearBoard behavior.
+          const placed = boardWithPiece(board, {
+            type: ev.type, rotation: ev.rotation, x: ev.x, y: ev.landingY,
+          });
+          // Commit board AND advance index atomically, BEFORE the interruptible
+          // flash await below. If a pause (resize / off-screen / backgrounded)
+          // bumps `generation` during the flash, the post-await bail then leaves
+          // a CONSISTENT (board, index) pair — the just-locked piece is fully
+          // recorded and the next start() resumes at the following piece. If
+          // index advanced only after the await (as an earlier revision did), a
+          // bail mid-flash left board ahead of index, and restart replayed the
+          // same piece into an already-changed board — a visible double-drop.
+          board = applyReplayEvent(board, ev);
+          index++;
           pieceSoftEl.innerHTML = '';
           pieceCrispEl.innerHTML = '';
-          if (stepResult.clearedRows.length > 0) {
-            renderBoard(ambientSoftEl, { ...ambientState, board: stepResult.preClearBoard });
-            renderBoard(ambientCrispEl, { ...ambientState, board: stepResult.preClearBoard });
-            await flashRows(stepResult.clearedRows);
-            if (gen !== ambientGeneration) return;
+          if (ev.clearedRows.length > 0) {
+            renderBoth(placed);
+            await flashRows(ev.clearedRows);
+            if (gen !== generation) return;
           }
-          ambientState = stepResult.state;
-          renderBoard(ambientSoftEl, ambientState);
-          renderBoard(ambientCrispEl, ambientState);
+          if (index >= REPLAY.length) {
+            // End of the recorded game (top-out): reset and loop.
+            index = 0;
+            board = emptyBoard(COLS_H, ROWS_H);
+          }
+          renderBoth();
           window.setTimeout(() => {
-            if (gen !== ambientGeneration) return;
-            runAmbientCycle();
+            if (gen !== generation) return;
+            runCycle();
           }, PAUSE_MS);
         }, FALL_MS);
       }, TURN_MS);
     });
   }
 
-  function ambientShouldRun() {
-    return ambientOnScreen && !reducedMotion.matches;
+  // `onScreen` = the container has a real box (i.e. not the mobile
+  // display:none breakpoint); it changes only on resize. `inView` = the hero
+  // is actually intersecting the viewport, and is the IntersectionObserver's
+  // single source of truth (below). Both must gate the loop: without `inView`,
+  // a visibilitychange/reduced-motion/resize resume would call start() while
+  // the hero is scrolled off-screen (onScreen still true), running the loop —
+  // and burning the exact off-screen work this feature exists to avoid — until
+  // the IO next fired. `inView` starts false; the IO's initial callback flips
+  // it true (and calls start()) when the hero is on screen at load.
+  let inView = false;
+
+  function shouldRun() {
+    return onScreen && inView && !reducedMotion.matches;
   }
 
-  if (ambientShouldRun()) {
-    runAmbientCycle();
+  function start() {
+    if (running || !shouldRun()) return;
+    running = true;
+    generation++;
+    // Re-render the committed board on (re)start so a resume never shows a
+    // stale frame — e.g. a pause that bailed mid-flash left the pre-clear rows
+    // on screen while `board` had already advanced past the clear.
+    renderBoth();
+    runCycle();
   }
 
-  // Debounced: resize fires continuously while a window is being dragged,
-  // and each call tears down + recreates the whole ambient board, so
-  // reacting on every event would restart the animation dozens of times per
-  // drag instead of once after it settles.
+  function stop() {
+    running = false;
+    generation++; // in-flight chain bails on next checkpoint
+  }
+
+  setupGrid();
+
+  // Freeze when the hero scrolls out of view — a decorative loop must not run
+  // (rebuild + reblur on lock) for something off screen.
+  const io = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      inView = entry.isIntersecting; // set BEFORE start() — shouldRun() reads it
+      if (entry.isIntersecting) start();
+      else stop();
+    }
+  });
+  io.observe(heroEl);
+
+  // Freeze when the tab is backgrounded; resume on return.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stop();
+    else if (shouldRun()) start();
+  });
+
+  // Reduced-motion may be toggled after load: freeze on a static first frame.
+  reducedMotion.addEventListener('change', () => {
+    if (reducedMotion.matches) stop();
+    else if (shouldRun()) start();
+  });
+
+  // Resize: fixed grid means only cell pixel size changes. Recompute sizing,
+  // re-render the settled board (cells auto-scale via 1fr, but cellW/cellH for
+  // the falling piece must be refreshed), and restart the current cycle.
   let resizeTimer: number | undefined;
   window.addEventListener('resize', () => {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
-      setupAmbientBoard();
-      // Rechecked per resize, not latched at load: a visitor who widens a
-      // narrow window brings the board on screen, and one who narrows it takes
-      // it off. setupAmbientBoard() has already bumped the generation, so any
-      // cycle still in flight from the previous size bails on its own.
-      if (ambientShouldRun()) runAmbientCycle();
+      stop();
+      setupGrid();
+      if (shouldRun()) start();
     }, 200);
   });
 </script>
