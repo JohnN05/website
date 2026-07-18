@@ -13,8 +13,8 @@ interface Props {
   /** Whether this mark performs the reveal on this page. Exactly one mark per
    *  page should be true — see the ownership rule in CLAUDE.md. */
   reveals?: boolean;
-  /** 'hover' = plays on pointer/focus. 'load' = plays once on load, and again
-   *  on click. */
+  /** 'hover' = plays on pointer/focus. 'load' = plays on load, repeats on a
+   *  slow cadence while the mark is on screen, and replays on click. */
   trigger?: 'hover' | 'load';
   class?: string;
 }
@@ -223,8 +223,17 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
   // On the Home hero the reveal fires at document.fonts.ready, which lands in
   // the same instant as first paint — the whole play was over before a visitor
   // had looked at the word. Hold the letters first so there is a "before" to
-  // notice the change against.
-  const LOAD_DELAY_MS = 700;
+  // notice the change against: long enough for a newcomer's eyes to settle on
+  // the page.
+  const LOAD_DELAY_MS = 1500;
+  // Even well-timed, one play is a moment a visitor can miss. The load-triggered
+  // mark replays on a slow cadence so anyone watching the hero for a handful of
+  // seconds catches it — the same bet the board's ambient loop already makes.
+  // Measured rest to rest (scheduled when the previous play completes), so the
+  // name sits still the overwhelming majority of the time and the loop reads as
+  // ambient rather than blinking. Paused while the mark is off-screen or the
+  // tab is hidden; click remains the on-demand play.
+  const REPLAY_INTERVAL_MS = 10000;
   // A beat on the tipped letter before the blocks arrive. On load the letter is
   // already lying down and has been for LOAD_DELAY_MS, so this only really
   // buys anything on a replay, where the tip snaps in at play start.
@@ -412,10 +421,42 @@ const lines = layout === 'stack' ? [first, second] : [`${first} ${second}`];
         const host = mark.closest('a, button') ?? mark;
 
         if (mark.dataset.trigger === 'load') {
-          // Delay the load play only. A click is the visitor already watching,
-          // so a replay starts on the beat they asked for it.
-          void wait(LOAD_DELAY_MS).then(play);
+          // A click is the visitor already watching, so a replay starts on the
+          // beat they asked for it.
           host.addEventListener('click', () => void play());
+
+          // The loop is only wired for the mark that performs — a non-owner
+          // would spin a timer whose every play() is gated to a no-op.
+          if (mark.dataset.owns === 'true') {
+            let onScreen = true;
+            let playedOnce = false;
+            let timer = 0;
+
+            // One place that (re)starts the countdown to the next play, so
+            // every wake source — load, scrolling the hero back into view,
+            // returning to the tab — lands on the same logic, and pausing is
+            // just not rescheduling. The first play waits out LOAD_DELAY_MS;
+            // every later one waits REPLAY_INTERVAL_MS after the previous play
+            // completes. IntersectionObserver fires once on observe(), so the
+            // initial schedule effectively starts from there.
+            const wake = (): void => {
+              window.clearTimeout(timer);
+              if (!onScreen || document.hidden) return;
+              timer = window.setTimeout(() => {
+                void play().then(() => {
+                  playedOnce = true;
+                  wake();
+                });
+              }, playedOnce ? REPLAY_INTERVAL_MS : LOAD_DELAY_MS);
+            };
+
+            new IntersectionObserver(([entry]) => {
+              onScreen = entry?.isIntersecting ?? true;
+              wake();
+            }).observe(mark);
+            document.addEventListener('visibilitychange', wake);
+            wake();
+          }
         } else {
           host.addEventListener('mouseenter', () => void play());
           host.addEventListener('focus', () => void play());

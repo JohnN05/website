@@ -443,6 +443,39 @@ test.describe('the turn', () => {
   });
 });
 
+test.describe('the replay loop', () => {
+  test('the reveal replays on a slow cadence with no interaction', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/');
+
+    const mark = page.locator('#nameplate [data-piece-mark]');
+    await expect(mark).toHaveAttribute('data-cycle', '1');
+    // No click, no hover — the second play can only have come from the loop,
+    // scheduled REPLAY_INTERVAL_MS (10s) after the first play completed. This
+    // is the whole point of the loop: a visitor who never touches the page
+    // still sees the reveal.
+    await expect(mark).toHaveAttribute('data-cycle', '2', { timeout: 20_000 });
+  });
+
+  test('the loop pauses while the hero is off-screen', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/');
+
+    const mark = page.locator('#nameplate [data-piece-mark]');
+    await expect(mark).toHaveAttribute('data-cycle', '1');
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(mark).not.toBeInViewport();
+
+    // Well past when the cadence would have fired the second play
+    // (REPLAY_INTERVAL_MS after the first completed). Motion nobody can see is
+    // just a timer running, and it would also steal the "welcome back" play
+    // from the moment the hero scrolls back into view.
+    await page.waitForTimeout(12_000);
+    await expect(mark).not.toHaveAttribute('data-cycle', '2');
+  });
+});
+
 test.describe('reduced motion', () => {
   test('the mark renders at rest and never reveals', async ({ page }) => {
     // emulateMedia, not test.use({ reducedMotion }) — which this file used
