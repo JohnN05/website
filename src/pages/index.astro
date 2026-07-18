@@ -25,7 +25,7 @@ const featured = selectFeatured(
         <PieceMark layout="inline" reveals={true} trigger="load" />
       </button>
       <p class="eyebrow" data-reveal>Software Engineer</p>
-      <h1 data-reveal>Building your peace of mind, <span class="piece">one piece at a time.</span></h1>
+      <h1 data-reveal>Building peace of mind, <span class="piece">one piece at a time.</span></h1>
     </div>
     <TetrisHero />
   </section>
@@ -184,9 +184,13 @@ const featured = selectFeatured(
   }
   /* "one piece at a time" — the payoff clause and the only line on the site
      that names the Tetris metaphor in words (peace ↔ piece pun) — carries the
-     cobalt accent so it reads as the emphasis. */
+     cobalt accent so it reads as the emphasis. Mixed toward --color-text
+     (70/30), same pattern as the education stat numbers below: raw --color-accent
+     against the dark-mode --wash-hero measures ~2.1:1, short of WCAG AA's 3:1
+     large-text floor; the mix lightens in dark mode (and darkens slightly in
+     light mode) to clear it in both themes. */
   .hero-copy h1 .piece {
-    color: var(--color-accent);
+    color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
   }
   .bio {
     display: flex;
