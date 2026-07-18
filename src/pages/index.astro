@@ -25,7 +25,7 @@ const featured = selectFeatured(
         <PieceMark layout="inline" reveals={true} trigger="load" />
       </button>
       <p class="eyebrow" data-reveal>Software Engineer</p>
-      <h1 data-reveal>Coding practical solutions for people. That's always been the point.</h1>
+      <h1 data-reveal>Building your peace of mind, <span class="piece">one piece at a time.</span></h1>
     </div>
     <TetrisHero />
   </section>
@@ -181,6 +181,12 @@ const featured = selectFeatured(
   }
   .hero-copy h1 {
     font-size: clamp(2rem, 5vw, 3.5rem);
+  }
+  /* "one piece at a time" — the payoff clause and the only line on the site
+     that names the Tetris metaphor in words (peace ↔ piece pun) — carries the
+     cobalt accent so it reads as the emphasis. */
+  .hero-copy h1 .piece {
+    color: var(--color-accent);
   }
   .bio {
     display: flex;

@@ -175,6 +175,10 @@ const projects = defineCollection({
     cover: z.string().optional(),
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
+    role: z.string().optional(),      // article spec strip —
+    timeline: z.string().optional(),  // Role · Timeline · Stack · Outcome,
+    stack: z.array(z.string()).optional(), // each rendered only if set
+    outcome: z.string().optional(),   // (graceful, like `cover`)
   }),
 });
 ```
@@ -324,7 +328,13 @@ meta line, large Bricolage title, Source Serif dek from the project's
 `summary`, 4:3 cover). The cover holds a real photo when a project sets
 `cover`, otherwise a server-rendered fallback: a frozen tetromino stack tinted
 by `accentForTag(tags[0])` (no runtime `createElement`, so none of the
-`:global()` scoping trap).
+`:global()` scoping trap). Below the split, a **spec strip** (`.spec`) renders
+`Role · Timeline · Stack · Outcome` from the four optional frontmatter fields —
+only the present ones (`specFields` filters), with column count driven by an
+inline `--cols` (dropping to two on narrow) and top/bottom hairlines only (no
+per-cell dividers, so any field count + reflow stays clean). Outcome wears the
+header's `--accent` so the result reads first; a project that sets none renders
+exactly the plain header.
 
 **Bio portrait** (`index.astro`'s `.bio-frame`) — an O-piece dissolve: a gold
 2×2 block breaks off the bottom-left on scroll-entry, and click toggles it
