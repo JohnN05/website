@@ -259,12 +259,20 @@
 
     layoutPieceCells(pieceSoftEl, ev);
     layoutPieceCells(pieceCrispEl, ev);
-    pieceEl.classList.remove('phase-fall');
-    pieceEl.classList.add('phase-turn');
+    // Jump INSTANTLY to the spawn cell at the top of the board — both phase
+    // classes off, so no transition is active. Without this, the wrapper still
+    // holds the previous piece's fall transform (near the bottom), and adding
+    // phase-turn before setting the spawn transform makes the new piece
+    // visibly slide UP from that old landing spot to the top before falling —
+    // the "pieces go up then down" bug. Force the spawn position to commit
+    // (offsetWidth reflow) before any transition is enabled.
+    pieceEl.classList.remove('phase-fall', 'phase-turn');
     setPieceTransform(originTransform(ev, ev.spawnX, 0));
+    void pieceEl.offsetWidth;
 
     requestAnimationFrame(() => {
       if (gen !== generation) return;
+      pieceEl.classList.add('phase-turn');
       setPieceTransform(originTransform(ev, ev.x, 0)); // turn-slide to column
 
       window.setTimeout(() => {
