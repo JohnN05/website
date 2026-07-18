@@ -41,12 +41,32 @@ const [newestProject, ...restProjects] = projects;
     margin: 0 0 var(--space-3);
   }
   .intro-band {
+    /* Per-route identity: this page owns L-orange, the same hue as its rail
+       tick in Nav.astro. The wash is already the orange --wash-featured; the
+       edge-tick below brings the rail's marker language into the header so the
+       page and its nav marker read as one identity. */
+    --hue: var(--piece-l);
     background: var(--wash-featured);
     padding: var(--space-8) var(--space-5) var(--space-7);
   }
   .intro-inner {
+    position: relative;
     max-width: 42rem;
     margin: 0 auto;
+    padding-left: var(--space-4);
+  }
+  /* Static "you're here" edge-tick (no hover/grow — a header marks the page,
+     it isn't an interactive rail link). Hangs at the left of the eyebrow+title
+     block, in the route hue. */
+  .intro-inner::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    width: 4px;
+    height: 3.4rem;
+    border-radius: 1px;
+    background: var(--hue);
   }
   .intro-inner h1 {
     font-size: clamp(2rem, 4vw, 2.8rem);

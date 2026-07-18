@@ -5,29 +5,27 @@
      the drawer's button inert and dark mode unreachable for every mobile
      visitor. The class is the hook, and it works for any number of mounts.
 
-     The balisong is CSS-driven off html[data-theme], NOT toggled by this
-     component's script: closed = light, blade-out = dark. Because BaseLayout
-     sets data-theme before first paint, the knife renders in the correct
-     resting state with no flash and no JS. The click handler only flips
-     data-theme (+ persists); the flip animation falls out of the CSS
-     transition on that attribute change. Under reduced motion the transition
-     is removed but the resting silhouette still swaps, so the current mode is
-     never ambiguous. -->
+     The mark is an S tetromino, CSS-driven off html[data-theme], NOT toggled by
+     this component's script: light = piece at rest (sun-tinted), dark = same
+     piece snap-rotated 90° (moon-tinted). Because BaseLayout sets data-theme
+     before first paint, the piece renders in the correct resting state with no
+     flash and no JS. The click handler only flips data-theme (+ persists); the
+     rotation falls out of the CSS transition on that attribute change, using
+     steps() so it snaps blockily like every other rotation on the site rather
+     than gliding. Under reduced motion the transition is removed but the
+     resting orientation + tint still swap, so the current mode is never
+     ambiguous. -->
 <button class="theme-toggle" type="button" aria-label="Toggle light or dark theme">
-  <svg class="knife" viewBox="0 0 132 60" width="46" height="21" aria-hidden="true">
-    <!-- Mako-style blade: clip point, belly, swedge line. Sheathed (hidden)
-         when closed; revealed when the handles swing open. -->
-    <g class="blade">
-      <polygon points="66,27.2 112,27.2 121,28.3 126,30 119,32 66,32.8"></polygon>
-      <path class="swedge" d="M111 27.6 L125 30"></path>
+  <svg class="spiece-svg" viewBox="0 0 54 54" width="30" height="30" aria-hidden="true">
+    <!-- S-piece, spawn (horizontal): top row cols 1,2 · mid row cols 0,1. The
+         whole group rotates about the viewBox centre; a 90° turn reads as a
+         genuine SRS spin (S has no 180° symmetry to hide behind). -->
+    <g class="spiece">
+      <rect x="19" y="9"  width="14" height="14" rx="2"></rect>
+      <rect x="33" y="9"  width="14" height="14" rx="2"></rect>
+      <rect x="5"  y="23" width="14" height="14" rx="2"></rect>
+      <rect x="19" y="23" width="14" height="14" rx="2"></rect>
     </g>
-    <!-- Each handle pivots about its own centerline, so a 180° flip keeps the
-         two parallel and in-lane — together over the blade when closed,
-         stacked on the far side when open. -->
-    <g class="handle-bot"><rect class="handle" x="66" y="30.6" width="54" height="5" rx="2.5"></rect></g>
-    <g class="handle-top"><rect class="handle" x="66" y="24.4" width="54" height="5" rx="2.5"></rect></g>
-    <circle class="pin" cx="66" cy="26.9" r="2.6"></circle>
-    <circle class="pin" cx="66" cy="33.1" r="2.6"></circle>
   </svg>
   <!-- Discoverability layer: a sun/moon and the current mode word, so the
        control advertises its state to sighted users. Decorative — the button's
@@ -64,29 +62,21 @@
     border-radius: 6px;
   }
 
-  .knife { display: block; overflow: visible; flex-shrink: 0; }
-  .knife .handle { fill: currentColor; }
-  .knife .pin { fill: var(--color-bg); stroke: currentColor; stroke-width: 1.4; }
-  .knife .blade { fill: var(--color-accent); opacity: 0; transition: opacity 0.28s ease; }
-  .knife .swedge {
-    fill: none;
-    stroke: color-mix(in srgb, #fff 55%, var(--color-accent));
-    stroke-width: 0.8;
-  }
-  .knife .handle-top,
-  .knife .handle-bot {
+  .spiece-svg { display: block; overflow: visible; flex-shrink: 0; }
+  .spiece {
     transform-box: view-box;
-    transition: transform 0.5s cubic-bezier(0.68, -0.35, 0.32, 1.35);
+    transform-origin: 27px 27px;
+    /* steps() = blocky snap, matching the site's grid-rewrite rotations
+       elsewhere; no eased glide. */
+    transition: transform 0.42s steps(3, end);
   }
-  .knife .handle-top { transform-origin: 66px 26.9px; }
-  .knife .handle-bot { transform-origin: 66px 33.1px; }
+  .spiece rect { fill: var(--color-accent-clay); transition: fill 0.3s ease; }
 
-  /* Dark = open: handles flip 180° off the blade, blade revealed. Light is the
-     default resting state (handles at rest covering the blade, blade hidden),
-     so it needs no rule — which is also the correct no-JS / unset fallback. */
-  :global(html[data-theme='dark']) .knife .handle-top { transform: rotate(-180deg); }
-  :global(html[data-theme='dark']) .knife .handle-bot { transform: rotate(180deg); }
-  :global(html[data-theme='dark']) .knife .blade { opacity: 1; }
+  /* Dark = the piece spins a quarter turn and cools to the teal moon tint.
+     Light is the resting default (no rule needed), which is also the correct
+     no-JS / unset fallback. */
+  :global(html[data-theme='dark']) .spiece { transform: rotate(90deg); }
+  :global(html[data-theme='dark']) .spiece rect { fill: var(--tetris-i); }
 
   .tt-label {
     display: inline-flex;
@@ -109,11 +99,8 @@
   :global(html[data-theme='dark']) .tt-mode-dark { display: inline; }
 
   @media (prefers-reduced-motion: reduce) {
-    .knife .handle-top,
-    .knife .handle-bot,
-    .knife .blade {
-      transition: none;
-    }
+    .spiece { transition: none; }
+    .spiece rect { transition: none; }
   }
 </style>
 <script>
@@ -133,7 +120,7 @@
   for (const button of buttons) {
     button.addEventListener('click', () => {
       const next = toggleTheme(readCurrentTheme());
-      // The knife (and the sun/moon/label) are driven entirely by this
+      // The piece (and the sun/moon/label) are driven entirely by this
       // attribute in CSS, so flipping it here animates every mount at once and
       // needs no per-button visual bookkeeping.
       document.documentElement.dataset.theme = next;
