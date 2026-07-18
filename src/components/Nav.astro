@@ -6,7 +6,12 @@ import PieceMark from './PieceMark.astro';
 // Home the hero nameplate IS the name, so the rail stays quiet rather than
 // saying it twice; on every other route the rail is the only name on screen
 // and takes the reveal.
-const isHome = Astro.url.pathname === '/';
+const path = Astro.url.pathname;
+const isHome = path === '/';
+// Active-route marking for the rail's edge tick. Article routes (/projects/…)
+// keep Projects lit, since that's the section they belong to.
+const isProjects = path === '/projects' || path.startsWith('/projects/');
+const isContact = path === '/contact' || path.startsWith('/contact/');
 ---
 <nav class="rail" id="nav-rail" aria-label="Primary">
   <a href="/" class="rail-home" aria-label="John Ng — Home">
@@ -14,11 +19,11 @@ const isHome = Astro.url.pathname === '/';
   </a>
 
   <div class="rail-links">
-    <a href="/projects" aria-label="Projects">
+    <a href="/projects" data-page="projects" aria-label="Projects" aria-current={isProjects ? 'page' : undefined}>
       <span class="rail-icon" aria-hidden="true">&#9638;</span>
       <span class="rail-label">Projects</span>
     </a>
-    <a href="/contact" aria-label="Contact">
+    <a href="/contact" data-page="contact" aria-label="Contact" aria-current={isContact ? 'page' : undefined}>
       <span class="rail-icon" aria-hidden="true">&#9993;</span>
       <span class="rail-label">Contact</span>
     </a>
@@ -67,14 +72,52 @@ const isHome = Astro.url.pathname === '/';
     flex-direction: column;
     gap: var(--space-4);
   }
+  /* Each link carries its own destination hue; the tick and any hover cue read
+     in the colour of the section they lead to (Projects = L-orange, Contact =
+     maroon) rather than one shared accent — the same "a route owns a colour"
+     idea the Home wash bands already use. */
+  .rail-links a[data-page='projects'] { --hue: var(--piece-l); }
+  .rail-links a[data-page='contact'] { --hue: var(--color-accent-maroon); }
   .rail-links a {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-4);
     text-decoration: none;
-    color: var(--color-text);
+    /* Inactive links sit back a touch so the lit active one reads as "you are
+       here" at a glance; the active link (and any hovered link) returns to full
+       text colour via the rules below. */
+    color: color-mix(in srgb, var(--color-text) 78%, var(--color-bg));
     white-space: nowrap;
+  }
+  .rail-links a[aria-current='page'],
+  .rail-links a:hover {
+    color: var(--color-text);
+  }
+  /* Edge tick: a short bar on the rail's own right border, in the link's hue.
+     It grows (scaleY) for the active route and on hover, so the existing
+     hairline appears to wake up rather than a new mark sliding in. right:-1px
+     straddles the rail's 1px border-right so the tick paints over it. */
+  .rail-links a::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    translate: 0 -50%;
+    width: 3px;
+    height: 60%;
+    background: var(--hue);
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 0.26s cubic-bezier(0.2, 0.75, 0.25, 1);
+  }
+  .rail-links a[aria-current='page']::after,
+  .rail-links a:hover::after {
+    transform: scaleY(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rail-links a::after { transition: none; }
   }
 
   .rail-footer {

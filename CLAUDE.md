@@ -5,8 +5,9 @@
 John Ng's personal site. Intro + portfolio, revamped (2026) from a single-page
 CRA SPA into a professional/minimal, multi-page Astro site with dedicated
 space for project write-ups and a few subtle hobby-inspired interactive
-details (Tetris, Minesweeper, butterfly-knife-flip toggle, capybara easter
-egg). This file describes the site as actually built, not just as planned.
+details (Tetris everywhere — ambient hero, wordmark reveal, an S-piece theme
+toggle — plus Minesweeper and a capybara easter egg). This file describes the
+site as actually built, not just as planned.
 
 **Status:** feature-complete through a full design-review pass, including
 item 8's typography-contrast audit (see
@@ -127,6 +128,15 @@ hit-testing over the rail's controls once it has its own `z-index` (it does,
 `z-index: 2`, so its capybara caption paints above Home's blurred `.seam`).
 Fix footer/rail overlap issues with the offset, not by touching either
 element's `z-index` — that reopens whichever bug the current values close.
+
+Each rail link carries a per-route hue (`--hue`: Projects → `--piece-l`,
+Contact → maroon) driving a short edge tick on the rail's own `border-right`
+(`.rail-links a::after`, `scaleY` grown for the active route and on hover) plus
+a dim on inactive links. The active route comes from `Astro.url.pathname` at
+build time (`aria-current="page"`, no JS); `/projects/*` articles keep Projects
+lit. Pure CSS — the tick straddles the border with `right: -1px`, not a
+padding-adjusted offset (`right` measures from the link's padding box, which
+already spans the full rail width).
 
 Both `ThemeToggle` mounts (rail + mobile drawer) bind by **class**, never by
 `id`: Astro bundles a component's `<script>` once per page no matter how many
@@ -272,14 +282,18 @@ applied by rewriting CSS grid placement (not a transitionable property), so
 it's a snap by construction. Exactly one mark performs per page
 (`data-owns`, set from the route); reduced motion leaves letters at rest.
 
-**Theme toggle** (`ThemeToggle.astro`) — a shaped balisong (two handles that
-pivot about their own centerlines, visible pivot pins, a clip-point blade),
-not the two flat bars of the original pass. State is purely CSS-driven off
-`html[data-theme]` (closed=light, blade-out=dark) rather than toggled by
-script, so both mounts animate from one attribute change with no flash and no
-per-button bookkeeping, and it renders correctly pre-JS. A sun/moon glyph and
-mode word (both `aria-hidden`) aid discoverability; reduced motion drops the
-transition but still swaps the resting silhouette.
+**Theme toggle** (`ThemeToggle.astro`) — an S tetromino (four `rect`s in a
+single `<g class="spiece">`): light = at rest, sun-tinted (clay); dark = the
+same piece snap-rotated 90° via `steps()`, moon-tinted (teal, `--tetris-i`).
+The 90° matters — S has no 180° symmetry to hide behind, so a quarter turn
+reads as a genuine SRS spin, and `steps()` keeps it blocky like every other
+rotation on the site. (This replaced an earlier off-theme balisong once the
+rest of the site went all-Tetris; don't reintroduce the knife.) State is
+purely CSS-driven off `html[data-theme]` rather than toggled by script, so
+both mounts animate from one attribute change with no flash and no per-button
+bookkeeping, and it renders correctly pre-JS. A sun/moon glyph and mode word
+(both `aria-hidden`) aid discoverability; reduced motion drops the transition
+but still swaps the resting orientation + tint.
 
 **Contact send** (`ContactForm.astro`) — on a successful send, a T piece
 spawns high, drops block-by-block, snaps 90° in place into a T-spin double
