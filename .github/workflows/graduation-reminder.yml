@@ -1,0 +1,29 @@
+# One-shot nudge for issue #14 (flip the education section after the degree
+# confers). Comments on the issue on Dec 14, 2026 — the @mention is what
+# actually notifies. Schedule triggers only run from the default branch, and
+# GitHub disables scheduled workflows after 60 days of repo inactivity; if
+# that happens, any push re-enables them.
+name: Graduation reminder
+
+on:
+  schedule:
+    # 10:07 AM ET (15:07 UTC, EST) on December 14
+    - cron: '7 15 14 12 *'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 14,
+              body: '🎓 @JohnN05 — December 2026, degree conferral month. Time to flip the education section from "one line left" to "line cleared" (checklist in the issue body).',
+            });

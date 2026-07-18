@@ -11,6 +11,18 @@ const featured = selectFeatured(
   allProjects.map((p) => ({ slug: p.slug, ...p.data })),
   3
 );
+
+// Education well: 10 columns, 7 rows, rendered top→bottom. The top row is the
+// final-semester line — filled except the I-piece's four landing cells; each
+// locked row below it (one per completed semester) carries a single buried
+// hole, because a *complete* line would already have cleared itself.
+const WELL_COLS = 10;
+const WELL_GAP = [3, 4, 5, 6]; // top row: the I-piece's landing columns
+const WELL_HOLES = [1, 5, 8, 2, 7, 3]; // locked rows top→bottom: hole column per row
+const WELL_ROWS = [
+  Array.from({ length: WELL_COLS }, (_, c) => !WELL_GAP.includes(c)),
+  ...WELL_HOLES.map((h) => Array.from({ length: WELL_COLS }, (_, c) => c !== h)),
+];
 ---
 <BaseLayout title="John Ng">
   {/* `in` is authored here, not added by script: the hero is on screen at load
@@ -50,7 +62,7 @@ const featured = selectFeatured(
         <div class="blk o4"><span class="fill"></span><span class="flash"></span></div>
       </div>
       <div class="bio-copy" data-depth="0.03">
-        <p class="eyebrow" data-reveal>College Park, MD — CS + Secondary Ed @ UMD</p>
+        <p class="eyebrow" data-reveal>College Park, MD — CS @ UMD · Secondary Ed & Asian Am Studies minors</p>
         <h2 data-reveal>Hi, I'm John Ng.</h2>
         <p class="lede" data-reveal>I build software people actually use, then teach the next person how to build it too.</p>
         <p class="detail" data-reveal>Chrome extension UMD students use every registration cycle. A summer turning a 270M-row bottleneck into a shipped platform at Capital Technology Group.</p>
@@ -72,54 +84,54 @@ const featured = selectFeatured(
 
   <div class="seam" style="--seam-from: var(--wash-featured); --seam-to: var(--wash-education);"></div>
 
-  {/* Two instances of the same instinct rather than one "Teaching" block:
-      a classroom (Nobel Explorers, now UMD's CSA) and a Chrome extension
-      (Terp Rater) are both "build it, then hand someone else the ability to
-      use it" — the panel split makes that structure legible instead of
-      burying Terp Rater as a stat-less aside under a teaching-only headline. */}
+  {/* "One line left." The section's piece is the I-piece, and this is the one
+      thing an I-piece is for: the well below holds six locked rows — one per
+      completed semester, each with a single buried hole like a real mid-game
+      stack (six *complete* lines would have cleared themselves) — and a top
+      row missing exactly the I-piece's four cells. On entry the piece drops,
+      the line flashes and clears, and the HUD's score tick lands. The facts
+      (GPA, Dean's List, grad date) live in the HUD as real text, so the well
+      itself stays decorative: role="img", no AT control, and under reduced
+      motion or no JS it simply never plays — the static pre-clear state is
+      the headline anyway. */}
   <section class="education" data-scroll-section>
     <div class="education-inner" data-depth="0.06">
       <p class="eyebrow" data-reveal>Education</p>
-      <h2 data-reveal>Two ways to teach: a classroom, and a Chrome extension.</h2>
-      <div class="panels">
-        <div class="panel" data-reveal>
-          <p class="panel-label">Classroom</p>
-          <div class="stats" data-count-group>
-            <div class="stat">
-              <span class="stat-n" data-count="60" data-suffix="+">60+</span>
-              <span class="stat-l">Students</span>
-            </div>
-            <div class="stat">
-              <span class="stat-n" data-count="3">3</span>
-              <span class="stat-l">Countries</span>
-            </div>
-            <div class="stat">
-              <span class="stat-n" data-count="2">2</span>
-              <span class="stat-l">Programs</span>
-            </div>
-          </div>
-          <p class="detail">Nobel Explorers ML/CV curriculum for students across Brazil, Ukraine, and Taiwan &mdash; now the same pattern running UMD's Chinese Student Association officer corps.</p>
+      <h2 data-reveal>One line left.</h2>
+      <div class="edu-grid">
+        <div class="edu-copy">
+          <p class="lede" data-reveal>B.S. Computer Science at the University of Maryland, with minors in Secondary Education and Asian American Studies &mdash; graduating this December, three and a half years in.</p>
+          <p class="detail" data-reveal>The education half isn't theoretical: 60+ students taught across three countries. And yes, the coursework included game programming &mdash; this site was going to happen eventually.</p>
         </div>
-        <div class="panel" data-reveal>
-          <p class="panel-label">Built</p>
-          <div class="stats" data-count-group>
-            <div class="stat">
-              <span class="stat-n-row">
-                <span class="stat-n" data-count="50" data-suffix="+">50+</span>
-                <span class="stat-chip" data-chip>climbs every registration cycle</span>
-              </span>
-              <span class="stat-l">Users</span>
-            </div>
-            <div class="stat">
-              <span class="stat-n" data-count="5" data-suffix="&#9733;">5&#9733;</span>
-              <span class="stat-l">Chrome store</span>
-            </div>
-            <div class="stat">
-              <span class="stat-n">&rsquo;24</span>
-              <span class="stat-l">Live since</span>
+        <div class="edu-game" data-reveal>
+          <div class="well" role="img" aria-label="Tetris well with six locked rows, one per completed semester, and a single line left to clear">
+            {WELL_ROWS.map((row, i) => (
+              <div class:list={["row", { top: i === 0 }]}>
+                {row.map((on) => <span class:list={["cell", { on }]}></span>)}
+              </div>
+            ))}
+            <div class="ipiece" aria-hidden="true">
+              <span class="cell ip"></span>
+              <span class="cell ip"></span>
+              <span class="cell ip"></span>
+              <span class="cell ip"></span>
             </div>
           </div>
-          <p class="detail">Terp Rater teaches Testudo something it never learned on its own &mdash; professor ratings and real seat counts, live in the listing, every registration cycle.</p>
+          <div class="hud">
+            <div class="hud-row">
+              <span class="hud-l">GPA</span>
+              <span class="hud-v">3.89</span>
+            </div>
+            <div class="hud-row">
+              <span class="hud-l">Dean's List</span>
+              <span class="hud-v">6/6</span>
+            </div>
+            <div class="hud-row">
+              <span class="hud-l">Graduating</span>
+              <span class="hud-v">Dec &rsquo;26</span>
+            </div>
+            <p class="hud-score" data-score>Single +100</p>
+          </div>
         </div>
       </div>
     </div>
@@ -403,139 +415,161 @@ const featured = selectFeatured(
     max-width: 28ch;
   }
 
-  /* Two panels, not a decorative 01/02 — order here carries no meaning
-     (classroom didn't come "before" the extension), so there's no numbering,
-     just two labeled instances of one idea, separated by a hairline divider
-     rather than a per-panel tinted background: an earlier version tinted
-     each panel toward its own piece hue (gold/purple), but that shifted the
-     effective backdrop enough that the shared clay/moss stat colors cleared
-     WCAG AA's 3:1 large-text floor against one tint (2.32/2.30) while
-     passing against the other — a second background to keep in sync for a
-     tint that barely read as different in practice anyway. */
-  .panels {
+  .edu-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-top: 1px solid var(--line);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-8);
+    align-items: center;
   }
-  .panel {
-    padding: var(--space-6);
-  }
-  .panel + .panel {
-    border-left: 1px solid var(--line);
-  }
-  /* Secondary text color, same as every other eyebrow/label sitewide — NOT
-     the raw piece hue. --tetris-o/--tetris-t are decorative fill colors
-     tuned for board cells, not for text this small: at 11.5px they clear
-     only 1.74:1 (gold) / 3.32:1 (purple) against this wash, both short of
-     WCAG AA's 4.5:1 floor for regular-size text. The big stat-n numbers
-     below use the same hues safely because bold ~35px+ text only needs
-     3:1 — this label doesn't get that break. */
-  .panel-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-text-secondary);
+  .edu-copy .lede {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    max-width: 38ch;
     margin: 0 0 var(--space-5);
   }
-  .panel .detail {
+  .edu-copy .detail {
     font-size: 1rem;
     line-height: 1.65;
-    max-width: 38ch;
+    max-width: 42ch;
     color: var(--color-text-secondary);
-    margin: var(--space-5) 0 0;
+    margin: 0;
+  }
+  .edu-game {
+    display: flex;
+    align-items: end;
+    gap: var(--space-5);
   }
 
-  /* Stat row: the real numbers as evidence, mono labels beneath — the one
-     place on the page "big number, small label" is earned, and a structural
-     rhythm that isn't another prose block. */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(3, auto);
-    gap: clamp(var(--space-5), 4vw, var(--space-7));
-    justify-content: start;
-    align-items: end;
-    width: fit-content;
-  }
-  .stat {
+  /* The well. Cells are server-rendered (Astro template loop, no runtime
+     createElement) so ordinary Astro scoping applies. Locked cells are a
+     single neutral tone with a classic beveled-block inset; the teal I-piece
+     is the only color in the frame — the focal point, and this section's
+     assigned piece finally doing the thing I-pieces do. */
+  .well {
+    --cell: clamp(1rem, 1.8vw, 1.35rem);
+    position: relative;
     display: flex;
     flex-direction: column;
+    gap: 2px;
+    width: fit-content;
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden; /* clips the raised I-piece before it drops */
   }
-  .stat-n {
-    display: block;
-    margin: 0;
-    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.02em;
-    font-size: clamp(2.2rem, 5.5vw, 3.2rem);
-    font-variant-numeric: tabular-nums;
+  .well .row {
+    display: flex;
+    gap: 2px;
   }
-  /* Same three-color rhythm in both panels, not the panel's own piece hue —
-     a flat single tetris-t purple across all three "Built" numbers read as
-     monotone rather than as evidence. The piece-hue identity stays on the
-     panel background tint and the eyebrow; these are just numbers. */
-  /* Mixed toward --color-text (70/30), not the raw accent tokens — this is
-     a real, pre-existing WCAG gap this pattern always had, just never
-     verified in both themes: the raw tokens against this wash's own
-     backgrounds measure clay 2.47:1 and moss 2.45:1 in light mode, and
-     accent (cobalt) 2.00:1 in dark mode, all short of the 3:1 large-text
-     floor (confirmed by computing the actual WCAG relative-luminance ratio,
-     not just an axe run — axe's scan under-reported duplicate-signature
-     nodes here, catching only 2 of the 4 affected elements). Mixing toward
-     --color-text darkens in light mode / lightens in dark mode — exactly
-     the direction each theme needs — while keeping each number's hue
-     distinguishable from the other two. */
-  .stat:nth-child(1) .stat-n { color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text)); }
-  .stat:nth-child(2) .stat-n { color: color-mix(in srgb, var(--color-accent-clay) 70%, var(--color-text)); }
-  .stat:nth-child(3) .stat-n { color: color-mix(in srgb, var(--color-accent-moss) 70%, var(--color-text)); }
-  .stat-l {
-    display: block;
-    margin: var(--space-2) 0 0;
+  .well .cell {
+    width: var(--cell);
+    height: var(--cell);
+    border-radius: 2px;
+  }
+  .well .cell.on {
+    background: color-mix(in srgb, var(--color-text) 30%, transparent);
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.22),
+                inset -1px -1px 0 rgba(0, 0, 0, 0.18);
+    transition: opacity 0.3s ease, scale 0.3s ease;
+  }
+  /* The I-piece sits absolutely over the top row's 4-wide gap (column 3, in
+     cell+gap units), raised fully above the well and clipped by its overflow.
+     Markup ships in this raised state — the static "one line left" image —
+     and .play transitions it down into the gap with a gravity ease-in. */
+  .ipiece {
+    position: absolute;
+    top: var(--space-3);
+    left: calc(var(--space-3) + 3 * (var(--cell) + 2px));
+    display: flex;
+    gap: 2px;
+    translate: 0 calc(-1 * (var(--cell) + var(--space-3) + 12px));
+    transition: translate 0.48s cubic-bezier(0.55, 0, 0.85, 0.36),
+                opacity 0.3s ease, scale 0.3s ease;
+  }
+  .well.play .ipiece {
+    translate: 0 0;
+  }
+  .ipiece .cell {
+    background: var(--piece-i);
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35),
+                inset -1px -1px 0 rgba(0, 0, 0, 0.22);
+  }
+  /* Same flash cadence as the bio reassembly: a class toggle loop in the
+     script, no @keyframes to restart — the CSS is just the lit state. */
+  .well.flashing .row.top .cell.on,
+  .well.flashing .ipiece .cell {
+    background: #fff;
+  }
+  /* Cleared: the top line (locked cells + the piece that completed it) fades
+     and shrinks out. The rows below don't move — nothing sits above the
+     cleared line, so gravity has nothing to do, and the empty top row reads
+     as headroom. */
+  .well.cleared .row.top .cell,
+  .well.cleared .ipiece {
+    opacity: 0;
+    scale: 0.5;
+  }
+
+  /* HUD — the facts as a Tetris side panel. Mono labels/values instead of
+     the retired stats grid, so the section stops being a third
+     big-number block in a row; the game framing is carried by the box,
+     not by forcing game labels onto real data. */
+  .hud {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 11rem;
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .hud-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-4);
+  }
+  .hud-l {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.72rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-text-secondary);
   }
-  .stat-n-row {
-    display: inline-flex;
-    align-items: baseline;
-    gap: var(--space-3);
-  }
-  /* Second beat after the count finishes — honest about this being a
-     durable claim, not a live counter: the number itself only ever counts
-     to the real, rounded-down floor. */
-  .stat-chip {
+  .hud-v {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.02em;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Lands only after the clear (the script adds .in) — one line is a single,
+     not a Tetris. Secondary text color, same convention as the retired
+     stat-chip: --tetris-i at 0.72rem wouldn't clear WCAG AA's 4.5:1. */
+  .hud-score {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--color-text-secondary);
-    white-space: nowrap;
+    margin: var(--space-1) 0 0;
     opacity: 0;
     transform: translateX(-4px);
     transition: opacity 0.4s ease, transform 0.4s ease;
   }
-  .stat-chip.in {
+  .hud-score.in {
     opacity: 1;
     transform: none;
   }
-  @media (max-width: 800px) {
-    .panels {
+  @media (max-width: 860px) {
+    .edu-grid {
       grid-template-columns: 1fr;
     }
-    .panel {
-      padding: var(--space-6) 0;
+    .edu-copy .lede,
+    .edu-copy .detail {
+      max-width: 100%;
     }
-    .panel + .panel {
-      border-left: none;
-      border-top: 1px solid var(--line);
-    }
-  }
-  @media (max-width: 520px) {
-    .stats {
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-5) var(--space-6);
+    .edu-game {
+      justify-content: center;
+      flex-wrap: wrap;
     }
   }
 
@@ -701,57 +735,54 @@ const featured = selectFeatured(
 </script>
 
 <script>
-  // Education stat numbers count up on entry, one observer per panel's
-  // `.stats` group (Classroom and Built reveal independently rather than
-  // sharing a single trigger). The markup ships the final values, so reduced
-  // motion and no-JS both render them correct with nothing to do here; only
-  // when motion is allowed do we reset to 0 and animate. Only `.stat-n`
-  // elements carrying `data-count` participate — a plain label like the
-  // "Built" panel's `'24` "Live since" stat has no count to animate and is
-  // left untouched, rather than being coerced through Number(undefined).
-  const COUNT_MS = 1100;
+  // Education well: the final-semester line clear. The markup ships the
+  // "one line left" state (piece raised, gap open), so reduced motion and
+  // no-JS render that static image with nothing to do here; only when motion
+  // is allowed do we play the drop. Fires once per page load, like the reveal
+  // and the bio dissolve. Timing: a hold to let the section reveal settle,
+  // the drop (matches the .ipiece transition), a lock beat, then the same
+  // flash cadence as the bio reassembly, the clear, and the HUD score tick.
+  const WELL_HOLD_MS = 700;
+  const WELL_DROP_MS = 480;
+  const WELL_LOCK_MS = 120;
+  const WELL_FLASH_CYCLES = 3;
+  const WELL_FLASH_MS = 90;
 
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    document.querySelectorAll<HTMLElement>('[data-count-group]').forEach((group) => {
-      const nums = Array.from(group.querySelectorAll<HTMLElement>('.stat-n[data-count]'));
-      const targets = nums.map((el) => ({
-        el,
-        target: Number(el.dataset.count),
-        suffix: el.dataset.suffix ?? '',
-      }));
-      // Zero them up front. The section is reveal-hidden (opacity 0) until it
-      // enters, so this reset is never visible as a flicker from the final value.
-      targets.forEach(({ el, suffix }) => (el.textContent = `0${suffix}`));
-
-      const run = ({ el, target, suffix }: (typeof targets)[number]) => {
-        const start = performance.now();
-        const frame = (now: number) => {
-          const p = Math.min((now - start) / COUNT_MS, 1);
-          const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
-          el.textContent = `${Math.round(target * eased)}${suffix}`;
-          if (p < 1) requestAnimationFrame(frame);
-          else {
-            // A second, honest beat: a qualitative chip (not another number)
-            // fades in once the count settles, only where the markup has one.
-            const chip = el.closest('.stat-n-row')?.querySelector<HTMLElement>('[data-chip]');
-            if (chip) window.setTimeout(() => chip.classList.add('in'), 200);
-          }
-        };
-        requestAnimationFrame(frame);
-      };
-
+    const well = document.querySelector<HTMLElement>('.well');
+    if (well) {
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
             if (!entry.isIntersecting) return;
-            targets.forEach(run);
-            observer.unobserve(entry.target); // once per load, like the reveal
+            observer.unobserve(entry.target);
+            setTimeout(() => {
+              well.classList.add('play'); // piece drops into the gap
+              setTimeout(() => {
+                let n = 0;
+                const tick = () => {
+                  well.classList.toggle('flashing');
+                  n += 1;
+                  if (n < WELL_FLASH_CYCLES * 2) {
+                    setTimeout(tick, WELL_FLASH_MS);
+                  } else {
+                    well.classList.remove('flashing');
+                    well.classList.add('cleared');
+                    const score = well
+                      .closest('.edu-game')
+                      ?.querySelector<HTMLElement>('[data-score]');
+                    if (score) setTimeout(() => score.classList.add('in'), 250);
+                  }
+                };
+                tick();
+              }, WELL_DROP_MS + WELL_LOCK_MS);
+            }, WELL_HOLD_MS);
           });
         },
         { threshold: 0.4 }
       );
-      observer.observe(group);
-    });
+      observer.observe(well);
+    }
   }
 </script>
 
