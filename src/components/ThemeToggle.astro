@@ -7,19 +7,24 @@
 
      The mark is an S tetromino, CSS-driven off html[data-theme], NOT toggled by
      this component's script: light = piece at rest (sun-tinted), dark = same
-     piece snap-rotated 90° (moon-tinted). Because BaseLayout sets data-theme
-     before first paint, the piece renders in the correct resting state with no
-     flash and no JS. The click handler only flips data-theme (+ persists); the
-     rotation falls out of the CSS transition on that attribute change, using
-     steps() so it snaps blockily like every other rotation on the site rather
-     than gliding. Under reduced motion the transition is removed but the
-     resting orientation + tint still swap, so the current mode is never
-     ambiguous. -->
+     piece rotated 90° (moon-tinted). Because BaseLayout sets data-theme before
+     first paint, the piece renders in the correct resting state with no flash
+     and no JS. The click handler flips data-theme (+ persists) and adds a
+     `.flashing` class the animationend listener below removes; the rotation
+     itself has no transition on transform at all, so it's an instant discrete
+     snap — matching how every OTHER "rotation" on this site works (the
+     wordmark's turn, the contact form's T-spin: both snap by construction,
+     never eased/stepped). A real tetromino only ever occupies one of 4 fixed
+     rotation states with no in-between frames; this used to fake a gradual
+     turn via `steps(3, end)`, which was the one rotation on the site that
+     didn't match that. Under reduced motion the flash animation is removed
+     too, but the resting orientation + tint still swap, so the current mode
+     is never ambiguous. -->
 <button class="theme-toggle" type="button" aria-label="Toggle light or dark theme">
   <svg class="spiece-svg" viewBox="0 0 54 54" width="30" height="30" aria-hidden="true">
     <!-- S-piece, spawn (horizontal): top row cols 1,2 · mid row cols 0,1. The
-         whole group rotates about the viewBox centre; a 90° turn reads as a
-         genuine SRS spin (S has no 180° symmetry to hide behind). -->
+         whole group rotates about the viewBox centre; 90° is a discrete SRS
+         rotation state, not a spin (S has no 180° symmetry to hide behind). -->
     <g class="spiece">
       <rect x="19" y="9"  width="14" height="14" rx="2"></rect>
       <rect x="33" y="9"  width="14" height="14" rx="2"></rect>
@@ -66,17 +71,36 @@
   .spiece {
     transform-box: view-box;
     transform-origin: 27px 27px;
-    /* steps() = blocky snap, matching the site's grid-rewrite rotations
-       elsewhere; no eased glide. */
-    transition: transform 0.42s steps(3, end);
+    /* No transition on transform: a real tetromino has 4 discrete rotation
+       states and no in-between frames, so the turn is an instant snap, not
+       an eased/stepped glide. */
   }
   .spiece rect { fill: var(--color-accent-clay); transition: fill 0.3s ease; }
 
-  /* Dark = the piece spins a quarter turn and cools to the teal moon tint.
+  /* Dark = the piece snaps a quarter turn and cools to the teal moon tint.
      Light is the resting default (no rule needed), which is also the correct
      no-JS / unset fallback. */
   :global(html[data-theme='dark']) .spiece { transform: rotate(90deg); }
   :global(html[data-theme='dark']) .spiece rect { fill: var(--tetris-i); }
+
+  /* Flash confirms the snap registered (an instant transform alone reads as
+     inert) — same blink-to-background language as the Tetris hero's
+     line-clear flash, just CSS keyframes instead of a JS interval since this
+     component has no per-frame script. Scoped per theme like the fill rule
+     above, so the piece blinks toward bg then settles on the correct tint
+     regardless of which direction the toggle just moved. */
+  @keyframes theme-flash-light {
+    0%, 33.33%, 66.66% { fill: var(--color-bg); }
+    16.66%, 50%, 83.33%, 100% { fill: var(--color-accent-clay); }
+  }
+  @keyframes theme-flash-dark {
+    0%, 33.33%, 66.66% { fill: var(--color-bg); }
+    16.66%, 50%, 83.33%, 100% { fill: var(--tetris-i); }
+  }
+  .spiece.flashing rect { animation: theme-flash-light 0.54s steps(1, end) 1; }
+  :global(html[data-theme='dark']) .spiece.flashing rect {
+    animation: theme-flash-dark 0.54s steps(1, end) 1;
+  }
 
   .tt-label {
     display: inline-flex;
@@ -99,8 +123,8 @@
   :global(html[data-theme='dark']) .tt-mode-dark { display: inline; }
 
   @media (prefers-reduced-motion: reduce) {
-    .spiece { transition: none; }
     .spiece rect { transition: none; }
+    .spiece.flashing rect { animation: none; }
   }
 </style>
 <script>
@@ -118,13 +142,23 @@
   const buttons = document.querySelectorAll<HTMLButtonElement>('.theme-toggle');
 
   for (const button of buttons) {
+    const spiece = button.querySelector('.spiece');
+
     button.addEventListener('click', () => {
       const next = toggleTheme(readCurrentTheme());
       // The piece (and the sun/moon/label) are driven entirely by this
       // attribute in CSS, so flipping it here animates every mount at once and
-      // needs no per-button visual bookkeeping.
+      // needs no per-button visual bookkeeping beyond the flash class below.
       document.documentElement.dataset.theme = next;
       persistTheme(localStorage, next);
+      spiece?.classList.add('flashing');
+    });
+
+    // Only the click above ever adds 'flashing', so this never fires from the
+    // initial pre-JS render — the snap itself needs no such guard since it has
+    // no animation to replay, just an instant CSS transform swap.
+    spiece?.addEventListener('animationend', () => {
+      spiece.classList.remove('flashing');
     });
   }
 </script>

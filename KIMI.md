@@ -304,16 +304,24 @@ it's a snap by construction. Exactly one mark performs per page
 
 **Theme toggle** (`ThemeToggle.astro`) — an S tetromino (four `rect`s in a
 single `<g class="spiece">`): light = at rest, sun-tinted (clay); dark = the
-same piece snap-rotated 90° via `steps()`, moon-tinted (teal, `--tetris-i`).
-The 90° matters — S has no 180° symmetry to hide behind, so a quarter turn
-reads as a genuine SRS spin, and `steps()` keeps it blocky like every other
-rotation on the site. (This replaced an earlier off-theme balisong once the
-rest of the site went all-Tetris; don't reintroduce the knife.) State is
-purely CSS-driven off `html[data-theme]` rather than toggled by script, so
-both mounts animate from one attribute change with no flash and no per-button
-bookkeeping, and it renders correctly pre-JS. A sun/moon glyph and mode word
-(both `aria-hidden`) aid discoverability; reduced motion drops the transition
-but still swaps the resting orientation + tint.
+same piece rotated 90°, moon-tinted (teal, `--tetris-i`). The turn has no
+transition on `transform` at all — a real tetromino only occupies one of 4
+fixed rotation states with no in-between frames, so it's an instant discrete
+snap, matching how every other "rotation" on the site works (wordmark turn,
+contact-form T-spin: both snap by construction). An eased `steps(3, end)`
+glide used to fake a gradual spin here; that was the one rotation on the site
+that didn't match the rest. A brief CSS keyframe flash (blink toward
+`--color-bg` 3×, scoped per theme like the fill rule) confirms the snap
+registered, reusing the Tetris hero's line-clear-flash language; the click
+handler adds a `.flashing` class an `animationend` listener removes, so no
+per-frame script is needed. (This replaced an earlier off-theme balisong once
+the rest of the site went all-Tetris; don't reintroduce the knife — its dead
+CSS, `src/styles/animations.css`, has been deleted.) State is otherwise purely
+CSS-driven off `html[data-theme]` rather than toggled by script, so both
+mounts animate from one attribute change with no per-button bookkeeping
+beyond the flash class, and it renders correctly pre-JS. A sun/moon glyph and
+mode word (both `aria-hidden`) aid discoverability; reduced motion drops the
+flash animation but still swaps the resting orientation + tint.
 
 **Contact send** (`ContactForm.astro`) — on a successful send, a T piece
 spawns high, drops block-by-block, snaps 90° in place into a T-spin double
