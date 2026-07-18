@@ -70,6 +70,42 @@ test.describe('Tetris hero replay', () => {
     }
   });
 
+  test('cells stay square at any window size (letterboxed 16x14 board)', async ({ page }) => {
+    // Regression guard for the rectangular-cells bug: the baked replay fixed
+    // the grid at 16x14 while sizing cells as containerW/16 x containerH/14,
+    // so any container aspect other than 16:14 stretched cells into
+    // rectangles. The board is now letterboxed to the largest 16:14 box that
+    // fits (anchored bottom-right), so both the settled board cells and the
+    // falling piece's cells must be square at EVERY aspect — wide, square-ish,
+    // and tall (all >768px wide so the hero isn't display:none).
+    for (const [w, h] of [
+      [1600, 700], // wide: height binds, slack hides in the mask's left zone
+      [1200, 900], // near board aspect
+      [1000, 1200], // tall: width binds, slack above the board
+    ]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto('/');
+      const boardCell = page.locator('#tetris-ambient-crisp > div').first();
+      await expect(boardCell).toBeVisible();
+      const b = await boardCell.boundingBox();
+      expect(b, `board cell missing at ${w}x${h}`).not.toBeNull();
+      expect(
+        Math.abs(b!.width - b!.height),
+        `board cell ${b!.width}x${b!.height} not square at ${w}x${h}`
+      ).toBeLessThanOrEqual(1);
+      // The falling piece's cells are absolutely positioned with explicit
+      // cellW/cellH — they must match the same square size.
+      const pieceCell = page.locator('#tetris-piece-crisp .cell').first();
+      await expect(pieceCell).toBeVisible();
+      const p = await pieceCell.boundingBox();
+      expect(p, `piece cell missing at ${w}x${h}`).not.toBeNull();
+      expect(
+        Math.abs(p!.width - p!.height),
+        `piece cell ${p!.width}x${p!.height} not square at ${w}x${h}`
+      ).toBeLessThanOrEqual(1);
+    }
+  });
+
   test('replay keeps advancing and never stalls', async ({ page }) => {
     // Smoke check: the baked loop keeps spawning pieces (no live AI to hang).
     // This does NOT drive the full 124-piece top-out wraparound — that takes

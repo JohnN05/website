@@ -278,8 +278,13 @@ line-clear flash, so a pause landing mid-flash can't replay the same piece.
 The board still renders as two stacked full-hero-width soft+crisp layers with
 the hand-tuned `--tetris-mask-*` stops (tuned against screenshots, not a
 formula). The grid is now a **fixed** `COLS_H × ROWS_H` (16×14, in
-`heroReplay.ts`) whose cells scale to fill the hero via `1fr` — recorded
-coordinates stay valid at any width, so resize only rescales cell pixels
+`heroReplay.ts`), and cells must stay square: `setupGrid()` derives one cell
+size from the binding container dimension and letterboxes the board to the
+largest 16×14 box that fits (`--tetris-board-w/h`, anchored bottom-right —
+horizontal slack hides in the mask's transparent left zone, vertical slack
+sits above the board). Sizing the cells as container W/16 × H/14 instead made
+them rectangular at every aspect except exactly 16:14. Recorded coordinates
+stay valid at any window size, so resize only rescales cell pixels
 (`setupGrid()`), no board rebuild; a `generation` counter still makes an
 in-flight timeout chain bail after a resize/pause instead of animating into
 replaced state. Each piece plays a spawn→turn→fall cycle using CSS `steps()`
