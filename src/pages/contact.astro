@@ -44,21 +44,32 @@ import ContactForm from '../components/ContactForm.astro';
   /* The waiting well. Cell on/off state is driven entirely by the script
      below (contact-progress / contact-sent) — nothing here reads form
      values directly, so the well stays inert if JS never runs. */
-  /* Soft vignette: the well fills nearly the whole section, staying solid
-     through the middle and only feathering off at the outermost edges.
-     Centered near the middle (50% / 52%) with a wide radius so the top rows
-     read as filled rather than fading out early — an earlier tighter ellipse
-     centered low left the top ~5 rows perpetually dim. Both the copy and the
-     card sit on their own frosted panels, so lit cells behind them are fine. */
+  /* Edge feather: the grid stays solid everywhere and only fades within the
+     outermost 20px. That depth is the binding constraint: the content boxes
+     can get as close to the band's edges as the band's own padding
+     (--space-5 = 24px horizontally), so any fade reaching further in would
+     leave a box hanging past the visible cell field at mid/narrow widths —
+     the earlier radial mask (solid only to 62% of the ellipse) did exactly
+     that once cells lit up behind the panels. The well's padding sits below
+     the feather depth so the outermost ring of cells lives inside the fade
+     and the grid still ends soft rather than in a hard rectangle. Both the
+     copy and the card sit on their own frosted panels, so lit cells behind
+     them are fine. */
   .well {
     position: absolute;
     inset: 0;
     display: grid;
     gap: 4px;
-    padding: var(--space-6);
+    padding: 12px;
     opacity: 0.85;
-    mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
+    -webkit-mask-image:
+      linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent),
+      linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent),
+      linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+    mask-composite: intersect;
   }
   /* Off cells are a transparent grey — visible enough that the empty grid
      reads as its own surface set apart from the wash behind it, but well below
