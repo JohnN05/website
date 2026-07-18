@@ -8,9 +8,23 @@ interface Props {
   tags: string[];
   summary: string;
   cover?: string;
+  role?: string;
+  timeline?: string;
+  stack?: string[];
+  outcome?: string;
 }
-const { title, date, tags, summary, cover } = Astro.props;
+const { title, date, tags, summary, cover, role, timeline, stack, outcome } = Astro.props;
 const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date);
+
+// Spec strip: only the fields a project actually sets are rendered, so a
+// project with none renders exactly today's header (graceful, like `cover`).
+// Outcome is flagged so it can wear the accent — the result reads first.
+const specFields = [
+  { k: 'Role', v: role },
+  { k: 'Timeline', v: timeline },
+  { k: 'Stack', v: stack?.join(' · ') },
+  { k: 'Outcome', v: outcome, accent: true },
+].filter((f): f is { k: string; v: string; accent?: boolean } => Boolean(f.v));
 
 // Accent, its color var, and its tetromino all come from lib/tags, so the article
 // header wears the same identity as the ProjectCard the visitor clicked from.
@@ -73,6 +87,16 @@ for (let row = 0; row < STACK_ROWS; row++) {
         )}
       </figure>
     </div>
+    {specFields.length > 0 && (
+      <dl class="spec" style={`--cols: ${specFields.length};`}>
+        {specFields.map((f) => (
+          <div class="spec-cell">
+            <dt>{f.k}</dt>
+            <dd class={f.accent ? 'out' : ''}>{f.v}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
   </div>
   <article class="prose">
     <slot />
@@ -83,6 +107,45 @@ for (let row = 0; row < STACK_ROWS; row++) {
     max-width: 64rem;
     margin: 0 auto;
     padding: var(--space-8) var(--space-5) 0;
+  }
+  /* Spec strip: Role · Timeline · Stack · Outcome. Column count comes from
+     --cols (set inline from the number of present fields); it drops to two on
+     narrow screens. Only top/bottom hairlines — no per-cell dividers — so any
+     field count and the mobile reflow stay clean with no nth-child bookkeeping.
+     Outcome (.out) wears the article's accent so the result reads first. */
+  .spec {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 4), 1fr);
+    gap: var(--space-4) var(--space-6);
+    margin: var(--space-6) 0 0;
+    padding: var(--space-5) 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .spec-cell { min-width: 0; }
+  .spec dt {
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    font-size: 0.66rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-2);
+  }
+  .spec dd {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    color: var(--color-text);
+  }
+  /* Outcome gets weight, not hue: the article accent (moss/clay/…) fails the
+     small-text contrast bar on the header ground, so the result reads first via
+     bold rather than colour — same rule the rest of the site follows (hue rides
+     ticks/washes, never small body text). */
+  .spec dd.out {
+    font-weight: 600;
+  }
+  @media (max-width: 640px) {
+    .spec { grid-template-columns: repeat(2, 1fr); }
   }
   .split {
     display: grid;
