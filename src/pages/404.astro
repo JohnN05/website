@@ -5,7 +5,8 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
 <BaseLayout title="Page not found — John Ng">
   <div class="not-found-band">
     <section class="not-found">
-      <p class="eyebrow">Error 404 — Page not found</p>
+      <p class="eyebrow">Page not found</p>
+      <p class="code">404</p>
       <p class="context-line">This page doesn't exist. While you're here, try not to hit a mine.</p>
       <MinesweeperBoard />
       <a href="/" class="home-link">Back to Home</a>
@@ -37,6 +38,20 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
     color: var(--color-text-secondary);
     font-size: 0.72rem;
     margin: 0;
+  }
+  /* Cobalt is /404's identity hue (matching its cobalt wash, the same cobalt
+     the hero owns). The number is large display type, so it clears the 3:1
+     large-text contrast bar on the light cobalt wash in both themes where a
+     small cobalt label would not. */
+  .code {
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: clamp(3.5rem, 12vw, 6rem);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--color-accent);
+    margin: calc(-1 * var(--space-2)) 0 0;
+    font-variant-numeric: tabular-nums;
   }
   .context-line {
     font-size: 1.15rem;

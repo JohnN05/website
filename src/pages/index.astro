@@ -371,7 +371,11 @@ const featured = selectFeatured(
 
   /* Impact row: the real numbers as evidence, mono labels beneath — the one
      place on the page "big number, small label" is earned, and a second
-     structural rhythm that isn't another prose block. */
+     structural rhythm that isn't another prose block. The numbers are one
+     colour (the primary text), not three accents — three different accents
+     read as busy and broke the "one identity colour per surface" convention;
+     a short muted tick above each number carries the structure instead of a
+     full-width rule, and size alone gives the numbers their weight. */
   .impact {
     display: grid;
     grid-template-columns: repeat(3, auto);
@@ -380,12 +384,22 @@ const featured = selectFeatured(
     align-items: end;
     width: fit-content;
     margin: var(--space-6) 0 0;
-    padding: var(--space-5) 0 0;
-    border-top: 1px solid var(--line);
   }
   .stat {
+    position: relative;
     display: flex;
     flex-direction: column;
+    padding-top: var(--space-4);
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1.6rem;
+    height: 3px;
+    border-radius: 1px;
+    background: color-mix(in srgb, var(--color-text) 45%, var(--color-bg));
   }
   .stat-n {
     display: block;
@@ -396,10 +410,8 @@ const featured = selectFeatured(
     letter-spacing: -0.02em;
     font-size: clamp(2.6rem, 7vw, 4rem);
     font-variant-numeric: tabular-nums;
+    color: var(--color-text);
   }
-  .stat:nth-child(1) .stat-n { color: var(--color-accent); }
-  .stat:nth-child(2) .stat-n { color: var(--color-accent-clay); }
-  .stat:nth-child(3) .stat-n { color: var(--color-accent-moss); }
   .stat-l {
     display: block;
     margin: var(--space-2) 0 0;

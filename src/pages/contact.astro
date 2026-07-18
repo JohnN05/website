@@ -15,7 +15,7 @@ import ContactForm from '../components/ContactForm.astro';
       </div>
     </div>
   </div>
-  <div class="seam" style="--seam-from: var(--wash-hero); --seam-to: var(--color-bg);"></div>
+  <div class="seam" style="--seam-from: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--color-accent-maroon) var(--wash-mix)); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
   .eyebrow {
@@ -26,10 +26,15 @@ import ContactForm from '../components/ContactForm.astro';
     margin: 0 0 var(--space-3);
   }
   .contact-band {
+    /* Per-route identity: contact owns maroon, matching its rail tick. It used
+       to share --wash-hero (cobalt) with /404, which made the two pages read as
+       the same header; the maroon wash (mixed at the same --wash-mix depth as
+       the Home bands) plus the edge-tick below give it its own identity. */
+    --hue: var(--color-accent-maroon);
     display: flex;
     align-items: center;
     min-height: 90vh;
-    background: var(--wash-hero);
+    background: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--hue) var(--wash-mix));
     padding: var(--space-10) var(--space-5);
   }
   .contact-inner {
@@ -40,6 +45,21 @@ import ContactForm from '../components/ContactForm.astro';
     grid-template-columns: 0.9fr 1.1fr;
     gap: var(--space-8);
     align-items: start;
+  }
+  /* Same static edge-tick as /projects, in contact's maroon. */
+  .contact-copy {
+    position: relative;
+    padding-left: var(--space-4);
+  }
+  .contact-copy::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    width: 4px;
+    height: 3.4rem;
+    border-radius: 1px;
+    background: var(--hue);
   }
   .contact-copy h1 {
     font-size: clamp(2rem, 4vw, 2.8rem);

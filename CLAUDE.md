@@ -132,7 +132,15 @@ element's `z-index` — that reopens whichever bug the current values close.
 Each rail link carries a per-route hue (`--hue`: Projects → `--piece-l`,
 Contact → maroon) driving a short edge tick on the rail's own `border-right`
 (`.rail-links a::after`, `scaleY` grown for the active route and on hover) plus
-a dim on inactive links. The active route comes from `Astro.url.pathname` at
+a dim on inactive links. The **page headers reuse the same hue + tick
+language** so a route and its rail marker share one identity: each intro band
+sets its `--hue` (Projects `--piece-l`/orange, Contact maroon, 404
+`--color-accent`/cobalt) driving both its wash tint and a static left
+edge-tick on the copy column — this is why `/contact` no longer shares
+`/404`'s cobalt `--wash-hero`. The hue rides the wash + tick only, **not** the
+eyebrow text (small clay/maroon mono text on its own wash fails the contrast
+audit); 404's identity is instead its large cobalt `404` display number, which
+clears the 3:1 large-text bar where a small label wouldn't. The active route comes from `Astro.url.pathname` at
 build time (`aria-current="page"`, no JS); `/projects/*` articles keep Projects
 lit. Pure CSS — the tick straddles the border with `right: -1px`, not a
 padding-adjusted offset (`right` measures from the link's padding box, which
