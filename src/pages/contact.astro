@@ -44,22 +44,32 @@ import ContactForm from '../components/ContactForm.astro';
   /* The waiting well. Cell on/off state is driven entirely by the script
      below (contact-progress / contact-sent) — nothing here reads form
      values directly, so the well stays inert if JS never runs. */
-  /* Soft vignette: the well fills nearly the whole section (cells run from
-     the second row down to the bottom now), staying solid through the middle
-     and only feathering off at the outermost edges. Centered near the middle
-     (50% / 52%) with a wide radius so the top rows read as filled rather than
-     fading out early — an earlier tighter ellipse centered low left the top
-     ~5 rows perpetually dim. The script analytically greys out cells behind the copy,
-     and the card's frosted panel already covers whatever's behind it, so a fuller mask doesn't put blocks behind text. */
+  /* Edge feather: the grid stays solid everywhere and only fades within the
+     outermost 20px. That depth is the binding constraint: the content boxes
+     can get as close to the band's edges as the band's own padding
+     (--space-5 = 24px horizontally), so any fade reaching further in would
+     leave a box hanging past the visible cell field at mid/narrow widths —
+     the earlier radial mask (solid only to 62% of the ellipse) did exactly
+     that once cells lit up behind the panels. The well's padding sits below
+     the feather depth so the outermost ring of cells lives inside the fade
+     and the grid still ends soft rather than in a hard rectangle. Both the
+     copy and the card sit on their own frosted panels, so lit cells behind
+     them are fine. */
   .well {
     position: absolute;
     inset: 0;
     display: grid;
     gap: 4px;
-    padding: var(--space-6);
+    padding: 12px;
     opacity: 0.85;
-    mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse 88% 82% at 50% 52%, black 0%, black 62%, transparent 100%);
+    -webkit-mask-image:
+      linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent),
+      linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent),
+      linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+    mask-composite: intersect;
   }
   /* Off cells are a transparent grey — visible enough that the empty grid
      reads as its own surface set apart from the wash behind it, but well below
@@ -71,8 +81,8 @@ import ContactForm from '../components/ContactForm.astro';
   }
   /* Lit cells carry enough of the T-piece hue to read as solid blocks against
      the wash rather than blending into it, but stay light enough not to shout
-     — they sit in open space (never behind the card's text), so the fill is a
-     legibility call, not a contrast one. */
+     — where they sit behind the copy or the card, the frosted panels mute
+     them, so the fill is a legibility call, not a contrast one. */
   .well :global(div.on) {
     background: color-mix(in srgb, var(--tetris-t) 62%, var(--color-bg));
   }
@@ -81,9 +91,8 @@ import ContactForm from '../components/ContactForm.astro';
   }
 
   /* Plain centered two-column layout — the content deliberately does NOT try
-     to align to the well's cells. Instead the script analytically greys out (leaves unlit)
-     the cells behind the copy, measured from its real box in the script below, so occlusion
-     stays accurate regardless of where the content lands. */
+     to align to the well's cells; both columns carry their own frosted panel,
+     so cells behind them behave like any other part of the grid. */
   .contact-inner {
     position: relative;
     z-index: 1;
@@ -100,6 +109,26 @@ import ContactForm from '../components/ContactForm.astro';
       grid-template-columns: 1fr;
       max-width: 34rem;
     }
+  }
+  /* Same frosted panel as .contact-card — see its comment below for why the
+     fill lives on ::before rather than on the element itself. The copy gets
+     its own background now that cells behind it light up like everywhere else. */
+  .contact-copy {
+    position: relative;
+    z-index: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: var(--space-6);
+  }
+  .contact-copy::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
   .contact-copy h1 {
     font-size: clamp(2rem, 4vw, 2.8rem);
@@ -213,10 +242,6 @@ import ContactForm from '../components/ContactForm.astro';
 
     let pool: HTMLElement[] = [];
     let cells: HTMLElement[] = [];
-    // Cells sitting behind the copy. They're never lit — they stay the resting grey —
-    // so the text doesn't sit on lit blocks. Recomputed on resize (cheap) so it stays
-    // accurate as the centered content shifts, without rebuilding the grid.
-    let occluded = new Set<HTMLElement>();
     let stageCounts: number[] = [0, 0, 0, 0];
     let currentStage = 0;
     // Bumped on every rebuild so a resize mid-animation can't have a stale
@@ -230,10 +255,10 @@ import ContactForm from '../components/ContactForm.astro';
       currentStage = stage;
       if (gen !== generation) return;
       const count = stageCounts[stage] ?? 0;
-      // A pooled cell lights only if it's within the current fill count AND not
-      // occluded by the copy — so blocks behind the text read as greyed out no
-      // matter how full the well is.
-      pool.forEach((cell, i) => cell.classList.toggle('on', i < count && !occluded.has(cell)));
+      // Every cell behaves the same — a pooled cell lights only if it's within
+      // the current fill count, wherever it sits (behind the copy or the card
+      // included; both carry their own frosted panels).
+      pool.forEach((cell, i) => cell.classList.toggle('on', i < count));
     }
 
     function gridDims() {
@@ -244,42 +269,6 @@ import ContactForm from '../components/ContactForm.astro';
         cols: Math.max(6, Math.floor((w + GAP) / (CELL_SIZE + GAP))),
         rows: Math.max(4, Math.floor((h + GAP) / (CELL_SIZE + GAP))),
       };
-    }
-
-    // Which cells the copy covers, computed analytically from each cell's pixel
-    // rect (no per-cell getBoundingClientRect — that was the whole reason the
-    // grid took ~2s to appear). Only the copy is greyed out: it's bare text
-    // with no background, so lit blocks behind it would clash. The card is left
-    // out on purpose — its own frosted panel already covers whatever's behind
-    // it, so greying those cells too would just be a redundant hidden rectangle.
-    function computeOcclusion(cols: number, rows: number) {
-      occluded = new Set();
-      const wellRect = well.getBoundingClientRect();
-      if (!wellRect.width || !wellRect.height) return;
-      const PAD = parseFloat(getComputedStyle(well).paddingTop) || 32;
-      const cw = (wellRect.width - 2 * PAD - (cols - 1) * GAP) / cols;
-      const ch = (wellRect.height - 2 * PAD - (rows - 1) * GAP) / rows;
-      const M = 2; // px slack so a block peeking at a content edge still greys
-      const boxes = ['.contact-copy']
-        .map((s) => band.querySelector<HTMLElement>(s))
-        .filter((el): el is HTMLElement => el !== null)
-        .map((el) => el.getBoundingClientRect());
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const cell = cells[y * cols + x];
-          if (!cell) continue;
-          const left = wellRect.left + PAD + x * (cw + GAP);
-          const top = wellRect.top + PAD + y * (ch + GAP);
-          const right = left + cw;
-          const bottom = top + ch;
-          for (const b of boxes) {
-            if (left < b.right + M && right > b.left - M && top < b.bottom + M && bottom > b.top - M) {
-              occluded.add(cell);
-              break;
-            }
-          }
-        }
-      }
     }
 
     function buildWell() {
@@ -293,13 +282,12 @@ import ContactForm from '../components/ContactForm.astro';
       well.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
       well.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
-      // Fill from the second row down, leaving a single empty row of margin
-      // along the very top so the well doesn't run flush to the section's top
-      // edge. Occlusion (the copy) is applied at render time in applyStage, not
-      // baked into the pool, so a resize can re-occlude without a rebuild.
+      // Every cell in the grid is a candidate, top row included — an earlier
+      // version skipped row 0 as a margin, which left the top row permanently
+      // unlit even at the full-fill stage. The mask's soft edge already keeps
+      // the well from reading flush against the section's top edge.
       const candidates: number[] = [];
-      const startRow = 1;
-      for (let y = startRow; y < rows; y++) {
+      for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           candidates.push(y * cols + x);
         }
@@ -320,7 +308,6 @@ import ContactForm from '../components/ContactForm.astro';
       well.innerHTML = '';
       well.appendChild(frag);
       pool = candidates.map((i) => cells[i]);
-      computeOcclusion(cols, rows);
       applyStage(currentStage, gen);
     }
 
@@ -331,8 +318,7 @@ import ContactForm from '../components/ContactForm.astro';
 
     buildWell();
     // On resize, only rebuild the whole grid when the column/row count actually
-    // changes; otherwise just re-measure what the (now shifted) content covers
-    // and re-light — cheap, no re-randomised flicker.
+    // changes — cheap, no re-randomised flicker otherwise.
     let rafId = 0;
     window.addEventListener('resize', () => {
       if (rafId) return;
@@ -340,12 +326,7 @@ import ContactForm from '../components/ContactForm.astro';
         rafId = 0;
         const dims = gridDims();
         if (!dims) return;
-        if (dims.cols !== lastCols || dims.rows !== lastRows) {
-          buildWell();
-        } else {
-          computeOcclusion(lastCols, lastRows);
-          applyStage(currentStage, generation);
-        }
+        if (dims.cols !== lastCols || dims.rows !== lastRows) buildWell();
       });
     });
   }
