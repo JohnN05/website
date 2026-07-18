@@ -64,9 +64,25 @@
     );
   }
   @media (max-width: 768px) { .tetris-hero { display: none; } }
-  .tetris-ambient-soft, .tetris-ambient-crisp {
+  /* The baked replay fixes the grid at 16x14 (COLS_H x ROWS_H), so cells are
+     square only if the board box has that exact aspect. The container's aspect
+     varies with the window, so the board is LETTERBOXED: JS measures the
+     container, derives one square cell size from the binding dimension, and
+     pins the board to the largest 16x14 box that fits via --tetris-board-w/h.
+     Anchored bottom-right: the stack grows from the bottom, and any horizontal
+     slack lands on the left, where both masks are fully transparent anyway —
+     so in the common wide-container case the letterbox is invisible. The mask
+     gradients are relative to the board box now (not the container), which
+     only compresses the fade proportionally when the board is narrower than
+     the container. */
+  .tetris-ambient-soft, .tetris-ambient-crisp, .tetris-piece {
     position: absolute;
-    inset: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--tetris-board-w, 100%);
+    height: var(--tetris-board-h, 100%);
+  }
+  .tetris-ambient-soft, .tetris-ambient-crisp {
     display: grid;
     gap: 1px;
     background: var(--color-text-secondary);
@@ -96,7 +112,7 @@
   .tetris-ambient-soft :global(div[data-piece='L']), .tetris-ambient-crisp :global(div[data-piece='L']), .tetris-piece :global(.cell[data-piece='L']) { background: var(--color-accent-clay); }
   .tetris-ambient-soft :global(div.flashing), .tetris-ambient-crisp :global(div.flashing) { background: var(--color-bg) !important; }
 
-  .tetris-piece { position: absolute; inset: 0; pointer-events: none; }
+  .tetris-piece { pointer-events: none; }
   .piece-layer-soft, .piece-layer-crisp { position: absolute; inset: 0; }
   /* Mask stays on the FIXED parent (board-space depth-of-field), so it does
      not travel with the piece. */
@@ -181,17 +197,37 @@
     renderBoard(ambientCrispEl, src);
   }
 
-  // Fixed grid: column/row COUNT never changes; only cell pixel size does, so
-  // the recorded coordinates stay valid at any width. onScreen is derived from
-  // the box (0x0 below the mobile breakpoint, where .tetris-hero is
-  // display:none) — not a second hardcoded 768 check.
+  // Fixed grid: column/row COUNT never changes (the recorded coordinates stay
+  // valid at any window size); only the board's pixel box does. Cells must be
+  // SQUARE, so a single cell size is derived from the binding dimension and the
+  // board is letterboxed to the resulting 16x14 box (see the CSS note above).
+  // Measure the CONTAINER (heroEl), not the grid elements — those carry the
+  // previously assigned board size. onScreen is derived from the container box
+  // (0x0 below the mobile breakpoint, where .tetris-hero is display:none) —
+  // not a second hardcoded 768 check.
   function setupGrid() {
-    onScreen = ambientSoftEl.clientWidth > 0 && ambientSoftEl.clientHeight > 0;
+    const w = heroEl.clientWidth;
+    const h = heroEl.clientHeight;
+    onScreen = w > 0 && h > 0;
     if (!onScreen) return;
-    ambientSoftEl.style.gridTemplateColumns = `repeat(${COLS_H}, 1fr)`;
-    ambientCrispEl.style.gridTemplateColumns = `repeat(${COLS_H}, 1fr)`;
-    cellW = (ambientSoftEl.clientWidth - (COLS_H - 1) * GAP) / COLS_H;
-    cellH = (ambientSoftEl.clientHeight - (ROWS_H - 1) * GAP) / ROWS_H;
+    const cell = Math.max(
+      1,
+      Math.floor(
+        Math.min(
+          (w - (COLS_H - 1) * GAP) / COLS_H,
+          (h - (ROWS_H - 1) * GAP) / ROWS_H
+        )
+      )
+    );
+    cellW = cell;
+    cellH = cell;
+    heroEl.style.setProperty('--tetris-board-w', `${COLS_H * cell + (COLS_H - 1) * GAP}px`);
+    heroEl.style.setProperty('--tetris-board-h', `${ROWS_H * cell + (ROWS_H - 1) * GAP}px`);
+    const tracks = (n: number) => `repeat(${n}, 1fr)`;
+    ambientSoftEl.style.gridTemplateColumns = tracks(COLS_H);
+    ambientCrispEl.style.gridTemplateColumns = tracks(COLS_H);
+    ambientSoftEl.style.gridTemplateRows = tracks(ROWS_H);
+    ambientCrispEl.style.gridTemplateRows = tracks(ROWS_H);
     renderBoth();
   }
 
@@ -377,9 +413,9 @@
     else if (shouldRun()) start();
   });
 
-  // Resize: fixed grid means only cell pixel size changes. Recompute sizing,
-  // re-render the settled board (cells auto-scale via 1fr, but cellW/cellH for
-  // the falling piece must be refreshed), and restart the current cycle.
+  // Resize: fixed grid means only the square cell size (and thus the
+  // letterboxed board box) changes. Recompute sizing, re-render the settled
+  // board, and restart the current cycle.
   let resizeTimer: number | undefined;
   window.addEventListener('resize', () => {
     window.clearTimeout(resizeTimer);
