@@ -22,29 +22,26 @@
      is never ambiguous. -->
 <button class="theme-toggle" type="button" aria-label="Toggle light or dark theme">
   <svg class="spiece-svg" viewBox="0 0 54 54" width="30" height="30" aria-hidden="true">
-    <!-- S-piece, spawn (horizontal): top row cols 1,2 · mid row cols 0,1. The
-         whole group rotates about the viewBox centre; 90° is a discrete SRS
-         rotation state, not a spin (S has no 180° symmetry to hide behind). -->
+    <!-- S-piece, spawn (horizontal): top row cols 1,2 · mid row cols 0,1,
+         translated so the piece's own bounding box (not just the viewBox) is
+         centred on (27,27) — the untranslated coords centred the viewBox but
+         left the piece itself sitting ~4 units high, visibly off-center next
+         to the label. The whole group rotates about that same point; 90° is
+         a discrete SRS rotation state, not a spin (S has no 180° symmetry to
+         hide behind). -->
     <g class="spiece">
-      <rect x="19" y="9"  width="14" height="14" rx="2"></rect>
-      <rect x="33" y="9"  width="14" height="14" rx="2"></rect>
-      <rect x="5"  y="23" width="14" height="14" rx="2"></rect>
-      <rect x="19" y="23" width="14" height="14" rx="2"></rect>
+      <rect x="20" y="13" width="14" height="14" rx="2"></rect>
+      <rect x="34" y="13" width="14" height="14" rx="2"></rect>
+      <rect x="6"  y="27" width="14" height="14" rx="2"></rect>
+      <rect x="20" y="27" width="14" height="14" rx="2"></rect>
     </g>
   </svg>
-  <!-- Discoverability layer: a sun/moon and the current mode word, so the
-       control advertises its state to sighted users. Decorative — the button's
-       accessible name is the aria-label above (the action), not this text. -->
+  <!-- Discoverability layer: the current mode word, so the control advertises
+       its state to sighted users. Decorative — the button's accessible name
+       is the aria-label above (the action), not this text. No separate
+       sun/moon glyph: the piece's own rotation + tint already carries that
+       signal, so a second icon saying the same thing was redundant. -->
   <span class="tt-label" aria-hidden="true">
-    <svg class="tt-sky sun" viewBox="0 0 24 24" width="15" height="15">
-      <circle cx="12" cy="12" r="4.6"></circle>
-      <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-        <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2 2M17.5 17.5l2 2M19.5 4.5l-2 2M6.5 17.5l-2 2"></path>
-      </g>
-    </svg>
-    <svg class="tt-sky moon" viewBox="0 0 24 24" width="15" height="15">
-      <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"></path>
-    </svg>
     <span class="tt-mode tt-mode-light">Light</span>
     <span class="tt-mode tt-mode-dark">Dark</span>
   </span>
@@ -105,21 +102,14 @@
   .tt-label {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.8rem;
     letter-spacing: 0.02em;
   }
-  .tt-sky { display: block; flex-shrink: 0; }
-  .tt-sky.sun { fill: var(--color-accent-clay); }
-  .tt-sky.moon { fill: var(--tetris-i); }
 
-  /* Light is the default: show sun + "Light", hide the dark pair. */
-  .tt-sky.moon,
+  /* Light is the default: show "Light", hide "Dark". */
   .tt-mode-dark { display: none; }
-  :global(html[data-theme='dark']) .tt-sky.sun,
   :global(html[data-theme='dark']) .tt-mode-light { display: none; }
-  :global(html[data-theme='dark']) .tt-sky.moon { display: block; }
   :global(html[data-theme='dark']) .tt-mode-dark { display: inline; }
 
   @media (prefers-reduced-motion: reduce) {

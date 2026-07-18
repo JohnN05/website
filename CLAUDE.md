@@ -315,9 +315,13 @@ the rest of the site went all-Tetris; don't reintroduce the knife — its dead
 CSS, `src/styles/animations.css`, has been deleted.) State is otherwise purely
 CSS-driven off `html[data-theme]` rather than toggled by script, so both
 mounts animate from one attribute change with no per-button bookkeeping
-beyond the flash class, and it renders correctly pre-JS. A sun/moon glyph and
-mode word (both `aria-hidden`) aid discoverability; reduced motion drops the
-flash animation but still swaps the resting orientation + tint.
+beyond the flash class, and it renders correctly pre-JS. A mode word
+(`aria-hidden`) aids discoverability — no separate sun/moon glyph, since the
+piece's own rotation + tint already carries that signal. The piece's four
+`rect`s are translated so its own bounding box (not just the viewBox) centers
+on the rotation pivot `(27,27)`; centering only the viewBox left the piece
+sitting visibly high next to the label. Reduced motion drops the flash
+animation but still swaps the resting orientation + tint.
 
 **Contact send** (`ContactForm.astro`) — on a successful send, a T piece
 spawns high, drops block-by-block, snaps 90° in place into a T-spin double
