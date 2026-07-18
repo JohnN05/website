@@ -1,8 +1,8 @@
-# johnjng.com — Personal Website
+# johnjng.com — Personal Website (Kimi context)
 
 ## Cross-file sync rule
 
-This file and `KIMI.md` are maintained as a matched pair. Any project-level
+This file and `CLAUDE.md` are maintained as a matched pair. Any project-level
 change — stack, architecture, constraints, accessibility, hard rules, or any
 other durable guidance — must be applied to both files in the same commit. Do
 not update one without the other.
@@ -15,6 +15,10 @@ space for project write-ups and a few subtle hobby-inspired interactive
 details (Tetris everywhere — ambient hero, wordmark reveal, an S-piece theme
 toggle — plus Minesweeper and a capybara easter egg). This file describes the
 site as actually built, not just as planned.
+
+This is the Kimi counterpart to `CLAUDE.md`; the project description is the
+same, while the Workflow preferences section is tailored to Kimi Code CLI's
+tools and skills.
 
 **Status:** feature-complete through a full design-review pass, including
 item 8's typography-contrast audit (see
@@ -439,31 +443,34 @@ ideally have watched — the one-line production change that turns it red.
 Old CRA site's commit history is preserved — useful for content reference
 (bio copy, past repo list) even after the rewrite.
 
-## Workflow preferences
+## Workflow preferences (Kimi Code CLI)
 
 - **Keep this file concise.** When a pass changes behavior documented here,
   update the relevant section in place rather than appending a new
   narrative paragraph — this file describes the site *as built*, not a
   changelog. Bug war-stories, "verified X/X tests" reports, and per-pass
   play-by-play belong in the pass's plan doc (`docs/superpowers/plans/`) and
-  git history, not here; only promote a finding to `CLAUDE.md` and `KIMI.md`
+  git history, not here; only promote a finding to `KIMI.md` and `CLAUDE.md`
   — the cross-file sync rule at the top of each file applies — if it's a
   durable rule future work needs (a gotcha, a constraint, an architectural
-  decision) — not the story of how it was found. If a section starts
-  reading like a log instead of a reference, condense it before adding to
-  it.
-- Execute multi-task implementation plans with
-  `superpowers:subagent-driven-development`: a fresh implementer subagent per
-  task, a task-scoped reviewer after each, and one broad whole-branch review
-  on the most capable available model once every task is done.
+  decision) — not the story of how it was found. If a section starts reading like a log instead of a reference, condense it
+  before adding to it.
+- Start multi-step or creative work with the relevant Kimi Code skill:
+  `brainstorming` for new features/designs, `systematic-debugging` for bugs,
+  `test-driven-development` for features/bugfixes, `writing-plans` once a spec
+  exists, and `verification-before-completion` before claiming anything is
+  done or passing.
+- Execute implementation plans with the `subagent-driven-development` skill:
+  dispatch focused `Agent` subagents per task, run a task-scoped review after
+  each, and do a broad whole-branch review once every task is done.
 - Verify, don't just trust. When a subagent's fix touches production logic or
-  deviates from a plan's literal code, or its safety classifier was
-  unavailable, re-derive or re-run the claim independently — this repo's
-  plans have had genuine bugs in their own literal test/implementation code
-  more than once, not just implementer mistakes.
+  deviates from a plan's literal code, re-derive or re-run the claim
+  independently — this repo's plans have had genuine bugs in their own
+  literal test/implementation code more than once, not just implementer
+  mistakes.
 - Escalate, don't resolve. When a finding conflicts with what a plan mandates
-  — or two of a plan's own requirements conflict with each other — ask
-  directly rather than picking a side unilaterally.
+  — or two of a plan's own requirements conflict with each other — ask the
+  user directly rather than picking a side unilaterally.
 - `npm run test:all` (typecheck + unit + build + e2e) is the real CI gate,
   and now runs on GitHub Actions too (`.github/workflows/ci.yml`, on every
   push and PR; lives only on this branch, not yet a required check on
@@ -476,7 +483,8 @@ Old CRA site's commit history is preserved — useful for content reference
 - **One worktree, one agent at a time.** `npm run build` writes `dist/`, and
   `test:e2e` builds before running, so concurrent agents in the same worktree
   clobber each other's build and results. If a review agent must run
-  concurrently, give it its own worktree.
+  concurrently, give it its own worktree (use the `using-git-worktrees`
+  skill).
 - This sandbox's Chromium previously couldn't launch (missing
   `libnspr4`/`libnss3`/`libasound2`, no root for `apt install`); fixed on
   this machine only via a user-local `dpkg-deb` extraction plus a scoped
@@ -488,12 +496,16 @@ Old CRA site's commit history is preserved — useful for content reference
   real integration/behavioral judgment, the most capable available model for
   the final whole-branch review.
 - For visual/CSS work, confirm the intended look *before* touching component
-  code: build a self-contained mock and publish it as an Artifact, iterate
-  until approved, then port the result into the real component and confirm
-  live against `npm run dev`. Expect several rounds of eyeballed tuning —
-  these values are hand-picked against screenshots, not computed.
+  code: build a self-contained mock and share it for approval, iterate until
+  approved, then port the result into the real component and confirm live
+  against `npm run dev`. Expect several rounds of eyeballed tuning — these
+  values are hand-picked against screenshots, not computed.
 - HMR is unreliable in this WSL2 sandbox (repo lives on `/mnt/c/...`, where
   inotify often doesn't fire) — after any edit, fully restart the dev server
   before trusting an unchanged-looking result, and `curl` + grep the served
   page for a distinctive string from the new code to confirm it's actually
   being served.
+- Use the dedicated Kimi Code tools (`Read`, `Edit`, `Write`, `Bash`, `Grep`,
+  `Glob`, `Agent`, `AskUserQuestion`, etc.) instead of raw shell one-liners
+  where they fit. Prefer `Read`/`Edit`/`Write` for file work, `Grep`/`Glob`
+  for searching, and `Agent` for parallel or substantial sub-tasks.
