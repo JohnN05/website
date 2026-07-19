@@ -208,6 +208,13 @@ test('desktop: ambient piece finishes its horizontal slide before it starts fall
 });
 
 test('desktop: falling-piece overlay is cleared during a line-clear flash, not left stuck on top of it', async ({ page }) => {
+  // 90s, not the 30s default. The wait below got a 60s selector timeout in
+  // 1ecbe63, but that alone changed nothing: Playwright's TEST-level timeout
+  // (30s default, not overridden in playwright.config.ts) fires first and
+  // kills the test mid-wait — exactly how this failed on CI ("Test timeout of
+  // 30000ms exceeded"). A generous selector timeout only works if the test
+  // itself is allowed to outlive it, with margin for the assertions after.
+  test.setTimeout(90_000);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
 
