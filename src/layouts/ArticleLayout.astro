@@ -55,7 +55,12 @@ for (let row = 0; row < STACK_ROWS; row++) {
   }
 }
 ---
-<BaseLayout title={`${title} — John Ng`}>
+<BaseLayout
+  title={`${title} — John Ng`}
+  description={summary}
+  image={cover}
+  type="article"
+>
   <div class="article-head" style={`--accent: ${coverAccent};`}>
     <div class="split">
       <div class="head-text">
