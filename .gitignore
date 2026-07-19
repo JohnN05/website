@@ -29,3 +29,9 @@ yarn-error.log*
 
 # Superpowers scratch/brainstorm state
 .superpowers/
+/docs/superpowers/
+/docs/2026-07-16-design-review-next-steps.md
+
+# Agent assistant docs (local only)
+/CLAUDE.md
+/KIMI.md
