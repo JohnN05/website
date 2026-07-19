@@ -5,9 +5,16 @@ interface Props {
   project: { slug: string; title: string; summary: string; date: Date; tags: string[] };
   showCover?: boolean;
   featured?: boolean;
+  /** Heading level for the card title: h3 under Home's "Featured projects" h2,
+      h2 on /projects where the cards sit directly under the page h1 (h1→h3
+      would skip a level). */
+  heading?: 2 | 3;
 }
-const { project, showCover = false, featured = false } = Astro.props;
-const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(project.date);
+const { project, showCover = false, featured = false, heading = 3 } = Astro.props;
+const HeadingTag = `h${heading}` as 'h2' | 'h3';
+// timeZone: 'UTC' — see ArticleLayout; date-only frontmatter parses as UTC
+// midnight and would render a day early in any non-UTC build zone.
+const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(project.date);
 
 // Accent, its color var, and its tetromino all come from lib/tags so the card
 // and the article header render the same identity for a given tag.
@@ -19,7 +26,7 @@ const initial = project.title.charAt(0);
 <a
   class:list={['project-card', featured && 'featured']}
   style={`--cover-accent: ${coverAccent};`}
-  href={`/projects/${project.slug}`}
+  href={`/projects/${project.slug}/`}
 >
   {showCover && (
     <div class="cover" aria-hidden="true">
@@ -33,7 +40,7 @@ const initial = project.title.charAt(0);
   )}
   <div class="card-body">
     <p class="meta">{featured && <span class="latest-label">Latest &rarr; </span>}{formattedDate}</p>
-    <h3>{project.title}</h3>
+    <HeadingTag>{project.title}</HeadingTag>
     <p class="summary">{project.summary}</p>
     <ul class="tags">
       {project.tags.map((tag) => <li class={`tag tag-${accentForTag(tag)}`}>{tag}</li>)}
@@ -91,6 +98,12 @@ const initial = project.title.charAt(0);
     color: var(--cover-accent);
     opacity: 0.32;
   }
+  /* At rest opacity the monogram all but vanishes against the dark-mode tinted
+     cover; bump it so the letter reads in both themes. Decorative either way
+     (the cover is aria-hidden). */
+  :global(html[data-theme='dark']) .cover .glyph {
+    opacity: 0.55;
+  }
 
   /* A real tetromino drops into the cover on hover, then flashes white a few
      times and clears in place on leave — the board's own line-clear motion,
@@ -146,9 +159,13 @@ const initial = project.title.charAt(0);
     justify-content: center;
   }
   .latest-label {
-    color: var(--cover-accent);
+    /* Every accent hue fails the 4.5:1 small-text bar on the featured wash in
+       at least one theme (worst: moss 2.4:1 light), so the label reads in full
+       text color and takes weight — not hue — as its emphasis. */
+    color: var(--color-text);
+    font-weight: 600;
   }
-  .project-card.featured h3 {
+  .project-card.featured :is(h2, h3) {
     font-size: clamp(1.5rem, 2.6vw, 2.1rem);
   }
   .project-card.featured .summary {

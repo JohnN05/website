@@ -14,7 +14,24 @@ interface Props {
   outcome?: string;
 }
 const { title, date, tags, summary, cover, role, timeline, stack, outcome } = Astro.props;
-const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date);
+// timeZone: 'UTC' is load-bearing: frontmatter dates are date-only (parsed as
+// UTC midnight), and without this the formatter uses the BUILD machine's zone —
+// anywhere west of UTC every article renders one day early (the local preview
+// build literally shipped "August 24" for 2024-08-25).
+const formattedDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(date);
+
+// Article structured data — the project pages are the site's richest content,
+// and og:type="article" alone gives search engines none of it.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description: summary,
+  datePublished: date.toISOString(),
+  author: { '@type': 'Person', name: 'John Ng', url: 'https://johnjng.com' },
+  image: new URL(cover ?? '/og-image.png', Astro.site).href,
+  mainEntityOfPage: new URL(Astro.url.pathname, Astro.site).href,
+};
 
 // Spec strip: only the fields a project actually sets are rendered, so a
 // project with none renders exactly today's header (graceful, like `cover`).
@@ -61,6 +78,8 @@ for (let row = 0; row < STACK_ROWS; row++) {
   image={cover}
   type="article"
 >
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <meta slot="head" property="article:published_time" content={date.toISOString()} />
   <div class="article-head" style={`--accent: ${coverAccent};`}>
     <div class="split">
       <div class="head-text">

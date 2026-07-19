@@ -65,7 +65,7 @@ h1, h2, h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; }
 a { color: inherit; }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 

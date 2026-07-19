@@ -10,7 +10,7 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
   <div class="not-found-band">
     <section class="not-found">
       <p class="eyebrow">Page not found</p>
-      <p class="code">404</p>
+      <h1 class="code">404</h1>
       <p class="context-line">This page doesn't exist. While you're here, try not to hit a mine.</p>
       <MinesweeperBoard />
       <a href="/" class="home-link">Back to Home</a>
@@ -44,16 +44,17 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
     margin: 0;
   }
   /* Cobalt is /404's identity hue (matching its cobalt wash, the same cobalt
-     the hero owns). The number is large display type, so it clears the 3:1
-     large-text contrast bar on the light cobalt wash in both themes where a
-     small cobalt label would not. */
+     the hero owns). Raw cobalt clears the 3:1 large-text bar on the light wash
+     but not the dark one (2.26:1 on --wash-hero dark), so it takes the same
+     70/30 mix toward --color-text the home hero h1 uses — 4.1:1 dark, 6.1:1
+     light. */
   .code {
     font-family: 'Bricolage Grotesque', system-ui, sans-serif;
     font-weight: 600;
     font-size: clamp(3.5rem, 12vw, 6rem);
     line-height: 0.9;
     letter-spacing: -0.02em;
-    color: var(--color-accent);
+    color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
     margin: calc(-1 * var(--space-2)) 0 0;
     font-variant-numeric: tabular-nums;
   }

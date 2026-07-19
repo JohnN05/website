@@ -17,11 +17,11 @@
     </p>
     <div class="field">
       <label for="name">Name</label>
-      <input id="name" name="name" type="text" required />
+      <input id="name" name="name" type="text" autocomplete="name" required />
     </div>
     <div class="field">
       <label for="email">Email</label>
-      <input id="email" name="email" type="email" required />
+      <input id="email" name="email" type="email" autocomplete="email" required />
     </div>
     <div class="field">
       <label for="message">Message</label>
@@ -81,7 +81,7 @@
   }
   .field input:focus-visible,
   .field textarea:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
     border-color: var(--color-accent);
   }
@@ -100,8 +100,12 @@
   .contact-form button:hover {
     background: color-mix(in srgb, var(--color-accent) 85%, black 15%);
   }
+  .contact-form button:disabled {
+    opacity: 0.72;
+    cursor: default;
+  }
   .contact-form button:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
   #contact-error {
@@ -128,11 +132,16 @@
   .contact-success[hidden] {
     display: none;
   }
+  /* Moss fails small-text contrast on the light frosted card (2.7:1), so light
+     uses the slate secondary (7:1); moss stays for dark, where it passes. */
   .cs-eyebrow {
     font-family: 'IBM Plex Mono', monospace;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-size: 0.72rem;
+    color: var(--color-text-secondary);
+  }
+  :global(html[data-theme='dark']) .cs-eyebrow {
     color: var(--color-accent-moss);
   }
   .cs-line {
@@ -242,9 +251,11 @@
   const board = document.getElementById('tspin-board') as HTMLElement;
   const success = document.getElementById('contact-success') as HTMLElement;
   const error = document.getElementById('contact-error') as HTMLElement;
+  const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
 
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+  let sending = false;
 
   // --- T-Spin Double, coordinates verified against engine.ts (isTSpin=true,
   // kick (0,0), 2 rows cleared). 5-wide board with 4 rows of headroom so the
@@ -387,6 +398,10 @@
 
   async function revealSuccess() {
     if (prefersReduced) {
+      // playTspin() is skipped here, but the backdrop well's clear must not be:
+      // fire the same contact-sent event it listens for, or a reduced-motion
+      // visitor's well stays at full fill forever after a successful send.
+      form.dispatchEvent(new CustomEvent('contact-sent', { bubbles: true }));
       form.hidden = true;
       success.hidden = false;
       success.classList.add('in');         // no transition under reduced motion
@@ -418,8 +433,23 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // In-flight guard: without it the button stays live until revealSuccess()
+    // hides the form, and a double-click (or a second Enter on a slow
+    // connection) POSTs the same message twice — plus two concurrent
+    // playTspin() runs interleaving writes into the same board DOM.
+    if (sending) return;
+    sending = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    form.setAttribute('aria-busy', 'true');
     error.hidden = true;
     const data = new FormData(form);
+    const resetPending = () => {
+      sending = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send';
+      form.removeAttribute('aria-busy');
+    };
     try {
       const ok = await submitContactForm({
         name: String(data.get('name')),
@@ -431,11 +461,14 @@
         botField: String(data.get('bot-field') ?? ''),
       });
       if (ok) {
+        // Success hides the form for good, so the pending state never resets.
         await revealSuccess();
       } else {
+        resetPending();
         error.hidden = false;
       }
     } catch {
+      resetPending();
       error.hidden = false;
     }
   });

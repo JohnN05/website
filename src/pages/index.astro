@@ -57,7 +57,7 @@ const WELL_ROWS = [
       mechanism; do not get it by deleting this class. */}
   <section class="hero in" data-scroll-section>
     <div class="hero-copy" data-depth="0.05">
-      <button class="nameplate" id="nameplate" type="button" data-reveal>
+      <button class="nameplate" id="nameplate" type="button" data-reveal aria-label="John Ng — replay name animation">
         <PieceMark layout="inline" reveals={true} trigger="load" />
       </button>
       <p class="eyebrow" data-reveal>Software Engineer</p>
@@ -75,16 +75,19 @@ const WELL_ROWS = [
           photo clipped to square-minus-O; the four .blk cells slice the same
           photo (sprite: background-size 400% + per-cell position) and sit
           exactly over the notch, so at rest — reduced motion, no JS — the whole
-          thing reads as one clean square. role="img"/aria-label carries the
-          identity the old <img alt> did; the click-to-toggle is a decorative
-          enhancement, not an AT control. */}
-      <div class="bio-frame" data-reveal data-depth="0.1" role="img" aria-label="John Ng">
-        <div class="core"></div>
-        <div class="blk o1"><span class="fill"></span><span class="flash"></span></div>
-        <div class="blk o2"><span class="fill"></span><span class="flash"></span></div>
-        <div class="blk o3"><span class="fill"></span><span class="flash"></span></div>
-        <div class="blk o4"><span class="fill"></span><span class="flash"></span></div>
-      </div>
+          thing reads as one clean square. It's a real <button> (keyboard users
+          get the break/reassemble toggle pointer users always had), shipped
+          `disabled`: the script below enables it only when it attaches its
+          click handler (motion allowed), so reduced-motion/no-JS renders a
+          genuinely inert photo instead of a focusable control that does
+          nothing. Spans, not divs — button content must be phrasing content. */}
+      <button class="bio-frame" type="button" disabled data-reveal data-depth="0.1" aria-label="Portrait of John Ng — activate to toggle the O-piece animation">
+        <span class="core"></span>
+        <span class="blk o1"><span class="fill"></span><span class="flash"></span></span>
+        <span class="blk o2"><span class="fill"></span><span class="flash"></span></span>
+        <span class="blk o3"><span class="fill"></span><span class="flash"></span></span>
+        <span class="blk o4"><span class="fill"></span><span class="flash"></span></span>
+      </button>
       <div class="bio-copy" data-depth="0.03">
         <p class="eyebrow" data-reveal>College Park, MD — CS @ UMD · Secondary Ed & Asian Am Studies minors</p>
         <h2 data-reveal>Hi, I'm John Ng.</h2>
@@ -206,7 +209,7 @@ const WELL_ROWS = [
     color: inherit;
   }
   .nameplate:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-focus);
     outline-offset: 6px;
     border-radius: 4px;
   }
@@ -252,12 +255,22 @@ const WELL_ROWS = [
      on reassembly before resolving back to the photo. */
   .bio-frame {
     position: relative;
+    display: block;
     justify-self: start;
     width: 100%;
     max-width: 22rem;
     aspect-ratio: 1 / 1;
     cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: inherit;
     --img: url('/headshot.jpg');
+  }
+  /* Shipped disabled (inert photo) until the script arms the toggle under
+     motion-allowed — no pointer affordance while it does nothing. */
+  .bio-frame:disabled {
+    cursor: default;
   }
   .bio-frame .core {
     position: absolute;
@@ -319,6 +332,18 @@ const WELL_ROWS = [
   .bio-frame.broken .o2 { translate: -30% -46%; rotate: 6deg; }
   .bio-frame.broken .o3 { translate: -72% 30%; rotate: 7deg; }
   .bio-frame.broken .o4 { translate: -26% 40%; rotate: -6deg; }
+  @media (max-width: 860px) {
+    /* The desktop break sends o2 up-left across the portrait's left cheek —
+       fine at 22rem where the face sits high in the crop, but at phone sizes
+       the face fills the frame and the piece covers it. Mobile sends both
+       upper cells down/left of the notch instead, keeping the face clear
+       (and within the viewport: the gutter beside the centered 16rem frame
+       is ~67px at 390px wide). */
+    .bio-frame.broken .o1 { translate: -72% -8%; }
+    .bio-frame.broken .o2 { translate: -40% 42%; }
+    .bio-frame.broken .o3 { translate: -80% 26%; }
+    .bio-frame.broken .o4 { translate: -30% 48%; }
+  }
   .bio-frame.colored .fill { opacity: 1; }
   .bio-frame.flashing .flash { opacity: 0.92; }
   /* Hovering the broken portrait signals it's clickable (toggles back whole):
@@ -708,10 +733,13 @@ const WELL_ROWS = [
   const PARALLAX_MIN_WIDTH_PX = 769;
   const RESIZE_DEBOUNCE_MS = 150;
 
-  if (
-    matchMedia(`(min-width: ${PARALLAX_MIN_WIDTH_PX}px)`).matches &&
-    !matchMedia('(prefers-reduced-motion: reduce)').matches
-  ) {
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // The width gate is per-frame, not once at load: a one-time matchMedia()
+    // check meant a desktop→narrow shrink kept translating the stacked mobile
+    // layout forever, and a narrow→desktop widen (a rotated tablet) never got
+    // parallax at all. The MediaQueryList's .matches live-updates, so crossing
+    // the breakpoint mid-session now enables/disables cleanly.
+    const wide = matchMedia(`(min-width: ${PARALLAX_MIN_WIDTH_PX}px)`);
     const layers = Array.from(document.querySelectorAll<HTMLElement>('[data-depth]'));
     const sectionTops = new Map<HTMLElement, number>();
     const visible = new Set<HTMLElement>();
@@ -731,6 +759,12 @@ const WELL_ROWS = [
     }
 
     function applyParallax(): void {
+      if (!wide.matches) {
+        // Clear any offset written while wide, or a rotate back to portrait
+        // leaves the mobile layout frozen mid-drift.
+        for (const el of layers) el.style.removeProperty('--parallax-y');
+        return;
+      }
       const scrollY = window.scrollY;
       for (const el of layers) {
         const host = hostOf(el);
@@ -849,8 +883,12 @@ const WELL_ROWS = [
   const FLASH_MS = 90;
 
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const frame = document.querySelector<HTMLElement>('.bio-frame');
+    const frame = document.querySelector<HTMLButtonElement>('.bio-frame');
     if (frame) {
+      // The markup ships disabled (an inert whole photo for reduced motion /
+      // no-JS); reaching this point means the toggle will actually work, so
+      // arm the control before anyone can meet it half-enabled.
+      frame.disabled = false;
       let busy = false;
 
       const breakApart = () => {

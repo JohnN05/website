@@ -25,12 +25,12 @@ const [newestProject, ...restProjects] = projects;
   <div class="grid-wrap">
     {newestProject && (
       <div class="featured-row">
-        <ProjectCard project={newestProject} showCover={true} featured={true} />
+        <ProjectCard project={newestProject} showCover={true} featured={true} heading={2} />
       </div>
     )}
     {restProjects.length > 0 && (
       <div class="project-grid">
-        {restProjects.map((project) => <ProjectCard project={project} showCover={true} />)}
+        {restProjects.map((project) => <ProjectCard project={project} showCover={true} heading={2} />)}
       </div>
     )}
   </div>
