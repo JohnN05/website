@@ -1,13 +1,24 @@
-# Personal Website
-### My personal website — an introduction, portfolio, and a few hobby-inspired interactive details.
+# johnjng.com
 
-This repository is for [johnjng.com](https://johnjng.com). It's an Astro +
-MDX static site: project write-ups are content files under
-`src/content/projects/`, and a handful of interactive details (Tetris,
-Minesweeper, a capybara reading-progress mascot, a butterfly-knife-flip
-theme toggle) are tucked into the site without needing a caption to make
-sense. Deployed on Netlify, with Netlify's built-in form handling powering
-the contact page — no backend code.
+Hi, I'm John. This is the repo for [johnjng.com](https://johnjng.com) — my
+personal corner of the internet: an introduction, a portfolio of project
+write-ups, and a few hobby-inspired details I couldn't resist tucking in
+(Tetris playing itself behind the hero, Minesweeper hiding on the 404 page,
+an S-piece that flips the theme, a capybara in the footer).
+
+## How this site was built
+
+Full transparency: this version of the site was entirely vibe-coded. My
+previous site I wrote line-by-line myself; this time I rebuilt it from
+scratch by directing an AI pair programmer through the whole process. What
+didn't change is where the decisions come from — every design call, every
+interaction, every detail (and every feature that got cut) was mine, and I
+kept iterating until each one felt right. I hope that shines through.
+
+Under the hood it's an Astro + MDX static site: project write-ups are
+content files under `src/content/projects/`, and the interactive details
+hydrate as islands. Deployed on Netlify, with Netlify's built-in form
+handling powering the contact page — no backend code.
 
 ## Development
 
