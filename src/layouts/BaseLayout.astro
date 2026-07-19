@@ -39,15 +39,27 @@ const isHome = Astro.url.pathname === '/';
     <meta name="description" content={description} />
     <meta name="author" content="John Ng" />
     {robots && <meta name="robots" content={robots} />}
-    <link rel="canonical" href={canonicalURL} />
+    {/* Noindex pages (404) must not self-canonicalize: a canonical + og:url
+        on an error page contradicts the noindex and gives sharers a junk URL. */}
+    {!robots && <link rel="canonical" href={canonicalURL} />}
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF7F0" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1E3D" />
     <meta property="og:site_name" content="John Ng" />
     <meta property="og:type" content={type} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonicalURL} />
+    {!robots && <meta property="og:url" content={canonicalURL} />}
     <meta property="og:image" content={imageURL} />
+    {/* Dimensions only for the default card (verified 1200×630): a per-page
+        cover image would publish the wrong size. Without them, Facebook/
+        LinkedIn show no image on a URL's first scrape. */}
+    {image === '/og-image.png' && (
+      <>
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+      </>
+    )}
+    <meta property="og:image:alt" content="John Ng — software engineer portfolio" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
@@ -66,8 +78,18 @@ const isHome = Astro.url.pathname === '/';
     />
     <script is:inline>
       (function () {
+        // Must mirror lib/theme.ts's getInitialTheme exactly: an unvalidated
+        // `stored || …` writes whatever garbage sits in localStorage (e.g. a
+        // stale '"dark"' from the old CRA site) into data-theme, and neither
+        // theme's selectors match — the visitor gets light mode despite a
+        // stored dark preference.
         var stored = localStorage.getItem('theme');
-        var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        var theme =
+          stored === 'light' || stored === 'dark'
+            ? stored
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
         document.documentElement.dataset.theme = theme;
 
         // Gates global.css's scroll-reveal hidden state. It lives here, inline
@@ -94,7 +116,10 @@ const isHome = Astro.url.pathname === '/';
     <SkipLink />
     <Nav />
     <MobileNav />
-    <main id="main-content">
+    {/* tabindex="-1" so the skip link can actually move focus here — without
+        it Safari never shifts focus into main and the next Tab restarts from
+        the top of the page. */}
+    <main id="main-content" tabindex="-1">
       <slot />
     </main>
     <Footer />

@@ -1,8 +1,10 @@
 {
   "name": "John Ng",
   "short_name": "John Ng",
+  "start_url": "/",
+  "display": "browser",
   "background_color": "#FAF7F0",
-  "theme_color": "#3454D1",
+  "theme_color": "#FAF7F0",
   "icons": [
     { "src": "/android-icon-36x36.png", "sizes": "36x36", "type": "image/png", "density": "0.75" },
     { "src": "/android-icon-48x48.png", "sizes": "48x48", "type": "image/png", "density": "1.0" },

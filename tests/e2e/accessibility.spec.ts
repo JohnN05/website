@@ -76,10 +76,15 @@ for (const path of pages) {
         // 70ms per staggered child, and axe scores whatever blended opacity it
         // catches — scanning here without waiting reads a mid-fade foreground
         // as a contrast failure. Wait for the state axe actually measures.
+        // [data-score] is included for the same reason: it isn't a
+        // [data-reveal] child — the education well adds .in ~2.3s after the
+        // section scrolls into view (which the loop above already did) and it
+        // fades in over 400ms, so axe can catch it mid-fade too (it did:
+        // "Single +100" at 3.57:1 on a full-suite run).
         await expect
           .poll(() =>
             page.evaluate(() =>
-              Array.from(document.querySelectorAll('[data-reveal]')).every(
+              Array.from(document.querySelectorAll('[data-reveal], [data-score]')).every(
                 (el) => getComputedStyle(el).opacity === '1'
               )
             )

@@ -10,7 +10,8 @@
     <span id="ms-status" role="status">Mines: 10</span>
     <button id="ms-reset" type="button">Reset</button>
   </div>
-  <div class="ms-grid" id="ms-grid" role="grid" aria-label="Minesweeper board"></div>
+  <div class="ms-grid" id="ms-grid" role="grid" aria-label="Minesweeper board" aria-describedby="ms-help"></div>
+  <p class="ms-help" id="ms-help">Click or Enter to reveal · right-click, Space, or a long-press to flag</p>
 </div>
 <style>
   /* The board reads as one of the site's panels (same card language as the
@@ -57,7 +58,7 @@
     background: color-mix(in srgb, var(--color-text) 16%, var(--color-bg));
   }
   .ms-grid :global(button:focus-visible) {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-focus);
     outline-offset: 1px;
   }
   /* data-revealed (not aria-pressed) drives the "revealed" visual state:
@@ -103,6 +104,20 @@
   }
   #ms-status[data-state='lost'] { color: var(--color-error); }
   #ms-status[data-state='win'] { color: var(--color-text); font-weight: 600; }
+  .ms-help {
+    margin: var(--space-3) auto 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+    text-align: center;
+    /* One line of this is wider than the 9-wide grid, and since .minesweeper
+       is inline-block it would stretch the card past the board and leave dead
+       space on the right. Capping under the grid's narrowest width keeps the
+       card hugging the board; the text wraps instead. */
+    max-width: 32ch;
+    text-wrap: balance;
+  }
   #ms-reset {
     flex-shrink: 0;
     font-family: 'IBM Plex Mono', monospace;
@@ -121,7 +136,7 @@
     border-color: var(--color-accent);
   }
   #ms-reset:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 </style>
@@ -139,6 +154,12 @@
   let gameOver = false;
   let focusIndex = 0;
   let longPressTimer: number | undefined;
+  // Long-press bookkeeping: `longPressed` marks that the 500ms timer already
+  // flagged this touch (so its synthetic click must be swallowed); `lastTouchAt`
+  // lets the contextmenu handler tell a touch long-press menu (already flagged
+  // by the timer) apart from a real mouse right-click.
+  let longPressed = false;
+  let lastTouchAt = 0;
 
   // Inline SVGs, not emoji: the old 💣/🚩 literals render as tofu boxes on any
   // system without a color emoji font (some Linux desktops, minimal headless
@@ -164,11 +185,14 @@
     return cell.adjacent > 0 ? String(cell.adjacent) : '';
   }
 
-  function describeCell(cell: MinesweeperCell): string {
-    if (cell.flagged) return 'Flagged cell';
-    if (!cell.revealed) return 'Hidden cell';
-    if (cell.mine) return 'Mine';
-    return cell.adjacent > 0 ? `${cell.adjacent} adjacent mines` : 'Empty cell';
+  // Positional context in every label: without it a screen reader announces
+  // 81 identical "Hidden cell"s with no way to build a mental map of the grid.
+  function describeCell(cell: MinesweeperCell, r: number, c: number): string {
+    const pos = `Row ${r + 1}, column ${c + 1}`;
+    if (cell.flagged) return `${pos}, flagged`;
+    if (!cell.revealed) return `${pos}, hidden`;
+    if (cell.mine) return `${pos}, mine`;
+    return cell.adjacent > 0 ? `${pos}, ${cell.adjacent} adjacent mines` : `${pos}, empty`;
   }
 
   // Cells now live one level deeper than grid.children (grid > row > cell,
@@ -187,7 +211,7 @@
     btn.dataset.revealed = String(cell.revealed);
     if (cell.revealed && cell.mine) btn.dataset.mine = 'true';
     if (cell.flagged) btn.dataset.flagged = 'true';
-    btn.setAttribute('aria-label', describeCell(cell));
+    btn.setAttribute('aria-label', describeCell(cell, r, c));
     btn.innerHTML = cellContent(cell);
     btn.addEventListener('click', () => {
       // Keep the roving tabindex pointing at the cell actually played, or
@@ -195,11 +219,38 @@
       focusIndex = index;
       onReveal(r, c);
     });
-    btn.addEventListener('contextmenu', (e) => { e.preventDefault(); onFlag(r, c); });
-    btn.addEventListener('touchstart', () => {
-      longPressTimer = window.setTimeout(() => onFlag(r, c), 500);
+    btn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      // Android Chrome ALSO fires contextmenu ~500ms into a long-press — the
+      // same gesture the touch timer below already flags. Without this gate
+      // both fire and the flag toggles twice (straight back to hidden). A
+      // mouse right-click has no recent touchstart, so it flags normally.
+      if (longPressed || Date.now() - lastTouchAt < 700) return;
+      onFlag(r, c);
     });
-    btn.addEventListener('touchend', () => window.clearTimeout(longPressTimer));
+    btn.addEventListener('touchstart', () => {
+      lastTouchAt = Date.now();
+      longPressed = false;
+      longPressTimer = window.setTimeout(() => {
+        longPressed = true;
+        onFlag(r, c);
+      }, 500);
+    });
+    // A drag means the visitor is scrolling/panning past the board, not
+    // long-pressing a cell — cancel so a mid-scroll rest can't flag cells.
+    btn.addEventListener('touchmove', () => window.clearTimeout(longPressTimer));
+    btn.addEventListener('touchcancel', () => window.clearTimeout(longPressTimer));
+    btn.addEventListener('touchend', (e) => {
+      window.clearTimeout(longPressTimer);
+      if (longPressed) {
+        // The long-press already toggled the flag; swallow the synthetic click
+        // the browser dispatches on release, or the just-unflagged cell
+        // immediately reveals — mines included, detonated by the very gesture
+        // meant to make it safe.
+        e.preventDefault();
+        longPressed = false;
+      }
+    });
     btn.addEventListener('keydown', (e) => onKey(e, r, c));
     return btn;
   }

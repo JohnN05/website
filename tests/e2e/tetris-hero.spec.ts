@@ -87,21 +87,32 @@ test.describe('Tetris hero replay', () => {
       await page.goto('/');
       const boardCell = page.locator('#tetris-ambient-crisp > div').first();
       await expect(boardCell).toBeVisible();
-      const b = await boardCell.boundingBox();
-      expect(b, `board cell missing at ${w}x${h}`).not.toBeNull();
+      const pieceCell = page.locator('#tetris-piece-crisp .cell').first();
+      await expect(pieceCell).toBeVisible();
+      // Measure both boxes in ONE synchronous in-page read: the crisp board is
+      // rebuilt on every piece lock, and a Playwright round-trip between
+      // toBeVisible() and boundingBox() can land exactly mid-rebuild and read
+      // a null box for a board that exists (seen on a full-suite run). A
+      // page.evaluate runs to completion as a single task — the rebuild,
+      // itself synchronous, can never interleave with it.
+      const boxes = await page.evaluate(() => {
+        const b = document
+          .querySelector('#tetris-ambient-crisp > div')!
+          .getBoundingClientRect();
+        const p = document
+          .querySelector('#tetris-piece-crisp .cell')!
+          .getBoundingClientRect();
+        return { board: { w: b.width, h: b.height }, piece: { w: p.width, h: p.height } };
+      });
       expect(
-        Math.abs(b!.width - b!.height),
-        `board cell ${b!.width}x${b!.height} not square at ${w}x${h}`
+        Math.abs(boxes.board.w - boxes.board.h),
+        `board cell ${boxes.board.w}x${boxes.board.h} not square at ${w}x${h}`
       ).toBeLessThanOrEqual(1);
       // The falling piece's cells are absolutely positioned with explicit
       // cellW/cellH — they must match the same square size.
-      const pieceCell = page.locator('#tetris-piece-crisp .cell').first();
-      await expect(pieceCell).toBeVisible();
-      const p = await pieceCell.boundingBox();
-      expect(p, `piece cell missing at ${w}x${h}`).not.toBeNull();
       expect(
-        Math.abs(p!.width - p!.height),
-        `piece cell ${p!.width}x${p!.height} not square at ${w}x${h}`
+        Math.abs(boxes.piece.w - boxes.piece.h),
+        `piece cell ${boxes.piece.w}x${boxes.piece.h} not square at ${w}x${h}`
       ).toBeLessThanOrEqual(1);
     }
   });

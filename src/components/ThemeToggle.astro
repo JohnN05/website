@@ -20,7 +20,7 @@
      didn't match that. Under reduced motion the flash animation is removed
      too, but the resting orientation + tint still swap, so the current mode
      is never ambiguous. -->
-<button class="theme-toggle" type="button" aria-label="Toggle light or dark theme">
+<button class="theme-toggle" type="button" aria-label="Toggle light or dark theme" aria-pressed="false">
   <svg class="spiece-svg" viewBox="0 0 54 54" width="30" height="30" aria-hidden="true">
     <!-- S-piece, spawn (horizontal): top row cols 1,2 · mid row cols 0,1,
          translated so the piece's own bounding box (not just the viewBox) is
@@ -59,7 +59,7 @@
     font: inherit;
   }
   .theme-toggle:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-focus);
     outline-offset: 4px;
     border-radius: 6px;
   }
@@ -131,6 +131,16 @@
   // is exactly what happened to the mobile drawer's copy once).
   const buttons = document.querySelectorAll<HTMLButtonElement>('.theme-toggle');
 
+  // aria-pressed mirrors html[data-theme] (pressed = dark) so AT users can
+  // tell which mode is active — the visible Light/Dark word is aria-hidden,
+  // and the SSR'd false is corrected here once the real theme is known. Both
+  // mounts always show the same state, so all of them update together.
+  const syncPressed = () => {
+    const pressed = String(readCurrentTheme() === 'dark');
+    buttons.forEach((b) => b.setAttribute('aria-pressed', pressed));
+  };
+  syncPressed();
+
   for (const button of buttons) {
     const spiece = button.querySelector('.spiece');
 
@@ -141,6 +151,7 @@
       // needs no per-button visual bookkeeping beyond the flash class below.
       document.documentElement.dataset.theme = next;
       persistTheme(localStorage, next);
+      syncPressed();
       spiece?.classList.add('flashing');
     });
 

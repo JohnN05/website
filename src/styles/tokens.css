@@ -7,6 +7,13 @@
   --color-accent-moss: #7A9B76;
   --color-text-secondary: #4A5468;
   --color-error: #B3261E;
+  /* The one focus-ring color sitewide (every :focus-visible rule points here).
+     Cobalt clears the 3:1 non-text bar on every light surface, but in dark
+     mode it measures ~2.6:1 on the navy ground and ~1.9–2.3:1 on the dark
+     washes — below WCAG 1.4.11's floor — so dark substitutes a periwinkle
+     (≥6.3:1 on the bg and every wash). One token, not per-component values,
+     so the next component can't reintroduce the cobalt ring in dark mode. */
+  --color-focus: var(--color-accent);
   --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
 
   /* Tetris piece hues — theme-invariant like the accent colors above.
@@ -69,5 +76,6 @@
   --color-accent-moss: #7A9B76;
   --color-text-secondary: #9AA7B8;
   --color-error: #E5847C;
+  --color-focus: #A8BBF2;
   --line: color-mix(in srgb, var(--color-text) 12%, var(--color-bg));
 }
