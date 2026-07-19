@@ -24,7 +24,31 @@ const WELL_ROWS = [
   ...WELL_HOLES.map((h) => Array.from({ length: WELL_COLS }, (_, c) => c !== h)),
 ];
 ---
-<BaseLayout title="John Ng">
+<BaseLayout
+  title="John Ng — Software Engineer"
+  description="John Ng is a software engineer building extensions, platforms, and research tools. Selected projects, write-ups, and contact."
+>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        name: 'John Ng',
+        url: 'https://johnjng.com',
+      },
+      {
+        '@type': 'Person',
+        name: 'John Ng',
+        url: 'https://johnjng.com',
+        jobTitle: 'Software Engineer',
+        image: 'https://johnjng.com/headshot.jpg',
+        sameAs: [
+          'https://github.com/JohnN05',
+          'https://www.linkedin.com/in/john-ng/',
+        ],
+      },
+    ],
+  })} />
   {/* `in` is authored here, not added by script: the hero is on screen at load
       by definition, and reveal is an on-ENTRY effect, so it must never animate
       in. The hidden state now lands before first paint, which is too early for
