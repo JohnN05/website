@@ -37,6 +37,19 @@ html {
   }
 }
 
+/* The last snap target on Home is the education section, but the footer
+   follows it. With mandatory snapping (mobile) there is no valid resting
+   position past that section's start, so a scroll to the bottom yanks back
+   up — measured 117px at 375px wide, which is the footer's whole height:
+   the copyright, social links, and capybara were unreachable there. Making
+   the footer's end edge a snap point turns max-scroll itself into a valid
+   resting position. Scoped to Home the same way as the snap-type rules; on
+   every other route the footer aligns against nothing because its page is
+   not a snap container. */
+html[data-snap='sections'] .site-footer {
+  scroll-snap-align: end;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);

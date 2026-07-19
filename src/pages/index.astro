@@ -144,10 +144,11 @@ const WELL_ROWS = [
     position: relative;
     display: flex;
     align-items: center;
-    /* Leaves --peek (10vh) of the next section visible below the fold on
-       first load rather than exactly filling the viewport — a deliberate
-       "there's more" cue, and the hook a future scroll-triggered reveal
-       would key off of. */
+    /* Leaves part of the next section visible below the fold on first load
+       rather than exactly filling the viewport — a deliberate "there's more"
+       cue, and the hook a future scroll-triggered reveal would key off of.
+       90vh (a 10vh peek) on mobile; desktop tightens to 75vh via the
+       min-width override near .seam below. */
     min-height: 90vh;
     padding: var(--space-10) var(--space-5);
     background: var(--wash-hero);
@@ -593,6 +594,25 @@ const WELL_ROWS = [
     filter: blur(40px);
     pointer-events: none;
   }
+  /* Desktop tightening: at desktop window heights the mobile pacing left a
+     dead band of plain wash between one section's content and the next —
+     roughly 40% of a ~900px-tall window at the worst mid-scroll stops.
+     Sections shrink 90vh → 75vh (the peek of the next section grows from
+     10vh to 25vh, which reads as a stronger "there's more" rather than as
+     looseness) and the blend bands 10rem → 6rem. Mobile keeps the roomier
+     values: at phone heights the sections are content-filled, so there is
+     no void to remove. The reveal threshold in the script below rises in
+     step — see REVEAL_THRESHOLD. */
+  @media (min-width: 769px) {
+    .hero, .bio, .featured, .education {
+      min-height: 75vh;
+    }
+    .seam {
+      height: 6rem;
+      margin-top: -3rem;
+      margin-bottom: -3rem;
+    }
+  }
   @media (prefers-reduced-motion: no-preference) {
     .hero, .bio, .featured, .education {
       transition: background-color 0.15s ease;
@@ -606,7 +626,12 @@ const WELL_ROWS = [
   const REVEAL_LEAD_IN_MS = 160;
   // How far into the section the reveal starts. Raising this delays the start
   // in scroll distance rather than in time, which is the other half of "later".
-  const REVEAL_THRESHOLD = 0.25;
+  // Must clear the largest at-rest peek of a not-yet-entered section: on
+  // desktop the 75vh sections leave a 25vh peek, i.e. 33% of the next section
+  // is already visible at a snap stop — a threshold at or below that would
+  // fire the reveal before the visitor scrolls at all. 0.35 sits just above
+  // it; mobile's 10vh-of-90vh peek (11%) is comfortably below.
+  const REVEAL_THRESHOLD = 0.35;
 
   // Same reduced-motion convention as the Tetris ambient loop: check once, and
   // if motion is reduced simply never attach. The hidden state is gated on
@@ -643,9 +668,10 @@ const WELL_ROWS = [
     // observing it would only re-add a class it carries. Every other section
     // is governed solely by the threshold above — an earlier version also
     // pre-marked any section merely touching the viewport, which disagreed
-    // with that threshold: the deliberate ~10vh peek left bio 11.1% visible at
-    // 1920x1080, enough to be pre-marked but not enough to trip the observer,
-    // so bio's reveal silently never played on tall viewports.
+    // with that threshold: the peek leaves part of the next section visible
+    // at rest (11% mobile, 33% desktop), enough to be pre-marked but — by
+    // construction, see REVEAL_THRESHOLD — never enough to trip the observer,
+    // so a pre-marked section's reveal would silently never play.
     sections
       .filter((section) => !section.classList.contains('in'))
       .forEach((section) => observer.observe(section));

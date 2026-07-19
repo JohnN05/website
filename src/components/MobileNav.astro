@@ -55,6 +55,10 @@ import PieceMark from './PieceMark.astro';
     align-items: flex-start;
     gap: var(--space-4);
     padding: 0 var(--space-5) var(--space-5);
+    /* Open state reads as its own panel against the page below — without the
+       hairline the drawer's links floated on the same wash as the content
+       they had pushed down, with no edge marking where the nav ends. */
+    border-bottom: 1px solid var(--line);
   }
   .mobile-drawer[hidden] { display: none; }
   .mobile-drawer a {
