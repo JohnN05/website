@@ -1,14 +1,14 @@
 ---
 title: "Echtralex / Lexicography"
 date: 2026-05-06
-summary: "A UMD capstone for a real client — automating a manual bilingual transcript-alignment workflow, with a measured ~100% speedup."
+summary: "A UMD capstone for a real client — automating a manual bilingual transcript-alignment workflow, with a measured ~30% efficiency gain."
 tags: ["capstone", "nlp", "client-project"]
 draft: false
 featured: true
 role: "Team of 5 (CMSC435)"
 timeline: "Spring 2026"
-stack: ["LaBSE", "Python scoring"]
-outcome: "~100% speedup · ~98% accuracy"
+stack: ["Python", "spaCy", "Playwright", "Cloudscraper", "LaBSE"]
+outcome: "12 → 8.5 min per transcript · ~30% faster workflow"
 ---
 
 ## Overview
@@ -16,9 +16,12 @@ outcome: "~100% speedup · ~98% accuracy"
 Full write-up in progress. Built with a team of 5 for CMSC435, in
 collaboration with Echtralex founder Michael Horlick — automating a fully
 manual bilingual (Chinese/English) transcript-alignment workflow that
-previously took 8–20 minutes per document by hand.
+previously took an average of 12 minutes per transcript by hand.
 
-The client measured roughly a 100% speedup against the old workflow, and
-the system held ~98% alignment accuracy. Full story soon: the greedy
-matcher we threw out, the LaBSE + custom-scoring redesign that replaced it,
-and the HTML extraction work I owned directly.
+The client measured a ~30% efficiency gain — 12 minutes down to 8.5 per
+transcript — across 10 real ministry transcripts, faster on 9 of the 10,
+with typically just 1–2 manual corrections needed per ~40-sentence
+transcript. Full story soon: the greedy matcher we threw out, the LaBSE
+model I researched, selected, and built the accuracy test harness for (a
+teammate implemented the alignment algorithm itself), and the HTML
+extraction work I owned directly.
