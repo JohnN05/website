@@ -119,7 +119,8 @@ const WELL_ROWS = [
       completed semester, each with a single buried hole like a real mid-game
       stack (six *complete* lines would have cleared themselves) — and a top
       row missing exactly the I-piece's four cells. On entry the piece drops,
-      the line flashes and clears, and the HUD's score tick lands. The facts
+      the line flashes and clears, and the HUD's score tick lands and fades
+      like a game popup. The facts
       (GPA, Dean's List, grad date) live in the HUD as real text, so the well
       itself stays decorative: role="img", no AT control, and under reduced
       motion or no JS it simply never plays — the static pre-clear state is
@@ -301,8 +302,13 @@ const WELL_ROWS = [
      beneath. The core's notch is clipped away there, so what showed through
      was the page wash: a faint 1px cross across the portrait. With the plate,
      the seams reveal the same photo pixels the cells already show — invisible
-     at any size. It fades out when broken so the notch reads empty while the
-     pieces are away, and back in ahead of their return. */
+     at any size. It stays hidden through the whole break/reassemble cycle
+     (broken *or* coloured/flashing) and only fades back in once the animation
+     has fully resolved to the resting photo — appearing mid-flight, it read
+     as a stray photo square sliding under the still-moving pieces. The hide
+     is instant (0s): the pieces snap away on click, so a fading plate would
+     ghost in the notch behind them and break the illusion that they were
+     ever part of the photo. Only the return gets the fade. */
   .bio-frame .back {
     position: absolute;
     left: 0;
@@ -315,8 +321,11 @@ const WELL_ROWS = [
     background-position: 0% 100%;
     transition: opacity 0.28s ease;
   }
-  .bio-frame.broken .back {
+  .bio-frame.broken .back,
+  .bio-frame.colored .back,
+  .bio-frame.flashing .back {
     opacity: 0;
+    transition: opacity 0s;
   }
   .bio-frame .blk {
     position: absolute;
@@ -401,7 +410,9 @@ const WELL_ROWS = [
     .bio-frame .blk { transition: none; animation: none; }
     .bio-frame.broken .blk { translate: 0; rotate: 0; box-shadow: none; }
     .bio-frame.broken:hover .blk { animation: none; box-shadow: none; }
-    .bio-frame.broken .back { opacity: 1; }
+    .bio-frame.broken .back,
+    .bio-frame.colored .back,
+    .bio-frame.flashing .back { opacity: 1; }
     .bio-frame.colored .fill { opacity: 0; }
   }
   .bio-copy .eyebrow {
@@ -621,9 +632,10 @@ const WELL_ROWS = [
     font-size: 0.95rem;
     font-variant-numeric: tabular-nums;
   }
-  /* Lands only after the clear (the script adds .in) — one line is a single,
-     not a Tetris. Secondary text color, same convention as the retired
-     stat-chip: --tetris-i at 0.72rem wouldn't clear WCAG AA's 4.5:1. */
+  /* Lands only after the clear, then fades back out like a game popup (the
+     script toggles .in) — one line is a single, not a Tetris. Secondary text
+     color, same convention as the retired stat-chip: --tetris-i at 0.72rem
+     wouldn't clear WCAG AA's 4.5:1. */
   .hud-score {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.72rem;
@@ -855,12 +867,18 @@ const WELL_ROWS = [
   // is allowed do we play the drop. Fires once per page load, like the reveal
   // and the bio dissolve. Timing: a hold to let the section reveal settle,
   // the drop (matches the .ipiece transition), a lock beat, then the same
-  // flash cadence as the bio reassembly, the clear, and the HUD score tick.
+  // flash cadence as the bio reassembly, the clear, and the HUD score tick —
+  // a game popup that lands, holds, and fades back out.
   const WELL_HOLD_MS = 700;
   const WELL_DROP_MS = 480;
   const WELL_LOCK_MS = 120;
   const WELL_FLASH_CYCLES = 3;
   const WELL_FLASH_MS = 90;
+  // The score tick is a game popup, not a stat: it lands after the clear,
+  // holds long enough to read, then fades back out like a real line-clear
+  // score would — leaving it parked under the HUD rows read as a fourth fact.
+  const WELL_SCORE_IN_MS = 250;
+  const WELL_SCORE_HOLD_MS = 1600;
 
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const well = document.querySelector<HTMLElement>('.well');
@@ -885,7 +903,15 @@ const WELL_ROWS = [
                     const score = well
                       .closest('.edu-game')
                       ?.querySelector<HTMLElement>('[data-score]');
-                    if (score) setTimeout(() => score.classList.add('in'), 250);
+                    if (score) {
+                      setTimeout(() => {
+                        score.classList.add('in');
+                        setTimeout(
+                          () => score.classList.remove('in'),
+                          WELL_SCORE_HOLD_MS
+                        );
+                      }, WELL_SCORE_IN_MS);
+                    }
                   }
                 };
                 tick();

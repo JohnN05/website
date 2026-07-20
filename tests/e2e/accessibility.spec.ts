@@ -76,11 +76,18 @@ for (const path of pages) {
         // 70ms per staggered child, and axe scores whatever blended opacity it
         // catches — scanning here without waiting reads a mid-fade foreground
         // as a contrast failure. Wait for the state axe actually measures.
-        // [data-score] is included for the same reason: it isn't a
-        // [data-reveal] child — the education well adds .in ~2.3s after the
-        // section scrolls into view (which the loop above already did) and it
-        // fades in over 400ms, so axe can catch it mid-fade too (it did:
-        // "Single +100" at 3.57:1 on a full-suite run).
+        // [data-score] needs pinning, not just waiting: it's a game popup —
+        // the education script adds .in ~2.1s after the well enters, holds
+        // 1600ms, then removes it to fade back out. Against those timers the
+        // axe scan below can land anywhere including the 400ms fade-out —
+        // the same mid-fade contrast failure this wait exists to prevent (it
+        // happened: "Single +100" at 3.57:1 on a full-suite run). So wait out
+        // the script's whole popup cycle, then pin .in ourselves: the scan
+        // sees the popup's visible state with no timer left to yank it away.
+        const score = page.locator('[data-score]');
+        await expect(score).toHaveClass(/\bin\b/);
+        await expect(score).not.toHaveClass(/\bin\b/);
+        await score.evaluate((el) => el.classList.add('in'));
         await expect
           .poll(() =>
             page.evaluate(() =>
