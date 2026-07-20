@@ -54,6 +54,9 @@ const [newestProject, ...restProjects] = projects;
   }
   .intro-inner {
     position: relative;
+    /* Paints above .seam (z-index: 1) so the blurred blend band washes over
+       the band's background only, not over the header text itself. */
+    z-index: 2;
     max-width: 42rem;
     margin: 0 auto;
     padding-left: var(--space-4);
