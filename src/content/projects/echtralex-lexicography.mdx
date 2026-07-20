@@ -13,15 +13,106 @@ outcome: "12 → 8.5 min per transcript · ~30% faster workflow"
 
 ## Overview
 
-Full write-up in progress. Built with a team of 5 for CMSC435, in
-collaboration with Echtralex founder Michael Horlick — automating a fully
-manual bilingual (Chinese/English) transcript-alignment workflow that
-previously took an average of 12 minutes per transcript by hand.
+Echtralex tracks how PRC ministry policy language shifts over time, which
+means aligning parallel English/Chinese transcripts from ministry press
+conferences sentence by sentence — fully manual, daily, up to four
+releases a day, averaging 12 minutes per transcript by hand. Our team of
+five built the system that automates it, working directly with Echtralex
+founder Michael Horlick as our client. It shipped: deployed to production
+and in active client use.
 
-The client measured a ~30% efficiency gain — 12 minutes down to 8.5 per
-transcript — across 10 real ministry transcripts, faster on 9 of the 10,
-with typically just 1–2 manual corrections needed per ~40-sentence
-transcript. Full story soon: the greedy matcher we threw out, the LaBSE
-model I researched, selected, and built the accuracy test harness for (a
-teammate implemented the alignment algorithm itself), and the HTML
-extraction work I owned directly.
+The measured result: **12 minutes down to 8.5 per transcript (~30%)**,
+faster than the manual workflow on 9 of 10 test transcripts, with
+typically just 1–2 manual corrections needed per ~40-sentence release. The
+client's acceptance document graded the efficiency criterion as only
+*partially met* — the remaining time is the consultant still reading every
+transcript after alignment, a human floor no pipeline was going to remove.
+I'd rather put the real number here than a rounder one.
+
+## What I owned: HTML extraction, end to end
+
+Four ministry sites, four different page structures, and active scraper
+countermeasures.
+
+- **Layered anti-bot fallback.** Cloudscraper first — cheap and fast —
+  with a Playwright real-browser fallback only when the cheap path fails.
+  When English MOFCOM kept failing intermittently, I fixed it properly by
+  completing the browser fingerprint in the Playwright config, plus
+  retries for the flaky cases.
+- **Speaker-turn segmentation.** The alignment subsystem needed
+  paragraph-aligned input — but the client's assumption that paragraphs
+  align across languages turned out to be false, which invalidated the
+  original design. After HTML tags and a bare colon heuristic both fell
+  short, I landed on speaker detection: a colon heuristic validated by
+  spaCy NLP (is the text before this colon actually a speaker?), splitting
+  paragraphs on speaker turns. That's what made the pipeline work across
+  all four inconsistently-formatted sites.
+- **The silent-deletion bug.** The Chinese segmentation regex was quietly
+  dropping any fragment that didn't match its pattern — transcripts were
+  being altered with no error raised. I rewrote the expression so nothing
+  is ever discarded. My hardest bug of the semester: the system wasn't
+  wrong loudly, it was wrong silently.
+- **Tests that paid for themselves.** I wrote the component's unit tests
+  despite initially doubting their value — then one caught that old
+  MOFCOM pages store transcripts in iframes, which scraping was returning
+  as nothing. I also automated away the tedious part: a utility that
+  generates alignment test fixtures by pulling gold-standard alignments
+  from Echtralex's live site.
+
+## The refactor with a before/after measurement
+
+Mid-project I restructured HTML extraction from one file of per-ministry
+special cases into shared utilities plus per-ministry config files — about
+six hours of work. Then we measured it, with an outside developer who'd
+never seen the codebase as the control:
+
+| Task | Before | After — me | After — fresh eyes |
+|---|---|---|---|
+| Add a new source | hours (team estimate) | **8 minutes** | **31.82 minutes** |
+
+A second source took me 16 minutes and 35 lines of config. A refactor with
+a controlled measurement, including an outside tester, is a rare thing to
+walk away from a class project with.
+
+## Beyond my component
+
+- **I found the model.** My first pass at sentence alignment researched
+  BERT — and hit a wall: it couldn't produce the output shape alignment
+  needs. I went looking, surfaced **LaBSE** (Language-Agnostic BERT
+  Sentence Embedding), demoed it, and updated the proposal. The team
+  adopted it; a teammate implemented the alignment algorithm itself,
+  while I built the accuracy test harness the results were measured
+  against. We threw out a greedy matcher early after errors cascaded down
+  transcripts — look-behind/look-ahead pairing replaced it.
+- **Architecture and design calls that stuck.** Argued the Lex Processor
+  should be a module called by the Checking Service rather than its own
+  idle-waiting API (adopted); pushed back on having my component query
+  the database directly — the interface became two arrays of URLs instead
+  (adopted); raised JWT protection for our endpoints, which the team
+  scheduled.
+- **Performance work outside my lane.** Short-circuited the Checking
+  Service's pagination when a page held only already-seen IDs and
+  converted its listing scrape to a generator — then found and fixed the
+  regression where the short-circuit skipped genuinely new conferences.
+
+## Running the project
+
+I was the client's point of contact from the first meeting — scheduling
+every session, 3+ emails a week, managing expectations when we fell
+behind. I introduced Jira and ran the board (I created 56 of our 95
+issues), and ended up the team's de facto scrum master.
+
+The moment I'm proudest of: when we were behind, a proposal circulated to
+reframe our System Flexibility test — count three of four ministry sources
+as "add-ons" — so it would pass. I argued that was cutting corners and
+wouldn't survive scrutiny. The team backed me, and the honest version of
+that test became the Codebase Extensibility Test above — which is exactly
+what forced the modularization work. The harder criterion produced the
+project's best engineering.
+
+## Result
+
+A deployed system in daily client use, built by a team I helped keep
+honest and on schedule: 79 hours logged across the semester, about 48 of
+it hands-on development. The honest numbers — ~30% faster, 9 of 10, one or
+two corrections per release — are the ones I'd rather defend.
