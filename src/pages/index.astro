@@ -74,7 +74,9 @@ const WELL_ROWS = [
           createElement), so ordinary Astro scoping applies. The core is the
           photo clipped to square-minus-O; the four .blk cells slice the same
           photo (sprite: background-size 400% + per-cell position) and sit
-          exactly over the notch, so at rest — reduced motion, no JS — the whole
+          exactly over the notch, with a .back plate repainting the O quarter
+          beneath them so fractional-pixel seams between the cells reveal
+          photo, not the page wash. At rest — reduced motion, no JS — the whole
           thing reads as one clean square. It's a real <button> (keyboard users
           get the break/reassemble toggle pointer users always had), shipped
           `disabled`: the script below enables it only when it attaches its
@@ -83,6 +85,7 @@ const WELL_ROWS = [
           nothing. Spans, not divs — button content must be phrasing content. */}
       <button class="bio-frame" type="button" disabled data-reveal data-depth="0.1" aria-label="Portrait of John Ng — activate to toggle the O-piece animation">
         <span class="core"></span>
+        <span class="back"></span>
         <span class="blk o1"><span class="fill"></span><span class="flash"></span></span>
         <span class="blk o2"><span class="fill"></span><span class="flash"></span></span>
         <span class="blk o3"><span class="fill"></span><span class="flash"></span></span>
@@ -289,6 +292,32 @@ const WELL_ROWS = [
     -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, calc(50% - 1px) 100%, calc(50% - 1px) calc(50% + 1px), 0 calc(50% + 1px));
     clip-path: polygon(0 0, 100% 0, 100% 100%, calc(50% - 1px) 100%, calc(50% - 1px) calc(50% + 1px), 0 calc(50% + 1px));
   }
+  /* Backing plate under the four O cells: repaints exactly the O quarter of
+     the photo (same sprite math as the cells — 200% on a 50% box == 400% on
+     a 25% box, anchored at the frame's top-left). The cells are 25% boxes on
+     fractional-percentage positions, and `will-change` promotes each to its
+     own composited layer, so wherever the frame size doesn't divide evenly
+     the internal seams (the cross at 25%/75%) antialias against whatever is
+     beneath. The core's notch is clipped away there, so what showed through
+     was the page wash: a faint 1px cross across the portrait. With the plate,
+     the seams reveal the same photo pixels the cells already show — invisible
+     at any size. It fades out when broken so the notch reads empty while the
+     pieces are away, and back in ahead of their return. */
+  .bio-frame .back {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 50%;
+    height: 50%;
+    background-image: var(--img);
+    background-repeat: no-repeat;
+    background-size: 200% 200%;
+    background-position: 0% 100%;
+    transition: opacity 0.28s ease;
+  }
+  .bio-frame.broken .back {
+    opacity: 0;
+  }
   .bio-frame .blk {
     position: absolute;
     width: 25%;
@@ -372,6 +401,7 @@ const WELL_ROWS = [
     .bio-frame .blk { transition: none; animation: none; }
     .bio-frame.broken .blk { translate: 0; rotate: 0; box-shadow: none; }
     .bio-frame.broken:hover .blk { animation: none; box-shadow: none; }
+    .bio-frame.broken .back { opacity: 1; }
     .bio-frame.colored .fill { opacity: 0; }
   }
   .bio-copy .eyebrow {
