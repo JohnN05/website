@@ -305,7 +305,10 @@ const WELL_ROWS = [
      at any size. It stays hidden through the whole break/reassemble cycle
      (broken *or* coloured/flashing) and only fades back in once the animation
      has fully resolved to the resting photo — appearing mid-flight, it read
-     as a stray photo square sliding under the still-moving pieces. */
+     as a stray photo square sliding under the still-moving pieces. The hide
+     is instant (0s): the pieces snap away on click, so a fading plate would
+     ghost in the notch behind them and break the illusion that they were
+     ever part of the photo. Only the return gets the fade. */
   .bio-frame .back {
     position: absolute;
     left: 0;
@@ -322,6 +325,7 @@ const WELL_ROWS = [
   .bio-frame.colored .back,
   .bio-frame.flashing .back {
     opacity: 0;
+    transition: opacity 0s;
   }
   .bio-frame .blk {
     position: absolute;
