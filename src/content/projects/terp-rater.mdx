@@ -13,10 +13,42 @@ outcome: "51 users · 5.0★ on the Chrome Web Store"
 
 ## Overview
 
-Full write-up in progress. Terp Rater streamlines UMD course registration by
-pulling professor ratings, GPA data, and live seat/waitlist counts directly
-into Testudo's own course listings — no more juggling PlanetTerp in a second
-tab. Live on the Chrome Web Store — 51 users, rated 5.0★ from 6 ratings.
+Every registration season, UMD students cross-reference two sites: Testudo's
+Schedule of Classes for seats and sections, and PlanetTerp for professor
+ratings and GPA history. Terp Rater merges them — it injects ratings, GPA
+data, and live seat/waitlist counts directly into Testudo's own course
+listings, so the second tab is unnecessary.
 
-Check back soon for the full story: the `MutationObserver` powering it,
-the sort/filter/bookmark features, and what broke along the way.
+Live on the Chrome Web Store: 51 users, rated 5.0★ from 6 ratings.
+
+## How it works
+
+A Manifest V3 Chrome extension, ~935 lines across 8 JavaScript modules,
+integrating two REST APIs — PlanetTerp (`/api/v1/course`,
+`/api/v1/professor?reviews=true`) and Testudo's SOC (`/soc/{semester}/sections`).
+
+- **Living inside someone else's page.** Testudo re-renders its listings
+  asynchronously, so a `MutationObserver` in the content script re-applies
+  the injected data as the DOM changes.
+- **Request coalescing.** One professor teaches many sections on a page,
+  and sections process concurrently via `Promise.all`. A result cache plus
+  an in-flight request map means a miss *awaits the existing promise*
+  instead of firing a duplicate call — one professor, one request, no
+  matter how many sections they teach. PlanetTerp is a free community API;
+  being polite to it is a feature.
+- **Graceful degradation.** A 5xx or network failure from PlanetTerp shows
+  a banner instead of failing silently, and a per-course try/catch keeps
+  one bad course from breaking the page.
+- **Minimal permissions.** Scoped `host_permissions` and a custom content
+  security policy — the extension asks for exactly what it needs.
+- **The features themselves:** average GPA and rating badges with a review
+  modal, seat/waitlist highlighting, sort by rating or open seats, filter
+  out full sections, and a bookmark manager persisted in
+  `chrome.storage.local`.
+
+## Result
+
+Shipped in August 2024 and still maintained — version 0.0.2, last updated
+July 2026, nearly two years later. 51 students use it during registration,
+and the listing collects no data and shares nothing with third parties.
+Apache-2.0, known issues documented in the README.
