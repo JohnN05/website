@@ -9,38 +9,41 @@ role: "Solo build"
 timeline: "2024"
 stack: ["JavaScript", "Chrome Extension"]
 outcome: "51 users · 5.0★ on the Chrome Web Store"
+cover: "/projects/terp-rater-hero.png"
+thumbnail: "/projects/terp-rater-hero.png"
 ---
 
 ## Overview
 
-Every registration season, UMD students cross-reference two sites: Testudo's
-Schedule of Classes for seats and sections, and PlanetTerp for professor
-ratings and GPA history. Terp Rater merges them — it injects ratings, GPA
-data, and live seat/waitlist counts directly into Testudo's own course
-listings, so the second tab is unnecessary.
+Every registration season, UMD students juggle two sites: Testudo for
+seats and sections, and PlanetTerp for professor ratings and GPA history.
+Terp Rater merges them. It injects ratings, GPA data, and live
+seat/waitlist counts straight into Testudo's own course listings, so you
+never need the second tab.
 
 Live on the Chrome Web Store: 51 users, rated 5.0★ from 6 ratings.
 
 ## How it works
 
-A Manifest V3 Chrome extension, ~935 lines across 8 JavaScript modules,
-integrating two REST APIs — PlanetTerp (`/api/v1/course`,
+A Manifest V3 Chrome extension: about 935 lines across 8 JavaScript
+modules, talking to two REST APIs: PlanetTerp (`/api/v1/course`,
 `/api/v1/professor?reviews=true`) and Testudo's SOC (`/soc/{semester}/sections`).
 
 - **Living inside someone else's page.** Testudo re-renders its listings
-  asynchronously, so a `MutationObserver` in the content script re-applies
-  the injected data as the DOM changes.
+  on the fly, so a `MutationObserver` in the content script re-applies the
+  injected data whenever the DOM changes.
 - **Request coalescing.** One professor teaches many sections on a page,
-  and sections process concurrently via `Promise.all`. A result cache plus
-  an in-flight request map means a miss *awaits the existing promise*
-  instead of firing a duplicate call — one professor, one request, no
-  matter how many sections they teach. PlanetTerp is a free community API;
-  being polite to it is a feature.
+  and sections load concurrently via `Promise.all`. A result cache plus an
+  in-flight request map means a cache miss *awaits the existing promise*
+  instead of firing a duplicate call. One professor gets one request, no
+  matter how many sections they teach. PlanetTerp is a free community API,
+  so being polite to it matters.
 - **Graceful degradation.** A 5xx or network failure from PlanetTerp shows
-  a banner instead of failing silently, and a per-course try/catch keeps
-  one bad course from breaking the page.
+  a banner instead of failing silently. A per-course try/catch keeps one
+  bad course from breaking the whole page.
 - **Minimal permissions.** Scoped `host_permissions` and a custom content
-  security policy — the extension asks for exactly what it needs.
+  security policy. The extension asks for exactly what it needs, nothing
+  more.
 - **The features themselves:** average GPA and rating badges with a review
   modal, seat/waitlist highlighting, sort by rating or open seats, filter
   out full sections, and a bookmark manager persisted in
@@ -48,7 +51,7 @@ integrating two REST APIs — PlanetTerp (`/api/v1/course`,
 
 ## Result
 
-Shipped in August 2024 and still maintained — version 0.0.2, last updated
-July 2026, nearly two years later. 51 students use it during registration,
-and the listing collects no data and shares nothing with third parties.
-Apache-2.0, known issues documented in the README.
+Shipped in August 2024 and still maintained: version 0.0.2, last updated
+July 2026, almost two years later. 51 students use it every registration
+cycle. The listing collects no data and shares nothing with third parties.
+Licensed Apache-2.0, with known issues listed in the README.
