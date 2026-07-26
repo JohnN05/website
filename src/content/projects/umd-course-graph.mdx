@@ -1,7 +1,7 @@
 ---
 title: "UMD Course Graph"
 date: 2024-01-15
-summary: "A Java backend that turns UMD's entire course catalog — and its free-text prerequisite rules — into a typed, queryable directed graph."
+summary: "A Java backend that turns UMD's entire course catalog, including its free-text prerequisite rules, into a typed, queryable directed graph."
 tags: ["java", "design-patterns"]
 draft: false
 featured: false
@@ -14,33 +14,34 @@ outcome: "Full UMD catalog as a typed graph"
 ## Overview
 
 My first substantial project, and the backend for the UMD Course Web
-project: pull every course at the university from the umd.io API and build
-a directed graph out of them — nodes are courses, edges are relationships
-like prerequisites — as the foundation for visualizing the whole catalog.
+project. It pulls every course at the university from the umd.io API and
+builds a directed graph out of them (nodes are courses, edges are
+relationships like prerequisites) as the foundation for visualizing the
+whole catalog.
 
 The interesting problem isn't fetching the data. It's that prerequisites
-arrive as free-text strings ("CMSC216 with a C or better, and permission of
-the department"), and a graph needs them as typed structure.
+arrive as free-text strings ("CMSC216 with a C or better, and permission
+of the department"), and a graph needs them as typed structure instead.
 
 ## How it works
 
-- **Requisite modeling** — parsed prerequisite strings are modeled behind a
-  `Requisite` abstraction with concrete types (`CourseReq`, `CreditReq`,
+- **Requisite modeling**: Parsed prerequisite strings are modeled behind
+  a `Requisite` abstraction with concrete types (`CourseReq`, `CreditReq`,
   `DepartmentReq`, `OtherReq`) and a `ReqType` enum, so the graph never
   touches raw text.
-- **Factory pattern throughout** — `CourseFactory`, `CourseGraphFactory`,
+- **Factory pattern throughout**: `CourseFactory`, `CourseGraphFactory`,
   and `RequisiteFactory` own construction, keeping parsing and assembly
   out of the domain objects.
-- **Layered packages** — `courses/`, `courses/graph/`,
+- **Layered packages**: `courses/`, `courses/graph/`,
   `courses/relationship/requisites/`, `departments/`, and a `utility/`
-  layer separating HTTP reading, object loading, and validation.
-- **Tested** — a JUnit suite across 5 test classes covering the factories,
+  layer separate HTTP reading, object loading, and validation.
+- **Tested**: A JUnit suite across 5 test classes covers the factories,
   the graph, and the HTTP layer.
 
 ## Result
 
 69 commits and 23 Java files, with an architecture diagram and an honest
-known-issues list in the README. Looking back, the feature set is modest —
-but the instincts weren't: layered structure, design patterns, and tests on
-a first project. It's still the repo I'd hand someone who asks how I think
-about code structure.
+known-issues list in the README. Looking back, the feature set is modest,
+but the instincts weren't: layered structure, design patterns, and tests
+on a first project. It's still the repo I'd hand someone who asks how I
+think about code structure.

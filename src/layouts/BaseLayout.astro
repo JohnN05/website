@@ -18,7 +18,7 @@ interface Props {
 }
 const {
   title,
-  description = 'John Ng — software engineer portfolio',
+  description = 'John Ng, software engineer portfolio',
   image = '/og-image.png',
   type = 'website',
   robots,
@@ -59,7 +59,7 @@ const isHome = Astro.url.pathname === '/';
         <meta property="og:image:height" content="630" />
       </>
     )}
-    <meta property="og:image:alt" content="John Ng — software engineer portfolio" />
+    <meta property="og:image:alt" content="John Ng, software engineer portfolio" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />

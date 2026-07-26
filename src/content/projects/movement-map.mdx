@@ -5,7 +5,7 @@ summary: "A geospatial platform mapping research-funding flows, government spend
 tags: ["internship", "data-engineering", "geospatial"]
 draft: false
 featured: true
-role: "SWE Intern — full-stack"
+role: "SWE Intern, full-stack"
 timeline: "Summer 2025"
 stack: ["PostgreSQL", "Spring Boot", "Python ETL", "Vue + Cesium"]
 outcome: "270M → 3.2M rows · 80% faster load times"
@@ -14,32 +14,32 @@ outcome: "270M → 3.2M rows · 80% faster load times"
 ## Overview
 
 Built during a summer internship at Capital Technology Group: a full-stack
-geospatial platform mapping research-funding flows, government spending,
+geospatial platform that maps research-funding flows, government spending,
 and congressional-trade anomalies on a live 3D globe. Live at
 [movementmap.capitaltg.dev](https://movementmap.capitaltg.dev/).
 
 The catch: the source data was 270 million records, and the platform was
-slow enough to feel it.
+slow enough that you could feel it.
 
 ## Schema and API
 
 I designed a STAR-inspired PostgreSQL schema for the funding/spending data
-and engineered the Spring Boot REST API that serves it. The performance
-work was deliberate rather than accidental — strategic indexing plus
-endpoint-specific DTOs (so no endpoint serializes more than its caller
-actually renders) cut application load times by over 80%.
+and built the Spring Boot REST API that serves it. The performance work
+was deliberate, not accidental: strategic indexing plus endpoint-specific
+DTOs (so no endpoint sends more data than its caller actually renders) cut
+application load times by over 80%.
 
 ## The ETL problem
 
 270M raw records was never going to be queryable interactively. I built a
 Python ETL pipeline that filtered the dataset down to a workable 3.2M
-records and synthesized complex authorship data stitched together from
-multiple API endpoints — the difference between a demo and a platform.
+records, and stitched together complex authorship data from multiple API
+endpoints: the difference between a demo and a real platform.
 
 ## The five-day frontend pivot
 
 With two weeks left in the internship, I moved from backend to frontend
-cold — Vue.js and Cesium, neither of which I'd touched — and delivered the
+cold, on Vue.js and Cesium, neither of which I'd touched before. I delivered the
 InsightsLayer feature in five days, including untangling event-listener
 race conditions between the globe and the UI layer.
 
@@ -47,5 +47,5 @@ race conditions between the globe and the UI layer.
 
 Shipped and still live: a 270M-row bottleneck turned into a working
 platform, load times down 80%+, and a frontend feature delivered in five
-days on a stack I'd never used. The full arc — schema, pipeline, API,
-globe — in one summer.
+days on a stack I'd never used before. The full arc (schema, pipeline,
+API, globe) in one summer.
