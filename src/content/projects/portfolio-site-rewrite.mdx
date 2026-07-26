@@ -13,18 +13,32 @@ outcome: "Zero JS by default"
 
 ## Overview
 
-The previous version of this site was a single-page Create React App that
-pulled every GitHub repo live via the API. It worked, but it read as a demo
-of "I can call an API," not a considered introduction to my work.
+I looked at the old version of this site and cringed. It had a component
+that pulled every GitHub repo live through the API and dumped the list on
+the page. To me, it sucked. I knew I could do so much better.
+
+That old page worked. But it read like a demo of "I can call an API." It
+did not read like an introduction to my work.
+
+So I rebuilt it from scratch on Astro.
 
 ## How it works
 
-This rewrite moves to Astro's island architecture: pages ship no
-JavaScript unless a specific component needs it. Project write-ups are
-plain MDX files. Adding a new one just means dropping a file into
-`src/content/projects/`, no code changes required.
+Astro ships pages with zero JavaScript by default. A page only loads a
+script if one of its components truly needs it. I write each project
+as a plain MDX file. To add a new project, I drop one file into
+`src/content/projects/`. No code changes needed.
+
+## I used AI to build it
+
+I used Claude and Kimi to build most of this site. That was the point,
+not a side effect. I wanted to bring AI into my own workflow and see
+what that actually looks like in practice, not just in theory. It changed
+how I plan features, how I catch my own bugs, and how much I can ship
+solo. I am not going to pretend a human typed every line by hand. That
+would be a worse story, and also a lie.
 
 ## Result
 
-A lighter, faster site with room to actually write about projects instead
-of just listing them.
+The new site is lighter and faster. It gives me real room to write about
+each project, instead of just listing it in a grid.
