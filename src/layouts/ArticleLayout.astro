@@ -279,4 +279,23 @@ for (let row = 0; row < STACK_ROWS; row++) {
     margin: 0 auto;
     padding: 0 var(--space-5) var(--space-8);
   }
+  /* MDX body content (figure/img/figcaption) is slotted from the .mdx file's
+     own component, so it never carries ArticleLayout's data-astro-cid — these
+     rules must be :global() or they silently never match. */
+  :global(.prose figure) {
+    margin: var(--space-7) 0;
+  }
+  :global(.prose figure img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+  :global(.prose figcaption) {
+    margin-top: var(--space-2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+  }
 </style>

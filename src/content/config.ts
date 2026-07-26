@@ -8,6 +8,10 @@ const projects = defineCollection({
     summary: z.string(),
     tags: z.array(z.string()).default([]),
     cover: z.string().optional(),
+    // Card thumbnail, separate from `cover`: the article header is a ~4:3 box,
+    // project cards are a short wide strip, and a real photo/screenshot rarely
+    // crops well to both from one file. Falls back to `cover` when unset.
+    thumbnail: z.string().optional(),
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
     // Article spec strip (Role · Timeline · Stack · Outcome). All optional and
