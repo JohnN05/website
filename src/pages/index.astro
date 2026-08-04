@@ -107,11 +107,22 @@ const WELL_ROWS = [
 
   <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
 
+  {/* Both motion systems are applied to the whole block, never to the grid
+      alone. data-depth used to sit on .project-grid while its own h2 carried
+      only data-reveal, so the two stacked elements in one column drifted
+      against each other: parallax pulled the cards up ~55px while reveal held
+      the heading 28px down, against a 32px design gap — the cards rode up over
+      "Featured projects" and it read as a label inside the first card while
+      the visitor was still looking at the bio section. Depth belongs on the
+      section block (the same shape .education-inner uses), and the grid reveals
+      with its heading instead of sitting still while the heading moves. Any two
+      stacked elements in one column must both opt into a motion system or
+      neither; splitting them is what re-opens this. */}
   <section class="featured" data-scroll-section>
-    <div class="featured-inner">
+    <div class="featured-inner" data-depth="0.08">
       {/* No "Selected work" eyebrow: it restated the h2 directly beneath it. */}
       <h2 data-reveal>Featured projects</h2>
-      <div class="project-grid" data-depth="0.08">
+      <div class="project-grid" data-reveal>
         {featured.map((p) => <ProjectCard project={p} showCover={true} />)}
       </div>
     </div>
