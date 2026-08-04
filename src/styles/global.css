@@ -54,13 +54,26 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
+  font-weight: var(--weight-body);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-h1, h2, h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; }
+/* See tokens.css: display and body are both grotesks, so the weight gap
+   between these two rules is what keeps them legible as separate roles.
+   Don't set a heading below 600 or body copy above 500. */
+h1, h2 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--track-display);
+}
+h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display-sm);
+  letter-spacing: var(--track-display-sm);
+}
 
-.eyebrow, .meta { font-family: 'IBM Plex Mono', monospace; }
+.eyebrow, .meta { font-family: var(--font-mono); }
 
 a { color: inherit; }
 
@@ -96,7 +109,7 @@ a { color: inherit; }
   list-style: none;
   padding: 0;
   margin: 0;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
 }
 .tag {

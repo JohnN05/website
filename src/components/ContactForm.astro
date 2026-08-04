@@ -64,14 +64,14 @@
     gap: 0.35rem;
   }
   .field label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--color-text);
   }
   .field input,
   .field textarea {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-size: 0.95rem;
     padding: 0.65rem var(--space-3);
     border-radius: 6px;
@@ -87,7 +87,7 @@
   }
   .contact-form button {
     align-self: flex-start;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     font-weight: 500;
     padding: 0.7rem 1.7rem;
     border-radius: 6px;
@@ -117,7 +117,7 @@
     color: var(--color-error);
   }
   /* The reply is the payoff to the T-spin, so it's a composed moment — a mono
-     eyebrow over a Bricolage headline — that rises out of the cleared board,
+     eyebrow over a display headline — that rises out of the cleared board,
      not a plain tinted form chip. */
   .contact-success {
     display: flex;
@@ -135,7 +135,7 @@
   /* Moss fails small-text contrast on the light frosted card (2.7:1), so light
      uses the slate secondary (7:1); moss stays for dark, where it passes. */
   .cs-eyebrow {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-size: 0.72rem;
@@ -146,11 +146,11 @@
   }
   .cs-line {
     margin: 0;
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-weight: var(--weight-display-sm);
     font-size: clamp(1.3rem, 2.4vw, 1.7rem);
     line-height: 1.25;
-    letter-spacing: -0.01em;
+    letter-spacing: var(--track-display-sm);
     color: var(--color-text);
     text-wrap: balance;
     max-width: 22ch;

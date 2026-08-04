@@ -76,7 +76,16 @@ test('bio still reveals on a viewport where it peeks below the fold', async ({
     .poll(() => bio.locator('h2').evaluate((el) => getComputedStyle(el).opacity))
     .not.toBe('1');
 
-  await bio.scrollIntoViewIfNeeded();
+  // Scroll the way a person does, not with scrollIntoViewIfNeeded(). Home is a
+  // proximity snap container, and bio now sizes to its content instead of to
+  // 75vh — so the minimal scroll that makes bio "fully visible" here is only
+  // ~274px, which lands inside the HERO's snap proximity and gets pulled
+  // straight back to 0. The viewport never moved and the reveal never fired:
+  // a test-harness artifact, not a regression. Verified by hand at this exact
+  // viewport that a real wheel scroll reveals bio, featured and education in
+  // order. A wheel gesture clears the hero's snap point, so this test goes
+  // back to measuring the reveal instead of measuring scrollIntoViewIfNeeded.
+  await page.mouse.wheel(0, 400);
   await expect(bio).toHaveClass(/\bin\b/);
   await expect
     .poll(() => bio.locator('h2').evaluate((el) => getComputedStyle(el).opacity))
@@ -236,4 +245,42 @@ test('parallax does not attach below the mobile breakpoint', async ({ page }) =>
     .locator('.hero-copy')
     .evaluate((el) => getComputedStyle(el).getPropertyValue('--parallax-y').trim());
   expect(shift === '' || shift === '0px').toBe(true);
+});
+
+test('the featured heading never collides with its own cards while scrolling', async ({
+  page,
+}) => {
+  // Regression: data-depth sat on .project-grid while its own h2 carried only
+  // data-reveal. Two stacked elements in one column, each driven by a different
+  // motion system, drifted against each other — parallax pulled the cards up
+  // ~55px while reveal held the heading 28px down, against a 32px design gap.
+  // The cards rode up over "Featured projects" and it read as a label printed
+  // inside the first card, and it was most visible while the visitor was still
+  // looking at the bio section above.
+  //
+  // Sweeping the whole scroll range rather than probing one offset: the overlap
+  // only appeared over a narrow band of scroll positions, and the reveal
+  // stagger means the worst frame is not necessarily the one with the largest
+  // parallax shift.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+
+  const gaps: number[] = [];
+  for (let y = 0; y <= 1600; y += 100) {
+    await page.evaluate((v) => window.scrollTo({ top: v, behavior: 'instant' }), y);
+    await page.waitForTimeout(220);
+    gaps.push(
+      await page.evaluate(() => {
+        const h2 = document.querySelector('.featured h2')!.getBoundingClientRect();
+        const card = document
+          .querySelector('.project-grid .project-card')!
+          .getBoundingClientRect();
+        return card.top - h2.bottom;
+      })
+    );
+  }
+
+  // Never negative: the first card's top edge must always sit below the
+  // heading's bottom edge, at every scroll position, in both motion systems.
+  expect(Math.min(...gaps)).toBeGreaterThan(0);
 });

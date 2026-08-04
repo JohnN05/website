@@ -9,7 +9,9 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
 >
   <div class="not-found-band">
     <section class="not-found">
-      <p class="eyebrow">Page not found</p>
+      {/* No "Page not found" eyebrow above the numeral: the context line
+          below already says it in plain words, so the label only restated
+          its own heading. */}
       <h1 class="code">404</h1>
       <p class="context-line">This page doesn't exist. While you're here, try not to hit a mine.</p>
       <MinesweeperBoard />
@@ -36,24 +38,17 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
     gap: var(--space-5);
     text-align: center;
   }
-  .eyebrow {
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--color-text-secondary);
-    font-size: 0.72rem;
-    margin: 0;
-  }
   /* Cobalt is /404's identity hue (matching its cobalt wash, the same cobalt
      the hero owns). Raw cobalt clears the 3:1 large-text bar on the light wash
      but not the dark one (2.26:1 on --wash-hero dark), so it takes the same
      70/30 mix toward --color-text the home hero h1 uses — 4.1:1 dark, 6.1:1
      light. */
   .code {
-    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
     font-size: clamp(3.5rem, 12vw, 6rem);
     line-height: 0.9;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--track-display);
     color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
     margin: calc(-1 * var(--space-2)) 0 0;
     font-variant-numeric: tabular-nums;
@@ -68,7 +63,7 @@ import MinesweeperBoard from '../components/MinesweeperBoard.astro';
   /* Text stays at full --color-text contrast (cobalt-on-cobalt-wash was
      unreadable, worst in dark); the accent survives as the underline + arrow. */
   .home-link {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.85rem;
     color: var(--color-text);
     text-decoration: none;

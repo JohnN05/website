@@ -44,7 +44,7 @@
   .ms-grid :global(button) {
     width: 100%;
     aspect-ratio: 1;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
     font-weight: 600;
     background: color-mix(in srgb, var(--color-text) 9%, var(--color-bg));
@@ -97,7 +97,7 @@
     margin-bottom: var(--space-3);
   }
   #ms-status {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     color: var(--color-text-secondary);
     min-width: 0;                 /* wrap rather than shove the Reset button */
@@ -106,7 +106,7 @@
   #ms-status[data-state='win'] { color: var(--color-text); font-weight: 600; }
   .ms-help {
     margin: var(--space-3) auto 0;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.68rem;
     letter-spacing: 0.04em;
     color: var(--color-text-secondary);
@@ -120,7 +120,7 @@
   }
   #ms-reset {
     flex-shrink: 0;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;

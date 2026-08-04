@@ -35,6 +35,34 @@
   --piece-l: var(--color-accent-clay); /* featured · L · orange */
   --piece-i: var(--tetris-i); /* education   · I · teal */
 
+  /* ── Typography ──────────────────────────────────────────────────────
+     Archivo (display) and Instrument Sans (body) are both grotesks. What
+     holds them apart is the WEIGHT GAP, not the letterforms: at matched
+     size and weight they read as close cousins, and Archivo's only reliable
+     tell is that it sets noticeably wider. So the two roles never overlap
+     in weight — display stays at 600+, body at 500 and below. Always reach
+     for these tokens instead of restating a family or weight per component:
+     a heading set in --font-body at 600, or a lede in --font-display at
+     500, collapses the pairing into one face that can't decide how wide
+     it is. (This replaced Bricolage Grotesque + Inter.) */
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-prose: 'Source Serif 4', Georgia, serif;
+  /* The "JOHN NG" mark only — PieceMark.astro owns the face. */
+  --font-mark: 'Unbounded', sans-serif;
+
+  --weight-display: 700; /* h1/h2, hero, page titles */
+  --weight-display-sm: 600; /* h3–h6, card titles — 700 gets muddy at small sizes */
+  --weight-body: 400;
+  --weight-body-strong: 500;
+
+  /* Archivo is drawn wide, so display sizes need negative tracking or the
+     headline sprawls. Small headings need less of it than large ones. */
+  --track-display: -0.035em;
+  --track-display-sm: -0.02em;
+  --track-label: 0.08em;
+
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -53,8 +81,22 @@
      made each section's identity its tetromino.) Each derives from
      var(--color-bg), so despite living only in :root it recomputes correctly
      under :root[data-theme='dark'] below with no separate override —
-     custom properties resolve at point of use, not point of declaration. */
-  --wash-mix: 18%;
+     custom properties resolve at point of use, not point of declaration.
+
+     6%, down from an original 18%. At 18% the four Home sections read as
+     stacked pastel bands — periwinkle, cream, peach, mint — which is the
+     single loudest "generic template" signal the site had, and it landed
+     hardest in light mode (dark mode always read the same mix as depth
+     rather than candy). At 6% each section still lands on its own surface
+     and the piece-hue mapping below still means something, but the page
+     reads as one ground with tonal shifts. Raising this is the fastest way
+     to undo that; tune the individual --wash-* only if one hue needs to
+     come back independently. */
+  --wash-mix: 6%;
+  /* Generated project covers deliberately do NOT track --wash-mix: a cover
+     is a small isolated tile that needs to hold its own tint against the
+     page, not a full-bleed section band that must stay quiet under text. */
+  --cover-mix: 16%;
   --wash-hero: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-j) var(--wash-mix));
   --wash-bio: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-o) var(--wash-mix));
   --wash-featured: color-mix(in srgb, var(--color-bg) calc(100% - var(--wash-mix)), var(--piece-l) var(--wash-mix));

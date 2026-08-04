@@ -60,8 +60,13 @@ const WELL_ROWS = [
       <button class="nameplate" id="nameplate" type="button" data-reveal aria-label="John Ng, replay name animation">
         <PieceMark layout="inline" reveals={true} trigger="load" />
       </button>
-      <p class="eyebrow" data-reveal>Software Engineer</p>
       <h1 data-reveal>Building peace of mind, <span class="piece">one piece at a time.</span></h1>
+      {/* "Software Engineer" used to sit above the h1 as an uppercase mono
+          eyebrow. Same words, moved below and set in body type: a label
+          stacked on a heading is decoration, a line under it is a
+          standfirst. The role is the one fact the headline itself doesn't
+          state, so it stays on the page rather than being deleted. */}
+      <p class="role" data-reveal>Software Engineer</p>
     </div>
     <TetrisHero />
   </section>
@@ -94,7 +99,7 @@ const WELL_ROWS = [
       <div class="bio-copy" data-depth="0.03">
         <p class="eyebrow" data-reveal>College Park, MD · CS @ UMD · Secondary Ed & Asian Am Studies minors</p>
         <h2 data-reveal>Hey! I'm John.</h2>
-        <p class="lede" data-reveal>I enjoy building software as much as I enjoy teaching the next person how to do it tool</p>
+        <p class="lede" data-reveal>I enjoy building software as much as I enjoy teaching the next person how to do it.</p>
         <p class="detail" data-reveal>The Terp Rater Chrome Extension helps UMD students every registration cycle. Optimizations to 270 M rows of data reduce the latency on a data visualization map deployed by Capital Technology Group.</p>
       </div>
     </div>
@@ -102,11 +107,22 @@ const WELL_ROWS = [
 
   <div class="seam" style="--seam-from: var(--wash-bio); --seam-to: var(--wash-featured);"></div>
 
+  {/* Both motion systems are applied to the whole block, never to the grid
+      alone. data-depth used to sit on .project-grid while its own h2 carried
+      only data-reveal, so the two stacked elements in one column drifted
+      against each other: parallax pulled the cards up ~55px while reveal held
+      the heading 28px down, against a 32px design gap — the cards rode up over
+      "Featured projects" and it read as a label inside the first card while
+      the visitor was still looking at the bio section. Depth belongs on the
+      section block (the same shape .education-inner uses), and the grid reveals
+      with its heading instead of sitting still while the heading moves. Any two
+      stacked elements in one column must both opt into a motion system or
+      neither; splitting them is what re-opens this. */}
   <section class="featured" data-scroll-section>
-    <div class="featured-inner">
-      <p class="eyebrow" data-reveal>Selected work</p>
+    <div class="featured-inner" data-depth="0.08">
+      {/* No "Selected work" eyebrow: it restated the h2 directly beneath it. */}
       <h2 data-reveal>Featured projects</h2>
-      <div class="project-grid" data-depth="0.08">
+      <div class="project-grid" data-reveal>
         {featured.map((p) => <ProjectCard project={p} showCover={true} />)}
       </div>
     </div>
@@ -127,7 +143,9 @@ const WELL_ROWS = [
       the headline anyway. */}
   <section class="education" data-scroll-section>
     <div class="education-inner" data-depth="0.06">
-      <p class="eyebrow" data-reveal>Education</p>
+      {/* No "Education" eyebrow: the lede names the degree in its first
+          clause and the HUD carries GPA / Dean's List / graduation date, so
+          the label oriented nobody who wasn't already oriented. */}
       <h2 data-reveal>One line left.</h2>
       <div class="edu-grid">
         <div class="edu-copy">
@@ -178,10 +196,12 @@ const WELL_ROWS = [
     /* Leaves part of the next section visible below the fold on first load
        rather than exactly filling the viewport — a deliberate "there's more"
        cue, and the hook a future scroll-triggered reveal would key off of.
-       90vh (a 10vh peek) on mobile; desktop tightens to 75vh via the
-       min-width override near .seam below. */
-    min-height: 90vh;
-    padding: var(--space-10) var(--space-5);
+       Desktop holds 75vh (a 25vh peek) via the min-width override near .seam
+       below. Mobile is shorter at 72vh: the Tetris board is display:none
+       there, so a 90vh band held a wordmark, two lines and a role line in a
+       full phone screen and read as an empty page rather than as a stage. */
+    min-height: 72vh;
+    padding: var(--space-8) var(--space-5);
     background: var(--wash-hero);
     scroll-snap-align: start;
   }
@@ -199,13 +219,23 @@ const WELL_ROWS = [
          only yielding back to the percentage once the window is narrow
          enough that holding the floor would run text under the Tetris
          board. */
-      max-width: max(23rem, 40%);
+      /* Sized so the headline breaks at its own comma — "Building peace of
+         mind," / "one piece at a time." — instead of splitting the second
+         clause across a line, which left the accent-coloured phrase starting
+         mid-line. Archivo sets wider than the face this replaced, so the
+         old max(23rem, 40%) forced three lines at every desktop width below
+         1728px (measured). The floor is what does the work; the percentage
+         only takes over on very wide windows. */
+      max-width: max(43rem, 55%);
     }
   }
   .nameplate {
     font-size: clamp(1.7rem, 3.6vw, 2.4rem);
     display: inline-flex;
-    margin: 0 0 var(--space-3);
+    /* The mark and the h1 are both heavy display lettering, so they need a
+       real gap or they read as one four-line block. --space-3 let Archivo's
+       tall ascenders sit almost on the wordmark's baseline. */
+    margin: 0 0 var(--space-5);
     background: none;
     border: none;
     padding: 0;
@@ -219,12 +249,25 @@ const WELL_ROWS = [
   }
   .eyebrow {
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--track-label);
     color: var(--color-text-secondary);
     font-size: 0.85rem;
   }
   .hero-copy h1 {
     font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1.02;
+    margin: 0;
+    text-wrap: balance;
+  }
+  /* The role line, below the headline rather than labelling it. Body face,
+     sentence weight, secondary colour — it supports the h1, it doesn't
+     compete with it. */
+  .hero-copy .role {
+    margin: var(--space-4) 0 0;
+    font-size: 1.05rem;
+    font-weight: var(--weight-body-strong);
+    letter-spacing: 0.01em;
+    color: var(--color-text-secondary);
   }
   /* "one piece at a time" — the payoff clause and the only line on the site
      that names the Tetris metaphor in words (peace ↔ piece pun) — carries the
@@ -236,11 +279,19 @@ const WELL_ROWS = [
   .hero-copy h1 .piece {
     color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
   }
+  /* Height comes from content, not from a viewport fraction. The three
+     lower sections used to be min-height: 90vh (75vh desktop) with
+     --space-10 (9rem) of padding on both edges, which left a photo and
+     four short lines floating in an enormous band — the dead space read as
+     unfinished rather than airy. They now size to what's in them and keep
+     --space-9 of breathing room. The hero alone keeps a viewport-scaled
+     stage, because it is the one section whose job is to fill the first
+     screen. scroll-snap-align still works: a snap target does not have to
+     be a full viewport tall. */
   .bio {
     display: flex;
     align-items: center;
-    min-height: 90vh;
-    padding: var(--space-10) var(--space-5);
+    padding: var(--space-9) var(--space-5);
     background: var(--wash-bio);
     scroll-snap-align: start;
   }
@@ -421,20 +472,20 @@ const WELL_ROWS = [
   .bio-copy h2 {
     font-size: clamp(1.7rem, 2.4vw, 2rem);
     line-height: 1.08;
-    letter-spacing: -0.01em;
+    letter-spacing: var(--track-display);
     margin: 0 0 var(--space-5);
     text-wrap: balance;
   }
   .bio-copy .lede {
     font-size: 1.2rem;
     line-height: 1.5;
-    max-width: 34ch;
+    max-width: 60ch;
     margin: 0 0 var(--space-5);
   }
   .bio-copy .detail {
     font-size: 1rem;
     line-height: 1.65;
-    max-width: 42ch;
+    max-width: 64ch;
     color: var(--color-text-secondary);
     margin: 0 0 var(--space-3);
   }
@@ -456,16 +507,14 @@ const WELL_ROWS = [
   .featured {
     display: flex;
     align-items: center;
-    min-height: 90vh;
-    padding: var(--space-10) var(--space-5);
+    padding: var(--space-9) var(--space-5);
     background: var(--wash-featured);
     scroll-snap-align: start;
   }
   .featured-inner {
     width: 100%;
-  }
-  .featured-inner .eyebrow {
-    margin: 0 0 var(--space-4);
+    max-width: 72rem;
+    margin: 0 auto;
   }
   /* Matches teaching's h2 scale (both are section headers introducing a grid
      of content, not bio's smaller conversational greeting) — previously
@@ -474,7 +523,7 @@ const WELL_ROWS = [
   .featured-inner h2 {
     font-size: clamp(2rem, 3.6vw, 2.6rem);
     line-height: 1.1;
-    letter-spacing: -0.01em;
+    letter-spacing: var(--track-display);
     margin: 0 0 var(--space-6);
   }
   .project-grid {
@@ -486,22 +535,19 @@ const WELL_ROWS = [
   .education {
     display: flex;
     align-items: center;
-    min-height: 90vh;
-    padding: var(--space-10) var(--space-5);
+    padding: var(--space-9) var(--space-5);
     background: var(--wash-education);
     scroll-snap-align: start;
   }
   .education-inner {
     max-width: 72rem;
     margin: 0 auto;
-  }
-  .education .eyebrow {
-    margin: 0 0 var(--space-4);
+    width: 100%;
   }
   .education h2 {
     font-size: clamp(2rem, 3.6vw, 2.6rem);
     line-height: 1.1;
-    letter-spacing: -0.01em;
+    letter-spacing: var(--track-display);
     margin: 0 0 var(--space-6);
     max-width: 28ch;
   }
@@ -515,13 +561,13 @@ const WELL_ROWS = [
   .edu-copy .lede {
     font-size: 1.2rem;
     line-height: 1.5;
-    max-width: 38ch;
+    max-width: 60ch;
     margin: 0 0 var(--space-5);
   }
   .edu-copy .detail {
     font-size: 1rem;
     line-height: 1.65;
-    max-width: 42ch;
+    max-width: 64ch;
     color: var(--color-text-secondary);
     margin: 0;
   }
@@ -621,14 +667,14 @@ const WELL_ROWS = [
     gap: var(--space-4);
   }
   .hud-l {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.72rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-text-secondary);
   }
   .hud-v {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.95rem;
     font-variant-numeric: tabular-nums;
   }
@@ -637,7 +683,7 @@ const WELL_ROWS = [
      color, same convention as the retired stat-chip: --tetris-i at 0.72rem
      wouldn't clear WCAG AA's 4.5:1. */
   .hud-score {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.72rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -685,17 +731,13 @@ const WELL_ROWS = [
     filter: blur(40px);
     pointer-events: none;
   }
-  /* Desktop tightening: at desktop window heights the mobile pacing left a
-     dead band of plain wash between one section's content and the next —
-     roughly 40% of a ~900px-tall window at the worst mid-scroll stops.
-     Sections shrink 90vh → 75vh (the peek of the next section grows from
-     10vh to 25vh, which reads as a stronger "there's more" rather than as
-     looseness) and the blend bands 10rem → 6rem. Mobile keeps the roomier
-     values: at phone heights the sections are content-filled, so there is
-     no void to remove. The reveal threshold in the script below rises in
-     step — see REVEAL_THRESHOLD. */
+  /* Desktop tightening. Only .hero still takes a viewport-scaled height —
+     it is the one section whose job is to fill the first screen and leave a
+     peek of the next one. The other three size to their content (see .bio),
+     so the dead-band problem this rule originally solved by shrinking
+     90vh → 75vh no longer exists for them: there is no band to shrink. */
   @media (min-width: 769px) {
-    .hero, .bio, .featured, .education {
+    .hero {
       min-height: 75vh;
     }
     .seam {
@@ -715,14 +757,22 @@ const WELL_ROWS = [
   const REVEAL_STAGGER_MS = 110;
   // A beat after the section is judged entered, before the first child moves.
   const REVEAL_LEAD_IN_MS = 160;
-  // How far into the section the reveal starts. Raising this delays the start
-  // in scroll distance rather than in time, which is the other half of "later".
-  // Must clear the largest at-rest peek of a not-yet-entered section: on
-  // desktop the 75vh sections leave a 25vh peek, i.e. 33% of the next section
-  // is already visible at a snap stop — a threshold at or below that would
-  // fire the reveal before the visitor scrolls at all. 0.35 sits just above
-  // it; mobile's 10vh-of-90vh peek (11%) is comfortably below.
-  const REVEAL_THRESHOLD = 0.35;
+  // Where the reveal fires, expressed as a viewport line rather than as a
+  // fraction of the section.
+  //
+  // This used to be `threshold: 0.35` — 35% of the SECTION visible. That only
+  // worked while every section was a fixed 75vh/90vh box: the arithmetic
+  // ("a 25vh peek is 33% of a 75vh section, so 0.35 clears it") silently
+  // depends on section height. The lower three sections now size to their
+  // content, so the same 25vh peek is a different percentage of each one, and
+  // a short section can be more than 35% visible while still parked below the
+  // fold — which would fire its reveal before the visitor scrolls at all.
+  //
+  // A bottom rootMargin is height-independent: it pulls the observer's bottom
+  // edge up to 70% of the viewport, so a section fires when its top crosses
+  // that line no matter how tall it is. The hero's 25vh peek leaves the next
+  // section's top at 75vh, below the line, so nothing fires at rest.
+  const REVEAL_ROOT_MARGIN = '0px 0px -30% 0px';
 
   // Same reduced-motion convention as the Tetris ambient loop: check once, and
   // if motion is reduced simply never attach. The hidden state is gated on
@@ -752,17 +802,16 @@ const WELL_ROWS = [
           observer.unobserve(entry.target);
         });
       },
-      { threshold: REVEAL_THRESHOLD }
+      { threshold: 0, rootMargin: REVEAL_ROOT_MARGIN }
     );
 
     // The hero ships with `in` already on it (see the markup) and is done;
     // observing it would only re-add a class it carries. Every other section
-    // is governed solely by the threshold above — an earlier version also
+    // is governed solely by the root margin above — an earlier version also
     // pre-marked any section merely touching the viewport, which disagreed
-    // with that threshold: the peek leaves part of the next section visible
-    // at rest (11% mobile, 33% desktop), enough to be pre-marked but — by
-    // construction, see REVEAL_THRESHOLD — never enough to trip the observer,
-    // so a pre-marked section's reveal would silently never play.
+    // with that trigger: the hero's peek leaves the next section's top below
+    // the fire line, so a pre-marked section's reveal would silently never
+    // play.
     sections
       .filter((section) => !section.classList.contains('in'))
       .forEach((section) => observer.observe(section));
