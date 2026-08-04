@@ -16,7 +16,7 @@ import ContactForm from '../components/ContactForm.astro';
     <div class="well" id="contact-well" aria-hidden="true" role="presentation"></div>
     <div class="contact-inner">
       <div class="contact-copy">
-        <p class="eyebrow">Get in touch</p>
+        {/* No "Get in touch" eyebrow above "Contact": one said the other. */}
         <h1>Contact</h1>
         <p class="lede">Have a project, a role, or just a question? Send a message below. I read every one.</p>
       </div>
@@ -28,13 +28,6 @@ import ContactForm from '../components/ContactForm.astro';
   <div class="seam" style="--seam-from: var(--wash-contact); --seam-to: var(--color-bg);"></div>
 </BaseLayout>
 <style>
-  .eyebrow {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-secondary);
-    font-size: 0.85rem;
-    margin: 0 0 var(--space-3);
-  }
   .contact-band {
     position: relative;
     overflow: hidden;
@@ -74,12 +67,17 @@ import ContactForm from '../components/ContactForm.astro';
       linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
     mask-composite: intersect;
   }
-  /* Off cells are a transparent grey — visible enough that the empty grid
-     reads as its own surface set apart from the wash behind it, but well below
-     the lit blocks so those still clearly stand out as they fill in. */
+  /* Off cells carry a trace of the page's own T-piece purple rather than
+     neutral grey, and sit lighter than they used to. Both changes answer the
+     same thing: these values were calibrated against an 18% --wash-mix, and
+     at 6% a neutral 9%-of-text grid stopped reading as a quiet board on a
+     purple ground and started reading as a grey placeholder checkerboard on
+     near-ivory. Tinting from --tetris-t keeps the empty grid part of the
+     page instead of a foreign object, and it still sits far below the lit
+     blocks so those stand out as they fill in. */
   .well :global(div) {
     border-radius: 2px;
-    background: color-mix(in srgb, var(--color-text) 9%, transparent);
+    background: color-mix(in srgb, var(--tetris-t) 13%, transparent);
     transition: background-color 0.45s ease, opacity 0.45s ease, box-shadow 0.3s ease;
   }
   /* Lit cells carry enough of the T-piece hue to read as solid blocks against

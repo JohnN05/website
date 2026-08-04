@@ -21,8 +21,33 @@ const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: '
 const accentName = accentForTag(project.tags[0] ?? project.title);
 const coverAccent = ACCENT_VAR[accentName];
 const pieceCells = PIECE_CELLS[accentName] ?? PIECE_CELLS.cobalt;
-const initial = project.title.charAt(0);
 const thumbnail = project.thumbnail ?? project.cover;
+
+// Cover-less fallback: a frozen tetromino stack in the card's accent, the same
+// language ArticleLayout's own fallback already speaks — so a card and the
+// article it opens read as one identity. This replaced a giant low-opacity
+// first letter of the title, which rendered as a beige "R" / "S" / "U" and
+// looked like placeholder art nobody had got round to replacing.
+//
+// The card cover is a short wide strip, not the article header's 4:3 box, so
+// the stack is its own shape: wider and shallower (14x5, against the header's
+// 10x8) or the cells come out as thin horizontal slivers.
+const STACK_COLS = 14;
+const STACK_ROWS = 5;
+// Hand-tuned rather than generated: a random skyline reads as noise, and a
+// smooth one reads as a chart. This is the shape of a real mid-game stack —
+// uneven, with one deep well the eye lands on.
+const STACK_HEIGHTS = [2, 3, 3, 4, 2, 1, 3, 4, 4, 2, 3, 1, 2, 3];
+
+// A column of height h fills the bottom h rows; its topmost filled cell is
+// dimmed so the surface reads as unsettled rather than as a solid block.
+const stackCells: ('on' | 'dim' | '')[] = [];
+for (let row = 0; row < STACK_ROWS; row++) {
+  for (let col = 0; col < STACK_COLS; col++) {
+    const topRow = STACK_ROWS - STACK_HEIGHTS[col];
+    stackCells.push(row > topRow ? 'on' : row === topRow ? 'dim' : '');
+  }
+}
 ---
 <a
   class:list={['project-card', featured && 'featured']}
@@ -34,7 +59,9 @@ const thumbnail = project.thumbnail ?? project.cover;
       {thumbnail ? (
         <img class="cover-photo" src={thumbnail} alt="" />
       ) : (
-        <span class="glyph">{initial}</span>
+        <div class="gen-grid">
+          {stackCells.map((state) => <i class={state}></i>)}
+        </div>
       )}
       <div class="cover-piece">
         {Array.from({ length: 6 }, (_, i) => (
@@ -102,19 +129,28 @@ const thumbnail = project.thumbnail ?? project.cover;
     height: 100%;
     object-fit: cover;
   }
-  .cover .glyph {
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 500;
-    font-size: 4.5rem;
-    line-height: 1;
-    color: var(--cover-accent);
-    opacity: 0.32;
+  /* Cover-less fallback: the frozen stack, sitting flush to the cover's
+     bottom edge so it reads as settled pieces rather than a floating motif.
+     Cells are server-rendered (Astro template loop, no createElement), so
+     ordinary component scoping applies — no :global() needed here. Alpha
+     mixes rather than solid tints, so one pair of values holds in both
+     themes against the cover's own accent-mixed ground. */
+  .cover .gen-grid {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    grid-auto-rows: 1fr;
+    aspect-ratio: 14 / 5;
+    gap: 2px;
+    padding: 0 2px 2px;
   }
-  /* At rest opacity the monogram all but vanishes against the dark-mode tinted
-     cover; bump it so the letter reads in both themes. Decorative either way
-     (the cover is aria-hidden). */
-  :global(html[data-theme='dark']) .cover .glyph {
-    opacity: 0.55;
+  .cover .gen-grid i { border-radius: 2px; }
+  .cover .gen-grid i.on {
+    background: color-mix(in srgb, var(--cover-accent) 58%, transparent);
+  }
+  .cover .gen-grid i.dim {
+    background: color-mix(in srgb, var(--cover-accent) 28%, transparent);
   }
 
   /* A real tetromino drops into the cover on hover, then flashes white a few
@@ -161,8 +197,11 @@ const thumbnail = project.thumbnail ?? project.cover;
     min-height: 220px;
     background: color-mix(in srgb, var(--wash-featured) 82%, var(--cover-accent) 18%);
   }
-  .project-card.featured .glyph {
-    font-size: 6rem;
+  /* The featured cover is a tall panel, not a strip, so the stack keeps its
+     own aspect and sits on the bottom edge instead of stretching to fill —
+     stretched cells stop reading as square tetromino blocks. */
+  .project-card.featured .gen-grid {
+    padding: 0 var(--space-3) var(--space-3);
   }
   .project-card.featured .card-body {
     padding: var(--space-6);
@@ -211,7 +250,12 @@ const thumbnail = project.thumbnail ?? project.cover;
       box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--cover-accent) 70%, transparent);
     }
     .cover-piece {
-      transition: transform 0.32s cubic-bezier(0.3, 1.35, 0.5, 1), opacity 0.16s ease;
+      /* Gravity in, then a hard stop — no overshoot. The 1.35 bounce this
+         replaced made the piece rebound on landing, which no tetromino does
+         and which contradicted the snap-by-construction rule every other
+         piece motion on the site follows (wordmark turn, theme toggle,
+         contact T-spin). Matches the education well's own drop curve. */
+      transition: transform 0.32s cubic-bezier(0.55, 0, 0.85, 0.36), opacity 0.16s ease;
     }
     .cover-piece span.on {
       transition: background-color 0.05s linear;

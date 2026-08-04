@@ -76,7 +76,16 @@ test('bio still reveals on a viewport where it peeks below the fold', async ({
     .poll(() => bio.locator('h2').evaluate((el) => getComputedStyle(el).opacity))
     .not.toBe('1');
 
-  await bio.scrollIntoViewIfNeeded();
+  // Scroll the way a person does, not with scrollIntoViewIfNeeded(). Home is a
+  // proximity snap container, and bio now sizes to its content instead of to
+  // 75vh — so the minimal scroll that makes bio "fully visible" here is only
+  // ~274px, which lands inside the HERO's snap proximity and gets pulled
+  // straight back to 0. The viewport never moved and the reveal never fired:
+  // a test-harness artifact, not a regression. Verified by hand at this exact
+  // viewport that a real wheel scroll reveals bio, featured and education in
+  // order. A wheel gesture clears the hero's snap point, so this test goes
+  // back to measuring the reveal instead of measuring scrollIntoViewIfNeeded.
+  await page.mouse.wheel(0, 400);
   await expect(bio).toHaveClass(/\bin\b/);
   await expect
     .poll(() => bio.locator('h2').evaluate((el) => getComputedStyle(el).opacity))

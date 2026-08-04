@@ -16,7 +16,7 @@ const [newestProject, ...restProjects] = projects;
 >
   <div class="intro-band">
     <div class="intro-inner">
-      <p class="eyebrow">Selected work</p>
+      {/* No "Selected work" eyebrow above "Projects": one labelled the other. */}
       <h1>Projects</h1>
       <p class="lede">A running log of what I've built: extensions, platforms, research tools. I add full write-ups as I finish each one.</p>
     </div>
@@ -36,13 +36,6 @@ const [newestProject, ...restProjects] = projects;
   </div>
 </BaseLayout>
 <style>
-  .eyebrow {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-secondary);
-    font-size: 0.85rem;
-    margin: 0 0 var(--space-3);
-  }
   .intro-band {
     /* Per-route identity: this page owns L-orange, the same hue as its rail
        tick in Nav.astro. The wash is already the orange --wash-featured; the
@@ -50,40 +43,55 @@ const [newestProject, ...restProjects] = projects;
        page and its nav marker read as one identity. */
     --hue: var(--piece-l);
     background: var(--wash-featured);
-    padding: var(--space-8) var(--space-5) var(--space-7);
+    /* No inline padding here — it belongs inside .intro-inner's 72rem box so
+       the header lines up with .grid-wrap below, which also pads inside its
+       own 72rem box. With the padding out here instead, the two containers
+       centred against different available widths and the page title landed
+       exactly --space-5 left of the first card. */
+    padding: var(--space-8) 0 var(--space-7);
   }
+  /* Shares .grid-wrap's 72rem container, not its own 42rem one. Both were
+     centred but around different widths, so the page title sat a couple of
+     hundred pixels right of the first card it introduced. The measure lives
+     on .lede instead, where it belongs. */
   .intro-inner {
     position: relative;
     /* Paints above .seam (z-index: 1) so the blurred blend band washes over
        the band's background only, not over the header text itself. */
     z-index: 2;
-    max-width: 42rem;
+    max-width: 72rem;
     margin: 0 auto;
-    padding-left: var(--space-4);
+    padding: 0 var(--space-5);
   }
   /* Static "you're here" edge-tick (no hover/grow — a header marks the page,
-     it isn't an interactive rail link). Hangs at the left of the eyebrow+title
-     block, in the route hue. */
-  .intro-inner::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.15rem;
-    width: 4px;
-    height: 3.4rem;
-    border-radius: 1px;
-    background: var(--hue);
-  }
+     it isn't an interactive rail link), in the route hue.
+     Anchored to the h1 rather than to the block, for two reasons: it now
+     auto-sizes to the title instead of carrying a hardcoded 3.4rem height
+     measured against a title-plus-eyebrow that no longer exists, and it hangs
+     into the band's own gutter so the title itself lines up exactly with the
+     first card below rather than sitting a tick's width right of it. The
+     offset stays inside .intro-band's --space-5 padding at every width. */
   .intro-inner h1 {
+    position: relative;
     font-size: clamp(2rem, 4vw, 2.8rem);
-    letter-spacing: -0.01em;
+    letter-spacing: var(--track-display);
     margin: 0;
     text-wrap: balance;
+  }
+  .intro-inner h1::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--space-4));
+    top: 0.12em;
+    bottom: 0.12em;
+    width: 4px;
+    border-radius: 1px;
+    background: var(--hue);
   }
   .intro-inner .lede {
     font-size: 1.1rem;
     line-height: 1.6;
-    max-width: 46ch;
+    max-width: 62ch;
     color: var(--color-text-secondary);
     margin: var(--space-4) 0 0;
   }
