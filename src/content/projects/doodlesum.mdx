@@ -1,0 +1,106 @@
+---
+title: "DoodleSum"
+date: 2026-08-13
+summary: "Turns a K-8 math teacher's PowerPoint into short animated clips of their own example problems, with every number checked in Python instead of trusted from a language model."
+tags: ["education", "llm", "internship"]
+draft: false
+featured: true
+role: "SWE Intern, full-stack"
+timeline: "Jul – Aug 2026"
+stack: ["Python", "FastAPI", "Manim", "AWS Bedrock", "React + Vite", "Postgres + Redis"]
+outcome: "3.1 to 3.5 s per scene · 1,562 backend tests"
+cover: "/projects/doodlesum-logo.png"
+thumbnail: "/projects/doodlesum-logo.png"
+---
+
+## Overview
+
+A teacher uploads a PowerPoint. DoodleSum finds the example math problems
+in it, and for each one you pick it makes a short animated MP4 you can drop
+back into the deck: apples being added, a number line being walked, a
+fraction bar filling up. I built it in about four weeks (July 17 to August
+13, 2026) during my summer internship at Capital Technology Group.
+
+One rule shaped the whole design: **the language model never does the
+math.** A clip that teaches second graders that 2 + 3 = 6 is worse than no
+clip at all.
+
+## Keeping the model away from the arithmetic
+
+The model (Claude Sonnet 4.6 on AWS Bedrock) has two jobs: find candidate
+problems, and pull out a starting value plus an ordered list of operands.
+The extraction schema has no place for intermediate values or a final
+answer, so a model saying "2 + 3 = 6" isn't something the system can even
+represent. Python does the rest.
+
+- **One evaluator.** A single chain evaluator computes every step (using
+  `fractions.Fraction` where it matters), and the captions, the checks, and
+  the animation all read from that same sequence.
+- **Guards per template.** Each animation template has its own
+  compatibility guard. A same-denominator fraction template rejects 1/2 +
+  1/3, for example. The guard runs on values a teacher edits too, so an
+  edit can't skip the one check that would catch a bad correction.
+- **Honest fallback.** If a problem can't truthfully fit any template, the
+  clip becomes a plain text card that says why. I treated that as a success
+  state, not an error: a visible honest failure beats a plausible wrong
+  answer.
+- **Two kinds of failure.** An ambiguous problem is never retried, since an
+  identical retry gives an identical answer. A render crash retries once.
+
+Order-of-operations problems fall back on purpose, because flattening 10 +
+4 × 3 into source order would change what it means. Expression trees are
+the planned fix.
+
+## Teaching plans instead of generated animation code
+
+My first approach let the model drive the animation more directly. The math
+came out right and the explanations came out bad. The demo that showed it
+was a median of seven numbers: the values faded in one at a time, the median
+turned orange before the animation had earned it, and a callout drifted off
+its target because the row moved after the callout was placed.
+
+So I designed a small plan language (v3). The model writes a teaching plan:
+one objective, one main visual, and three to five ordered beats that end in
+a conclusion. A deterministic Python compiler turns the plan into a scene
+and owns the layout, timing, and anchors. Anchors resolve against the
+final layout, which fixed the drifting callouts for good. Before a teacher
+sees a draft, it has already passed math, safety, rendered-frame, and
+pacing checks. The compiler and its gates came to about 5,000 lines.
+
+## Shipping it behind cost guards
+
+The whole stack runs as five Docker services (nginx, the FastAPI backend,
+Postgres, Redis, and an optional TLS front), and a demo URL comes up with
+one `make up`. Bedrock access was key-only, with no console and no quota
+panel, so every cost control had to live in the app. There are four
+independent layers: a kill switch, an nginx rate limit, a per-IP hourly
+counter, and a global daily counter. If Redis is unreachable while a cap is
+set, the guards fail closed with a 503 instead of letting calls through
+unmetered.
+
+## How I checked it
+
+- **Tests.** 1,562 backend tests, 56 frontend unit tests, 3 Playwright
+  specs, and 4 CI workflows.
+- **Speed, against live Bedrock.** Three multi-step scenes took 3.1 to 3.5
+  seconds each, extraction and render together. Six real teacher decks took
+  72 seconds in total, about 12 seconds a deck.
+- **Discovery on tricky decks.** A deck with no math, a deck full of
+  distractors (dates, page numbers, standard codes), and a deck with vague
+  wording all came back right: 0, 1, and 0 candidates.
+- **How 386 commits fit in four weeks.** A lot of tickets went through a
+  loop where one model implemented and a second model reviewed before
+  merge.
+
+## Where I pushed back
+
+OCR and PDF input were the obvious asks. I argued against them: OCR errors
+would stack on top of extraction errors and blow the correctness budget.
+We agreed on PowerPoint-only for v1, with DOCX and PDF as follow-ups.
+
+## Result
+
+It's a working demo, not a product. No real users, no accounts (sessions
+reset when the tab closes), and PowerPoint only. What I'm proud of is the
+boundary: the model only gets to talk about structure, and every number
+that reaches a classroom was computed and checked in Python first.

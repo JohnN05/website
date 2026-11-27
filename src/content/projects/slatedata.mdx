@@ -1,0 +1,122 @@
+---
+title: "SlateData"
+date: 2026-07-30
+summary: "A data-to-slide-deck platform: ask your database a question in plain English, then turn the charts into a deck you can share live or export as PPTX or PDF."
+tags: ["data-visualization", "full-stack", "internship"]
+draft: false
+featured: false
+role: "SWE Intern, full-stack"
+timeline: "Jun – Jul 2026"
+stack: ["React + TypeScript", "FastAPI", "PostgreSQL", "Playwright", "AWS Bedrock"]
+outcome: "14 merged PRs · frontend to backend, with tests"
+cover: "/projects/slatedata-hero.jpg"
+thumbnail: "/projects/slatedata-hero-thumb.jpg"
+---
+
+## Overview
+
+SlateData is Capital Technology Group's data-visualization product. You
+connect a database, ask a question in plain English or write the SQL
+yourself, and the charts and tables that come back go into a slide deck you
+can share as a live link or export as PPTX or PDF. Live at
+[slatedata.ai](https://slatedata.ai/).
+
+It's a team product, so this write-up covers only the parts I built over
+five weeks of my summer 2026 internship: 102 commits and 15 pull requests,
+14 merged and one still in review. Nearly all of them touched both the React
+frontend and the FastAPI backend.
+
+## Freezing a chart and stepping through its history
+
+I added a lock on visualizations, plus a full version history with undo,
+redo, and restore. The hard part wasn't the buttons. It was getting the new
+behavior to play nicely with everything that already existed: auto-refresh,
+caching, and thumbnails.
+
+- **A fetch clock per chart.** The app used to judge staleness from the
+  shared datasource, so refreshing one chart marked every sibling chart
+  stale. I gave each visualization its own "data last fetched" time. Charts
+  now refresh independently, and a locked chart's timestamp can't move until
+  someone unlocks it.
+- **Versions are a counter, not a hash.** Every edit saves a full snapshot
+  with a sequence number. I picked a counter because undo and redo care
+  about order, and decks already versioned themselves that way.
+- **A migration that backfills.** Every existing chart got a starting
+  version, so the first undo has somewhere to land. It's safe to run more
+  than once.
+
+## Sharing with one person
+
+Private decks and visualizations can now be shared with a single user,
+without adding them to a team. The part I thought hardest about was the
+order of the access checks. A personal share has to win over the team
+check, or someone removed from a team later would quietly lose access to
+things shared with them directly. I also walked the rest of what a shared
+chart touches, since sharing one chart shouldn't open the door to the
+datasource behind it, and closed that path before the feature merged.
+
+## Charts that render on the server
+
+Thumbnails, PDF and PPTX exports all come from a headless browser rendering
+the same charts on the server. Three of my bugs there turned out to be one
+family: cache correctness.
+
+- **Table charts had no thumbnail.** The screenshot service skipped them.
+  Removing that wasn't enough, because a table sizes its columns after the
+  first paint. The renderer now signals "ready" after a double
+  `requestAnimationFrame`, which replaced a fixed four-second wait with an
+  accurate one.
+- **Thumbnails were always light mode.** The headless browser has no saved
+  theme, so it fell back to light. I render and cache both variants and
+  serve the one the viewer's theme asks for.
+- **Thumbnails went stale after edits.** The cache was keyed on the chart,
+  not on its content version. Keying it on the version fixed that. An old
+  unversioned image is served instantly while the new one warms in the
+  background, and a render that finishes after the content changed is
+  thrown away.
+
+## Hand-written SQL across several databases (in review)
+
+Users can write separate SQL against two or more datasources and combine
+the results in one view. The AI agent already had a working join, merge, and
+pagination pipeline, so I built the manual path on top of it instead of
+copying it, and stacked the pull request on my teammate's so reviewers could
+see why. When two sources share no join key, the user is handed to the AI
+refinement chat rather than silently stacking results. Filter, sort, and
+group-by are switched off on combined results because they don't mean
+anything well-defined there, and shipping them half-broken would be worse
+than not shipping them. One known limit is written into the PR: a manual run
+is all-or-nothing, while the AI path skips a failing secondary source.
+
+## Smaller things worth telling
+
+- **Importing a table from a URL.** Fetching an address a user typed in is
+  risky, so it goes through a guarded server-side proxy instead of the
+  browser. I hardened it over several review rounds and added regression
+  tests. The same overhaul added JSON paste, a delimiter picker with
+  auto-detection, and a fix for a spinner that never stopped on CSVs with
+  inconsistent columns.
+- **Copy and paste for slide elements.** It needed no new backend endpoint,
+  since it reuses the existing add-a-block path. Pasted HTML is sanitized
+  with DOMPurify, and SVG images are rejected. Clicking through a live deck
+  turned up four bugs the unit tests hadn't caught, like a stray click on
+  empty canvas wiping the copy buffer.
+- **Block background colors.** Persisted on the server and carried through
+  the editor, thumbnails, and exports. A color picker rendered in a portal
+  sits outside its block in the DOM, so dragging inside the picker was moving
+  the block. The fix was an explicit portal-aware check.
+- **A Firefox bug that took hours for one line.** A portal-rendered menu
+  wouldn't scroll in Firefox. Wrapping it in Mantine's `ScrollArea.Autosize`
+  fixed it.
+- **Hiding what a user can't use.** The "Refresh data" control showed for
+  viewers who would only hit a 403. I folded workspace role into the check
+  that decides whether it appears.
+
+## Result
+
+A live product with my work across its editor, API, and rendering pipeline,
+backed by pytest, Vitest, and Playwright tests in most of my feature PRs.
+The part I'd rather point to than a line count: locking and version history
+had to cooperate with refresh, caching, and rendering all at once, and the
+thumbnail fixes afterward were me closing the loop between that new state
+and the old rendering pipeline.
